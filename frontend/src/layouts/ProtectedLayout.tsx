@@ -1,59 +1,133 @@
 import { Navigate, Outlet, useLocation } from "react-router";
-import { useUser } from "@clerk/react";
+import { useAuth } from "@clerk/react";
 import { useEffect, useState } from "react";
+import { isAxiosError } from "axios";
+
 import { useProfileApi } from "../api/profileApi";
 
 function ProtectedLayout() {
   const location = useLocation();
-  const { user, isLoaded } = useUser();
+
+  // Only use stable auth values here.
+  const { isLoaded, isSignedIn, userId } = useAuth();
 
   const { getProfile } = useProfileApi();
 
   const [profileLoading, setProfileLoading] = useState(true);
-  const [profileExists, setProfileExists] = useState(false);
+  const [profileExists, setProfileExists] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!isLoaded) return;
-
-    if (!user) {
-      setProfileLoading(false);
+    // Clerk is still loading
+    if (!isLoaded) {
       return;
     }
+
+    // User is not signed in
+    if (!isSignedIn || !userId) {
+      setProfileLoading(false);
+      setProfileExists(null);
+      return;
+    }
+
+    let cancelled = false;
 
     const loadProfile = async () => {
       try {
         setProfileLoading(true);
 
-        await getProfile();
+        const profile = await getProfile();
+
+        if (cancelled) return;
+
+        console.log("Profile loaded:", profile);
 
         setProfileExists(true);
       } catch (error) {
-        console.log("Profile not found");
-        setProfileExists(false);
+        if (cancelled) return;
+
+        /*
+         * IMPORTANT:
+         * Only treat 404 as "profile doesn't exist".
+         *
+         * CORS, 401, 403, 500, network errors, etc.
+         * should NOT redirect the user to profile setup.
+         */
+
+        if (isAxiosError(error)) {
+          const status = error.response?.status;
+
+          console.error(
+            "Profile request failed:",
+            status,
+            error.response?.data,
+          );
+
+          if (status === 404) {
+            console.log("Profile does not exist.");
+            setProfileExists(false);
+          } else {
+            // API/server/CORS/network problem
+            setProfileExists(null);
+          }
+        } else {
+          console.error("Unexpected profile error:", error);
+
+          setProfileExists(null);
+        }
       } finally {
-        setProfileLoading(false);
+        if (!cancelled) {
+          setProfileLoading(false);
+        }
       }
     };
 
     loadProfile();
-  }, [user, isLoaded]);
 
-  if (!isLoaded || profileLoading) {
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoaded, isSignedIn, userId]);
+
+  /*
+   * Clerk loading
+   */
+  if (!isLoaded) {
     return <LoadingScreen message="Loading UniVibe..." />;
   }
 
-  if (!user) {
+  /*
+   * Not authenticated
+   */
+  if (!isSignedIn || !userId) {
     return <Navigate to="/" replace state={{ from: location }} />;
   }
 
-  if (!profileExists && location.pathname !== "/profile/setup") {
+  /*
+   * Profile API is loading
+   */
+  if (profileLoading || profileExists === null) {
+    return <LoadingScreen message="Loading UniVibe..." />;
+  }
+
+  /*
+   * User is authenticated but doesn't have
+   * a profile yet.
+   */
+  if (profileExists === false && location.pathname !== "/profile/setup") {
     return <Navigate to="/profile/setup" replace />;
   }
 
-  if (profileExists && location.pathname === "/profile/setup") {
+  /*
+   * Profile exists, so don't allow the user
+   * to go back to profile setup.
+   */
+  if (profileExists === true && location.pathname === "/profile/setup") {
     return <Navigate to="/home" replace />;
   }
 
+  /*
+   * Everything is good.
+   */
   return <Outlet />;
 }
 
@@ -61,7 +135,20 @@ function LoadingScreen({ message }: { message: string }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
       <div className="text-center">
-        <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600 dark:border-slate-700 dark:border-t-indigo-500" />
+        <div
+          className="
+            mx-auto
+            h-10
+            w-10
+            animate-spin
+            rounded-full
+            border-4
+            border-slate-200
+            border-t-indigo-600
+            dark:border-slate-700
+            dark:border-t-indigo-500
+          "
+        />
 
         <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
           {message}

@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { useAuth as useClerkAuth, useUser } from "@clerk/react";
-
 import { useAuthStore } from "../store/authStore";
 
 export const useAuth = () => {
@@ -20,20 +19,15 @@ export const useAuth = () => {
 
     // User is signed in
     if (isSignedIn && user) {
-      console.log("Clerk auth state:", user);
-
       setUser(user);
       setLoading(false);
-
       return;
     }
 
     // User is signed out
-    console.log("Clerk auth state: signed out");
-
     setUser(null);
     setLoading(false);
-  }, [isLoaded, isSignedIn, user, userId, setUser, setLoading]);
+  }, [isLoaded, isSignedIn, userId]);
 
   return {
     user: storeUser,
