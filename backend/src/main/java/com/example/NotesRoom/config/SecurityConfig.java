@@ -36,9 +36,19 @@ public class SecurityConfig {
                                                         "DELETE",
                                                         "OPTIONS"));
 
-                                        config.setAllowedHeaders(List.of("*"));
+                                        config.setAllowedHeaders(List.of(
+                                                        "Authorization",
+                                                        "Content-Type",
+                                                        "Accept",
+                                                        "Origin",
+                                                        "X-Requested-With"));
 
                                         config.setAllowCredentials(true);
+                                        config.setMaxAge(3600L);
+
+                                        // UrlBasedCorsConfigurationSource source = new
+                                        // UrlBasedCorsConfigurationSource();
+                                        // source.registerCorsConfiguration("/**", config);
 
                                         return config;
                                 }));
