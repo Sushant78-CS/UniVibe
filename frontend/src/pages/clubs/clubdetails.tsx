@@ -191,7 +191,7 @@ const ClubDetailsPage = () => {
               </p>
             </div>
 
-            <div className="shrink-0">
+            <div className="flex justify-end">
               <ClubApplyButton clubId={club.id} />
             </div>
           </section>

@@ -4,9 +4,11 @@ import com.example.NotesRoom.dto.connection.ConnectedPersonDto;
 import com.example.NotesRoom.dto.connection.ConnectionRequestDto;
 import com.example.NotesRoom.dto.connection.ConnectionStatus;
 import com.example.NotesRoom.dto.connection.CreateConnectionDto;
+import com.example.NotesRoom.dto.notification.NotificationType;
 import com.example.NotesRoom.entity.*;
 import com.example.NotesRoom.repository.ConnectionRepository;
 import com.example.NotesRoom.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -19,7 +21,9 @@ public class ConnectionService {
 
     private final ConnectionRepository connectionRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
+    @Transactional
     public Connection sendRequest(
             String clerkId,
             CreateConnectionDto dto) {
@@ -62,7 +66,18 @@ public class ConnectionService {
                 .receiver(receiver)
                 .status(ConnectionStatus.PENDING)
                 .build();
-        return connectionRepository.save(connection);
+
+        Connection savedConnection = connectionRepository.save(connection);
+
+        notificationService.createNotification(
+                receiver,
+                sender,
+                NotificationType.CONNECTION_REQUEST,
+                sender.getProfile().getFullName()
+                        + " send you a connection request",
+                savedConnection.getId()
+        );
+        return savedConnection;
     }
 
     public List<ConnectionRequestDto> getRequests(
@@ -92,6 +107,7 @@ public class ConnectionService {
                 .toList();
     }
 
+    @Transactional
     public void updateRequest(
             String clerkId,
             Long connectionId,
@@ -128,11 +144,39 @@ public class ConnectionService {
             connection.setStatus(
                     ConnectionStatus.ACCEPTED
             );
+            connection.setUpdatedAt(LocalDateTime.now());
+            Connection savedConnection = connectionRepository.save(connection);
+
+            notificationService.createNotification(
+                    connection.getSender(),
+                    connection.getReceiver(),
+                    NotificationType.CONNECTION_ACCEPTED,
+                    connection.getReceiver().getProfile().getFullName()
+                            + " accepted your connection request",
+                    savedConnection.getId()
+            );
 
         } else if ("REJECT".equalsIgnoreCase(action)) {
 
             connection.setStatus(
                     ConnectionStatus.REJECTED
+            );
+
+            connection.setUpdatedAt(LocalDateTime.now());
+
+            Connection savedConnection =
+                    connectionRepository.save(connection);
+
+            // Notify the person who originally sent the request
+            notificationService.createNotification(
+                    connection.getSender(),
+                    connection.getReceiver(),
+                    NotificationType.CONNECTION_REJECTED,
+                    connection.getReceiver()
+                            .getProfile()
+                            .getFullName()
+                            + " rejected your connection request",
+                    savedConnection.getId()
             );
 
         } else {
@@ -142,9 +186,9 @@ public class ConnectionService {
             );
         }
 
-        connection.setUpdatedAt(LocalDateTime.now());
-
-        connectionRepository.save(connection);
+//        connection.setUpdatedAt(LocalDateTime.now());
+//
+//        connectionRepository.save(connection);
     }
 
     public String getConnectionStatus(

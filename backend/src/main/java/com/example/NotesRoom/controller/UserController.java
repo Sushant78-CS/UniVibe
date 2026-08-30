@@ -5,6 +5,7 @@ import com.example.NotesRoom.dto.connection.ConnectionActionDto;
 import com.example.NotesRoom.dto.connection.CreateConnectionDto;
 import com.example.NotesRoom.dto.profile.CreateProfileDto;
 import com.example.NotesRoom.dto.profile.ProfileDto;
+import com.example.NotesRoom.dto.profile.UpdateProfileDto;
 import com.example.NotesRoom.entity.Connection;
 import com.example.NotesRoom.entity.Profile;
 import com.example.NotesRoom.service.ConnectionService;
@@ -76,6 +77,27 @@ public class UserController {
                     "error", "Profile image upload failed"
             ));
         }
+    }
+
+    @PutMapping("/profile")
+    public ResponseEntity<ProfileDto> updateProfile(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestBody UpdateProfileDto dto
+    ) {
+        String clerkId = jwt.getSubject();
+
+        return ResponseEntity.ok(
+                profileService.updateProfile(clerkId, dto)
+        );
+    }
+
+    @DeleteMapping("/image")
+    public ResponseEntity<ProfileDto> deleteProfileImage(@AuthenticationPrincipal Jwt jwt
+    ) throws IOException {
+        String clerkId = jwt.getSubject();
+        return ResponseEntity.ok(
+                profileService.deleteProfileImage(clerkId)
+        );
     }
 
     @PostMapping("/connections")

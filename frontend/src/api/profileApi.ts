@@ -11,6 +11,17 @@ interface CreateProfileData {
   interests?: string;
 }
 
+export interface UpdateProfileData {
+  fullName: string;
+  username: string;
+  bio?: string;
+  college?: string;
+  department?: string;
+  year?: string;
+  interests?: string;
+  profileImage?: string;
+}
+
 export const useProfileApi = () => {
   const { getToken } = useAuth();
 
@@ -64,8 +75,34 @@ export const useProfileApi = () => {
     return response.data;
   };
 
+  const updateProfile = async (data: UpdateProfileData) => {
+    const token = await getToken();
+
+    const response = await api.put("/user/profile", data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return response.data;
+  };
+
+  const deleteProfileImage = async () => {
+    const token = await getToken();
+
+    const response = await api.delete("/user/profile/image", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return response.data;
+  };
+
   return {
     getProfile,
     createProfile,
+    updateProfile,
+    deleteProfileImage,
   };
 };

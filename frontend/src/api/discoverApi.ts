@@ -16,6 +16,20 @@ export interface DiscoverPerson {
   connectionStatus: "NONE" | "PENDING_SENT" | "PENDING_RECEIVED" | "ACCEPTED";
 }
 
+export interface SearchProfile {
+  profileId: number;
+  fullName: string;
+  username: string;
+  college?: string;
+  department?: string;
+}
+
+export interface SearchResponse {
+  results: SearchProfile[];
+  algorithm: string;
+  timeComplexity: string;
+}
+
 export const useDiscoverApi = () => {
   const { getToken } = useAuth();
 
@@ -49,8 +63,24 @@ export const useDiscoverApi = () => {
     return response.data;
   };
 
+  const searchProfiles = async (query: string): Promise<SearchResponse> => {
+    const token = await getToken();
+
+    const response = await api.get<SearchResponse>("/search", {
+      params: {
+        query,
+      },
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return response.data;
+  };
+
   return {
     getPeople,
     getPersonProfile,
+    searchProfiles,
   };
 };

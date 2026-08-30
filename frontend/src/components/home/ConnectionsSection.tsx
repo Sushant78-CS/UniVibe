@@ -95,9 +95,6 @@ const ConnectionsSection = () => {
                     <UserRound size={22} />
                   </div>
                 )}
-
-                {/* Online dot */}
-                <span className="absolute bottom-0.5 right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-500 dark:border-slate-950" />
               </div>
 
               {/* Name */}

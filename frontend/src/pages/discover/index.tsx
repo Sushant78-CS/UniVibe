@@ -4,16 +4,18 @@ import { Search, SlidersHorizontal, X } from "lucide-react";
 import FloatingTabs from "../../components/home/FloatingTabs";
 import PersonCard from "../../components/discover/PersonCard";
 
-import { useDiscoverApi, type DiscoverPerson } from "../../api/discoverApi";
+import { useRecommendationApi } from "../../api/recommendationApi";
 import { useNavigate } from "react-router";
 import { useConnectionApi } from "../../api/connectionApi";
+import { useSearchApi } from "../../api/searchApi";
 
 const DiscoverPage = () => {
   const navigate = useNavigate();
-  const { getPeople } = useDiscoverApi();
+  const { getRecommendations } = useRecommendationApi();
   const { sendConnection } = useConnectionApi();
+  const { searchProfiles } = useSearchApi();
 
-  const [people, setPeople] = useState<DiscoverPerson[]>([]);
+  const [people, setPeople] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [connectingId, setConnectingId] = useState<number | null>(null);
@@ -28,16 +30,50 @@ const DiscoverPage = () => {
     try {
       setLoading(true);
 
-      const data = await getPeople({
-        query,
-        college,
-        department,
-        year,
-      });
+      const data = await getRecommendations();
 
-      setPeople(data);
+      console.log("Recommendations from backend:", data);
+
+      let mappedPeople = data.recommendations.map((person) => ({
+        id: person.profileId,
+        userId: person.userId,
+        fullName: person.fullName,
+        username: person.username,
+        bio: person.bio,
+        profileImage: person.profileImage,
+        college: person.college,
+        department: person.department,
+        year: person.year,
+        interests: person.interests,
+        compatibilityScore: person.score,
+        connectionStatus: person.connectionStatus,
+      }));
+
+      // Search
+
+      // College filter
+      if (college.trim()) {
+        mappedPeople = mappedPeople.filter(
+          (person) => person.college?.toLowerCase() === college.toLowerCase(),
+        );
+      }
+
+      // Department filter
+      if (department.trim()) {
+        mappedPeople = mappedPeople.filter(
+          (person) =>
+            person.department?.toLowerCase() === department.toLowerCase(),
+        );
+      }
+
+      // Year filter
+      if (year) {
+        mappedPeople = mappedPeople.filter((person) => person.year === year);
+      }
+
+      setPeople(mappedPeople);
     } catch (error) {
-      console.error("Failed to load people:", error);
+      console.error("Failed to load recommendations:", error);
     } finally {
       setLoading(false);
     }
@@ -70,10 +106,53 @@ const DiscoverPage = () => {
     }
   };
 
-  const handleSearch = (event: React.FormEvent) => {
+  const handleSearch = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    loadPeople();
+    if (!query.trim()) {
+      loadPeople();
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const searchResponse = await searchProfiles(query.trim());
+
+      console.log("Linear Search response:", searchResponse);
+
+      const resultIds = new Set(
+        searchResponse.results.map((result) => result.profileId),
+      );
+
+      const data = await getRecommendations();
+
+      const mappedPeople = data.recommendations
+        .map((person) => ({
+          id: person.profileId,
+          userId: person.userId,
+          fullName: person.fullName,
+          username: person.username,
+          bio: person.bio,
+          profileImage: person.profileImage,
+          college: person.college,
+          department: person.department,
+          year: person.year,
+          interests: person.interests,
+          compatibilityScore: person.score,
+          connectionStatus: person.connectionStatus,
+        }))
+        .filter((person) => resultIds.has(person.id));
+
+      setPeople(mappedPeople);
+
+      console.log("Algorithm:", searchResponse.algorithm);
+      console.log("Time Complexity:", searchResponse.timeComplexity);
+    } catch (error) {
+      console.error("Search failed:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const clearFilters = () => {
@@ -466,14 +545,15 @@ const DiscoverPage = () => {
             "
             >
               {people.map((person) => (
-                <PersonCard
-                  key={person.id}
-                  person={person}
-                  onClick={() => navigate(`/profile/${person.id}`)}
-                  onConnect={() => handleConnect(person.userId)}
-                  connectionStatus={person.connectionStatus}
-                  connecting={connectingId === person.userId}
-                />
+                <div key={person.id}>
+                  <PersonCard
+                    person={person}
+                    onClick={() => navigate(`/profile/${person.id}`)}
+                    onConnect={() => handleConnect(person.userId)}
+                    connectionStatus={person.connectionStatus}
+                    connecting={connectingId === person.userId}
+                  />
+                </div>
               ))}
             </div>
           )}

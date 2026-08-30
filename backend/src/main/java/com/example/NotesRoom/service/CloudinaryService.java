@@ -43,4 +43,48 @@ public class CloudinaryService {
 
         return result.get("secure_url").toString();
     }
+
+    public void deleteProfileImage(String imageUrl) throws IOException {
+        if (imageUrl == null || imageUrl.isBlank()) {
+            return;
+        }
+        String publicId = extractPublicId(imageUrl);
+        if (publicId == null || publicId.isBlank()) {
+            return;
+        }
+        cloudinary.uploader().destroy(
+                publicId,
+                ObjectUtils.asMap(
+                        "resource_type",
+                        "image"
+                )
+        );
+    }
+
+    private String extractPublicId(String imageUrl) {
+        String uploadMarker = "/upload/";
+        int uploadIndex = imageUrl.indexOf(uploadMarker);
+        if (uploadIndex == -1) {
+            return null;
+        }
+        String publicId = imageUrl.substring(uploadIndex + uploadMarker.length());
+        // Remove Cloudinary version
+        if (publicId.startsWith("v")) {
+            int slashIndex = publicId.indexOf("/");
+            if (slashIndex != -1) {
+                String version = publicId.substring(0, slashIndex);
+                if (version.matches("v\\d+")) {
+                    publicId = publicId.substring(slashIndex + 1);
+                }
+            }
+        }
+
+        // Remove extension
+        int dotIndex =
+                publicId.lastIndexOf(".");
+        if (dotIndex != -1) {
+            publicId = publicId.substring(0, dotIndex);
+        }
+        return publicId;
+    }
 }

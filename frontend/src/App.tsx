@@ -16,6 +16,10 @@ import ConnectionRequests from "./pages/connections/requests";
 import Connections from "./pages/connections";
 import ClubsPage from "./pages/clubs";
 import ClubDetailsPage from "./pages/clubs/clubdetails";
+import AdminPage from "./pages/admin/admin";
+import ClubApplicationsPage from "./pages/admin/clubapplications";
+import NotificationsPage from "./pages/notifications";
+import EditProfilePage from "./pages/profile/editprofile";
 
 function App() {
   // Initialize Firebase auth listener
@@ -59,6 +63,13 @@ function App() {
           <Route path="/connections" element={<Connections />} />
           <Route path="/clubs" element={<ClubsPage />} />
           <Route path="/clubs/:id" element={<ClubDetailsPage />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route
+            path="/admin/clubs/:id/applications"
+            element={<ClubApplicationsPage />}
+          />
+          <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/profile/edit" element={<EditProfilePage />} />
         </Route>
       </Route>
     </Routes>

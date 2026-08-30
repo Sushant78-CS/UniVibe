@@ -65,9 +65,42 @@ export const useClubApplicationApi = () => {
     return response.data;
   };
 
+  // Get pending applications for a club
+  const getPendingApplications = async (clubId: number) => {
+    const headers = await getAuthHeaders();
+
+    const response = await api.get(`/admin/clubs/${clubId}/applications`, {
+      headers,
+    });
+
+    return response.data as ClubApplication[];
+  };
+
+  // Accept or reject an application
+  const updateApplication = async (
+    applicationId: number,
+    action: "ACCEPT" | "REJECT",
+  ) => {
+    const headers = await getAuthHeaders();
+
+    const response = await api.put(
+      `/admin/clubs/applications/${applicationId}`,
+      {
+        action,
+      },
+      {
+        headers,
+      },
+    );
+
+    return response.data as ClubApplication;
+  };
+
   return {
     applyToClub,
     getMyApplication,
     withdrawApplication,
+    getPendingApplications,
+    updateApplication,
   };
 };

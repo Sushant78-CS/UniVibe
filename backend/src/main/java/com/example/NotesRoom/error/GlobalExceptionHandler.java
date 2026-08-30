@@ -51,4 +51,16 @@ public class GlobalExceptionHandler {
                         "statusCode", "NOT_FOUND"));
     }
 
+    @ExceptionHandler(ApplicationNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleApplicationNotFound(
+            ApplicationNotFoundException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(Map.of(
+                        "success", false,
+                        "error", ex.getMessage(),
+                        "statusCode", "NOT_FOUND"));
+    }
+
 }

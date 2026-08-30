@@ -1,14 +1,15 @@
 package com.example.NotesRoom.repository;
 
-import com.example.NotesRoom.entity.Profile;
-import com.example.NotesRoom.entity.Users;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-import java.util.Optional;
+import com.example.NotesRoom.entity.Profile;
+import com.example.NotesRoom.entity.Users;
 
 @Repository
 public interface ProfileRepository extends JpaRepository<Profile, Long> {
@@ -28,7 +29,7 @@ public interface ProfileRepository extends JpaRepository<Profile, Long> {
                 JOIN p.user u
                 WHERE u.clerkId <> :clerkId
                 AND p.profileCompleted = true
-            
+
                 AND (
                     :query = ''
                     OR LOWER(p.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
@@ -37,22 +38,22 @@ public interface ProfileRepository extends JpaRepository<Profile, Long> {
                     OR LOWER(p.department) LIKE LOWER(CONCAT('%', :query, '%'))
                     OR LOWER(p.interests) LIKE LOWER(CONCAT('%', :query, '%'))
                 )
-            
+
                 AND (
                     :college = ''
                     OR LOWER(p.college) = LOWER(:college)
                 )
-            
+
                 AND (
                     :department = ''
                     OR LOWER(p.department) = LOWER(:department)
                 )
-            
+
                 AND (
                     :year = ''
                     OR p.year = :year
                 )
-            
+
                 ORDER BY p.fullName ASC
             """)
     List<Profile> discoverPeople(
@@ -60,8 +61,10 @@ public interface ProfileRepository extends JpaRepository<Profile, Long> {
             @Param("query") String query,
             @Param("college") String college,
             @Param("department") String department,
-            @Param("year") String year
-    );
+            @Param("year") String year);
 
     Optional<Profile> findByIdAndProfileCompletedTrue(Long id);
+
+    List<Profile> findByProfileCompletedTrueAndUser_ClerkIdNot(
+            String clerkId);
 }

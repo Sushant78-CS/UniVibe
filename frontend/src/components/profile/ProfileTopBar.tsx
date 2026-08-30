@@ -100,6 +100,21 @@ const ProfileTopBar = ({ showBackButton = false }: ProfileTopBarProps) => {
             />
           </button>
 
+          <button
+            type="button"
+            onClick={() => navigate("/profile/edit")}
+            className="
+    rounded-xl
+    bg-violet-600
+    px-4 py-2
+    text-sm font-semibold
+    text-white
+    hover:bg-violet-700
+  "
+          >
+            Edit Profile
+          </button>
+
           {/* Theme */}
           <ThemeToggle />
         </div>

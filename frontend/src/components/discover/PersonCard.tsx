@@ -5,7 +5,7 @@ interface PersonCardProps {
   person: DiscoverPerson;
   onClick?: () => void;
   onConnect?: () => void;
-  connectionStatus?: "NONE" | "PENDING_SENT" | "PENDING_RECEIVED" | "ACCEPTED";
+  connectionStatus?: "NONE" | "PENDING_SENT" | "PENDING_RECEIVED" | "CONNECTED";
   connecting?: boolean;
 }
 
@@ -18,7 +18,7 @@ const PersonCard = ({
 }: PersonCardProps) => {
   const isPendingSent = connectionStatus === "PENDING_SENT";
   const isPendingReceived = connectionStatus === "PENDING_RECEIVED";
-  const isConnected = connectionStatus === "ACCEPTED";
+  const isConnected = connectionStatus === "CONNECTED";
 
   return (
     <div
