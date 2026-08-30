@@ -1,5 +1,6 @@
+package com.example.NotesRoom.entity;
+
 import com.example.NotesRoom.dto.post.PostCategory;
-import com.example.NotesRoom.entity.Users;
 import jakarta.persistence.*;
 import lombok.*;
 
