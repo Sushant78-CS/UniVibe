@@ -14,6 +14,8 @@ const SignInForm = () => {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loadingState, setLoadingState] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -25,6 +27,7 @@ const SignInForm = () => {
     event.preventDefault();
 
     setError(null);
+    setLoadingState(true);
 
     const result = await signInUser(email, password);
 
@@ -38,6 +41,7 @@ const SignInForm = () => {
     navigate("/home", {
       replace: true,
     });
+    setLoadingState(false);
   };
 
   // --------------------------------
@@ -46,12 +50,14 @@ const SignInForm = () => {
 
   const handleGoogle = async () => {
     setError(null);
+    setGoogleLoading(true);
 
     const result = await signInWithGoogle();
 
     if (!result.success) {
       setError(result.error ?? "Google sign in failed.");
     }
+    setGoogleLoading(false);
   };
 
   return (
@@ -192,7 +198,7 @@ const SignInForm = () => {
                 Password
               </label>
 
-              <button
+              {/* <button
                 type="button"
                 className="
                   text-xs
@@ -207,7 +213,7 @@ const SignInForm = () => {
                 "
               >
                 Forgot password?
-              </button>
+              </button> */}
             </div>
 
             <input
@@ -292,7 +298,7 @@ const SignInForm = () => {
             "
           >
             <span className="relative z-10">
-              {loading ? "Signing you in..." : "Sign In"}
+              {loadingState ? "Signing you in..." : "Sign In"}
             </span>
 
             <span
@@ -316,7 +322,7 @@ const SignInForm = () => {
         <AuthDivider />
 
         {/* Google */}
-        <GoogleButton onClick={handleGoogle} loading={loading} />
+        <GoogleButton onClick={handleGoogle} loading={googleLoading} />
       </div>
 
       {/* Signup */}

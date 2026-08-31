@@ -6,13 +6,12 @@ import ProfileTopBar from "../../components/profile/ProfileTopBar";
 import ProfileHero from "../../components/profile/ProfileHero";
 import ProfileInfo from "../../components/profile/ProfileInfo";
 import ProfileTags from "../../components/profile/ProfileTags";
-import ProfileClubs from "../../components/profile/ProfileClubs";
-import ProfileStats from "../../components/profile/ProfileStats";
 import ProfileActions from "../../components/profile/ProfileActions";
 import FloatingTabs from "../../components/home/FloatingTabs";
 
 import { useProfileApi } from "../../api/profileApi";
 import ProfileSkeleton from "../../components/profile/ProfileSkeleton";
+import ConfirmModal from "../../components/common/ConfirmModal";
 
 interface Profile {
   id: number;
@@ -34,6 +33,8 @@ const ProfilePage = () => {
   const { getProfile } = useProfileApi();
 
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -69,6 +70,8 @@ const ProfilePage = () => {
 
   const handleLogout = async () => {
     try {
+      setLoggingOut(true);
+
       await signOut();
 
       navigate("/", {
@@ -76,6 +79,9 @@ const ProfilePage = () => {
       });
     } catch (error) {
       console.error("Logout failed:", error);
+    } finally {
+      setLoggingOut(false);
+      setShowLogoutModal(false);
     }
   };
 
@@ -113,27 +119,23 @@ const ProfilePage = () => {
         .filter(Boolean)
     : [];
 
-  const clubs = [
-    {
-      id: "coding",
-      name: "Coding Club",
-      category: "Technical",
-      members: 128,
-    },
-    {
-      id: "photography",
-      name: "Photography Club",
-      category: "Creative",
-      members: 76,
-    },
-  ];
-
   return (
     <div className="min-h-screen bg-slate-50 pb-28 text-slate-900 transition-colors dark:bg-slate-950 dark:text-white">
       {/* Header */}
       <ProfileTopBar />
 
-      <main className="mx-auto w-full max-w-3xl px-4 py-4 sm:px-6 sm:py-6">
+      {/* <main className="mx-auto w-full max-w-3xl px-4 py-4 sm:px-6 sm:py-6"> */}
+      <main
+        className="
+    mx-auto
+    w-full
+    max-w-3xl
+    px-4
+    py-3
+    sm:px-6
+    sm:py-4
+  "
+      >
         {loading ? (
           /* Skeleton while profile loads */
           <ProfileSkeleton />
@@ -164,6 +166,7 @@ const ProfilePage = () => {
         ) : profile ? (
           <>
             {/* Profile Hero */}
+
             <ProfileHero
               profileImage={profile.profileImage || null}
               fullName={profile.fullName}
@@ -172,28 +175,51 @@ const ProfilePage = () => {
               college={profile.college}
             />
 
-            {/* Stats */}
-            <div className="mt-4">
+            {/* <div className="mt-3">
               <ProfileStats connections={0} clubs={clubs.length} events={0} />
-            </div>
+            </div> */}
 
-            {/* About */}
             {profile.bio && (
-              <section className="mt-5">
-                <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">
+              <section className="mt-4">
+                <h2
+                  className="
+        mb-2
+        text-sm
+        font-bold
+        text-slate-900
+        dark:text-white
+      "
+                >
                   About
                 </h2>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                  <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+                <div
+                  className="
+        rounded-2xl
+        border
+        border-slate-200
+        bg-white
+        p-3.5
+        shadow-sm
+        dark:border-slate-800
+        dark:bg-slate-900
+      "
+                >
+                  <p
+                    className="
+          text-xs
+          leading-5
+          text-slate-600
+          dark:text-slate-300
+        "
+                  >
                     {profile.bio}
                   </p>
                 </div>
               </section>
             )}
 
-            {/* Education */}
-            <section className="mt-5">
+            <section className="mt-4">
               <ProfileInfo
                 college={profile.college}
                 department={profile.department ?? ""}
@@ -201,8 +227,7 @@ const ProfilePage = () => {
               />
             </section>
 
-            {/* Interests */}
-            <section className="mt-5">
+            <section className="mt-4">
               <ProfileTags
                 title="Interests"
                 tags={interests}
@@ -210,14 +235,12 @@ const ProfilePage = () => {
               />
             </section>
 
-            {/* Clubs */}
-            <section className="mt-5">
+            {/* <section className="mt-4">
               <ProfileClubs clubs={clubs} />
-            </section>
+            </section> */}
 
-            {/* Account */}
-            <section className="mt-6">
-              <ProfileActions onLogout={handleLogout} />
+            <section className="mt-4">
+              <ProfileActions onLogout={() => setShowLogoutModal(true)} />
             </section>
 
             <p className="pt-6 text-center text-xs text-slate-400 dark:text-slate-600">
@@ -226,6 +249,21 @@ const ProfilePage = () => {
           </>
         ) : null}
       </main>
+      <ConfirmModal
+        open={showLogoutModal}
+        title="Sign out?"
+        message="Are you sure you want to sign out of UniVibe?"
+        confirmText="Sign Out"
+        cancelText="Cancel"
+        loadingText="Signing out..."
+        loading={loggingOut}
+        onConfirm={handleLogout}
+        onCancel={() => {
+          if (!loggingOut) {
+            setShowLogoutModal(false);
+          }
+        }}
+      />
 
       {/* Always visible */}
       <FloatingTabs />

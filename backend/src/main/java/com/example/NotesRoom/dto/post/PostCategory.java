@@ -2,11 +2,8 @@ package com.example.NotesRoom.dto.post;
 
 public enum PostCategory {
     EVENT,
+    NEWS,
     ANNOUNCEMENT,
-    CAMPUS_NEWS,
     ACHIEVEMENT,
-    WORKSHOP,
-    ACADEMIC,
-    CLUB_ACTIVITY,
-    OTHER
+    GENERAL
 }

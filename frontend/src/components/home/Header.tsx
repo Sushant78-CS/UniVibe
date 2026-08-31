@@ -1,12 +1,10 @@
-import { Bell } from "lucide-react";
+import { Bell, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-
 import { useNotificationApi } from "../../api/notificationApi";
 
 function DashboardHeader() {
   const navigate = useNavigate();
-
   const { getUnreadCount } = useNotificationApi();
 
   const [unreadCount, setUnreadCount] = useState(0);
@@ -31,7 +29,7 @@ function DashboardHeader() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [getUnreadCount]);
 
   return (
     <header
@@ -41,61 +39,83 @@ function DashboardHeader() {
         z-40
         border-b
         border-slate-200/70
-        bg-slate-50/85
+        bg-slate-50/90
         backdrop-blur-xl
         dark:border-slate-800/70
-        dark:bg-slate-950/85
+        dark:bg-slate-950/90
       "
     >
       <div
         className="
           mx-auto
           max-w-6xl
-          px-5
-          py-4
-          sm:px-8
+          px-4
+          py-2.5
+          sm:px-6
         "
       >
         <div className="flex items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center gap-3">
+          {/* ================= LOGO ================= */}
+          <button
+            type="button"
+            onClick={() => navigate("/home")}
+            aria-label="Go to home"
+            className="
+              flex
+              items-center
+              gap-2.5
+              rounded-xl
+              transition
+              active:scale-95
+            "
+          >
+            {/* Logo Icon */}
             <div
               className="
                 flex
-                h-11
-                w-11
+                h-9
+                w-9
                 items-center
                 justify-center
-                rounded-2xl
-                bg-gradient-to-br
-                from-indigo-600
-                to-purple-600
-                text-lg
-                font-bold
+                rounded-xl
+                bg-violet-600
                 text-white
-                shadow-lg
-                shadow-indigo-200
-                dark:shadow-indigo-950
+                dark:bg-violet-500
               "
             >
-              U
+              <Sparkles size={18} strokeWidth={2.5} />
             </div>
 
-            <div>
+            {/* Brand */}
+            <div className="text-left">
               <h1
                 className="
-                  text-lg
+                  text-base
                   font-bold
+                  tracking-tight
                   text-slate-900
                   dark:text-white
                 "
               >
                 UniVibe
               </h1>
-            </div>
-          </div>
 
-          {/* Notification */}
+              <p
+                className="
+                  -mt-0.5
+                  text-[9px]
+                  font-medium
+                  tracking-wide
+                  text-slate-400
+                  dark:text-slate-500
+                "
+              >
+                CAMPUS COMMUNITY
+              </p>
+            </div>
+          </button>
+
+          {/* ================= NOTIFICATIONS ================= */}
           <button
             type="button"
             onClick={() => navigate("/notifications")}
@@ -103,8 +123,8 @@ function DashboardHeader() {
             className="
               relative
               flex
-              h-10
-              w-10
+              h-9
+              w-9
               items-center
               justify-center
               rounded-xl
@@ -121,9 +141,9 @@ function DashboardHeader() {
               dark:hover:bg-slate-800
             "
           >
-            <Bell size={19} />
+            <Bell size={18} strokeWidth={2} />
 
-            {/* Unread badge */}
+            {/* Unread Badge */}
             {unreadCount > 0 && (
               <span
                 className="
@@ -131,15 +151,16 @@ function DashboardHeader() {
                   -right-1
                   -top-1
                   flex
-                  min-h-5
-                  min-w-5
+                  min-h-4
+                  min-w-4
                   items-center
                   justify-center
                   rounded-full
                   bg-red-500
                   px-1
-                  text-[10px]
+                  text-[9px]
                   font-bold
+                  leading-none
                   text-white
                   ring-2
                   ring-slate-50

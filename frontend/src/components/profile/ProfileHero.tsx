@@ -16,11 +16,41 @@ function ProfileHero({
   const initials = fullName.trim().charAt(0).toUpperCase() || "U";
 
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <section
+      className="
+        rounded-2xl
+        border
+        border-slate-200
+        bg-white
+        p-4
+        shadow-sm
+        dark:border-slate-800
+        dark:bg-slate-900
+      "
+    >
       <div className="flex flex-col items-center text-center">
-        {/* Profile Image */}
+        {/* Avatar */}
         <div className="relative">
-          <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-4xl font-bold text-white shadow-xl ring-4 ring-indigo-100 dark:ring-indigo-950">
+          <div
+            className="
+              flex
+              h-20
+              w-20
+              items-center
+              justify-center
+              overflow-hidden
+              rounded-full
+              bg-gradient-to-br
+              from-indigo-500
+              to-purple-600
+              text-2xl
+              font-bold
+              text-white
+              ring-4
+              ring-indigo-50
+              dark:ring-indigo-950
+            "
+          >
             {profileImage ? (
               <img
                 src={profileImage}
@@ -32,25 +62,63 @@ function ProfileHero({
             )}
           </div>
 
-          {/* Online indicator */}
-          <span className="absolute bottom-2 right-2 h-5 w-5 rounded-full border-4 border-white bg-emerald-500 dark:border-slate-900" />
+          <span
+            className="
+              absolute
+              bottom-0.5
+              right-0.5
+              h-4
+              w-4
+              rounded-full
+              border-[3px]
+              border-white
+              bg-emerald-500
+              dark:border-slate-900
+            "
+          />
         </div>
 
         {/* Name */}
-        <h2 className="mt-5 text-2xl font-bold text-slate-900 dark:text-white">
+        <h2
+          className="
+            mt-3
+            text-lg
+            font-bold
+            tracking-tight
+            text-slate-900
+            dark:text-white
+          "
+        >
           {fullName || "User"}
         </h2>
 
-        {/* Course */}
+        {/* Department / Year */}
         {(department || year) && (
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          <p
+            className="
+              mt-0.5
+              text-xs
+              text-slate-500
+              dark:text-slate-400
+            "
+          >
             {[department, year].filter(Boolean).join(" · ")}
           </p>
         )}
 
         {/* College */}
         {college && (
-          <p className="mt-1 text-sm font-medium text-indigo-600 dark:text-indigo-400">
+          <p
+            className="
+              mt-0.5
+              max-w-[90%]
+              truncate
+              text-xs
+              font-medium
+              text-indigo-600
+              dark:text-indigo-400
+            "
+          >
             {college}
           </p>
         )}

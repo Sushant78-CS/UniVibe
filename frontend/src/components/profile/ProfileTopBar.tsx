@@ -1,4 +1,4 @@
-import { Bell, ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router";
 import ThemeToggle from "../common/ThemeToggle";
 
@@ -12,107 +12,160 @@ const ProfileTopBar = ({ showBackButton = false }: ProfileTopBarProps) => {
   return (
     <header
       className="
-        sticky top-0 z-40
-        border-b border-slate-200
-        bg-white/80 backdrop-blur-xl
-        dark:border-slate-800
-        dark:bg-slate-950/80
+        sticky
+        top-0
+        z-40
+        border-b
+        border-slate-200/70
+        bg-white/85
+        backdrop-blur-xl
+        dark:border-slate-800/70
+        dark:bg-slate-950/85
       "
     >
       <div
         className="
-          mx-auto flex h-16 max-w-3xl
-          items-center justify-between
-          px-4 sm:px-6
+          mx-auto
+          flex
+          h-14
+          max-w-3xl
+          items-center
+          justify-between
+          px-4
+          sm:px-6
         "
       >
         {/* Left */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {showBackButton && (
             <button
               type="button"
               onClick={() => navigate(-1)}
               aria-label="Go back"
               className="
-                flex h-9 w-9 items-center justify-center
+                flex
+                h-8
+                w-8
+                items-center
+                justify-center
                 rounded-xl
-                text-slate-600
+                text-slate-500
                 transition
                 hover:bg-slate-100
-                dark:text-slate-300
+                hover:text-slate-900
+                active:scale-95
+                dark:text-slate-400
                 dark:hover:bg-slate-800
+                dark:hover:text-white
               "
             >
-              <ArrowLeft size={19} />
+              <ArrowLeft size={17} />
             </button>
           )}
 
-          <div>
-            <h1
+          {/* Logo */}
+          <button
+            type="button"
+            onClick={() => navigate("/home")}
+            className="
+              flex
+              items-center
+              gap-2
+              text-left
+              transition
+              active:scale-[0.98]
+            "
+          >
+            {/* Logo mark */}
+            <div
               className="
-                text-lg font-bold tracking-tight
-                text-slate-900
-                dark:text-white
-              "
+    flex
+    h-8
+    w-8
+    items-center
+    justify-center
+    rounded-xl
+    bg-gradient-to-br
+    from-indigo-600
+    to-violet-600
+    text-white
+    shadow-sm
+  "
             >
-              UniVibe
-            </h1>
+              <Sparkles size={16} />
+            </div>
 
-            <p
-              className="
-                text-[11px]
-                text-slate-500
-                dark:text-slate-400
-              "
-            >
-              Your profile
-            </p>
-          </div>
+            {/* Brand */}
+            <div className="leading-none">
+              <h1
+                className="
+                  text-sm
+                  font-bold
+                  tracking-tight
+                  text-slate-900
+                  dark:text-white
+                "
+              >
+                UniVibe
+              </h1>
+
+              <p
+                className="
+                  mt-0.5
+                  text-[9px]
+                  font-medium
+                  text-slate-400
+                  dark:text-slate-500
+                "
+              >
+                Your campus. Your people.
+              </p>
+            </div>
+          </button>
         </div>
 
         {/* Right */}
         <div className="flex items-center gap-2">
-          {/* Notifications */}
-          <button
-            type="button"
-            aria-label="Notifications"
-            className="
-              relative flex h-9 w-9
-              items-center justify-center
-              rounded-xl
-              text-slate-600
-              transition
-              hover:bg-slate-100
-              dark:text-slate-300
-              dark:hover:bg-slate-800
-            "
-          >
-            <Bell size={18} />
-
-            {/* Notification dot */}
-            <span
-              className="
-                absolute right-2 top-2
-                h-1.5 w-1.5
-                rounded-full
-                bg-violet-500
-              "
-            />
-          </button>
-
+          {/* Edit Profile */}
           <button
             type="button"
             onClick={() => navigate("/profile/edit")}
             className="
-    rounded-xl
-    bg-violet-600
-    px-4 py-2
-    text-sm font-semibold
-    text-white
-    hover:bg-violet-700
-  "
+              group
+              flex
+              items-center
+              gap-1.5
+              rounded-xl
+              border
+              border-indigo-200
+              bg-indigo-50
+              px-3
+              py-1.5
+              text-[11px]
+              font-semibold
+              text-indigo-600
+              shadow-sm
+              transition-all
+              hover:border-indigo-300
+              hover:bg-indigo-100
+              hover:shadow
+              active:scale-95
+              dark:border-indigo-500/20
+              dark:bg-indigo-500/10
+              dark:text-indigo-400
+              dark:hover:border-indigo-500/30
+              dark:hover:bg-indigo-500/20
+            "
           >
-            Edit Profile
+            <Pencil
+              size={13}
+              className="
+                transition-transform
+                group-hover:-rotate-6
+              "
+            />
+
+            <span>Edit Profile</span>
           </button>
 
           {/* Theme */}

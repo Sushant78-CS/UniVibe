@@ -1,3 +1,4 @@
+import { Sparkles } from "lucide-react";
 import ThemeToggle from "../common/ThemeToggle";
 
 const AuthHeader = () => {
@@ -19,7 +20,7 @@ const AuthHeader = () => {
                 shadow-md
               "
         >
-          U
+          <Sparkles size={20} />
         </div>
 
         <div>

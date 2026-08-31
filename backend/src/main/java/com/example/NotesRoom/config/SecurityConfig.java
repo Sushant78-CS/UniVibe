@@ -26,7 +26,7 @@ public class SecurityConfig {
                                 .cors(cors -> cors.configurationSource(request -> {
                                         CorsConfiguration config = new CorsConfiguration();
                                         config.setAllowedOrigins(List.of(
-                                                        "https://uni-vibe-479c.vercel.app/",
+                                                        "https://uni-vibe-479c.vercel.app",
                                                         "http://localhost:5173"));
 
                                         config.setAllowedMethods(List.of(

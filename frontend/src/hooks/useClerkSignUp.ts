@@ -6,6 +6,11 @@ interface SignUpData {
   password: string;
 }
 
+interface SignUpResult {
+  success: boolean;
+  error?: string;
+}
+
 const useClerkSignUp = () => {
   const { signUp, errors, fetchStatus } = useSignUp();
 
@@ -101,11 +106,41 @@ const useClerkSignUp = () => {
     };
   };
 
+  const signUpWithGoogle = async (): Promise<SignUpResult> => {
+    try {
+      console.log("signUpWithGoogle called");
+
+      if (!signUp) {
+        return {
+          success: false,
+          error: "Sign-up is not ready yet.",
+        };
+      }
+
+      await signUp.sso({
+        strategy: "oauth_google",
+        redirectCallbackUrl: "/sso-callback",
+        redirectUrl: "/profile/setup",
+      });
+
+      return {
+        success: true,
+      };
+    } catch (error: unknown) {
+      console.error("Google sign-up error:", error);
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Google sign-up failed.",
+      };
+    }
+  };
+
   return {
     signUpUser,
     verifyEmail,
     resendVerificationCode,
-
+    signUpWithGoogle,
     isVerificationRequired,
     setIsVerificationRequired,
 

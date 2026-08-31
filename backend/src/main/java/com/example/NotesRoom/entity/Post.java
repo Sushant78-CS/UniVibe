@@ -34,4 +34,6 @@ public class Post {
 
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    private LocalDateTime updatedAt;
 }

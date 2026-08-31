@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { isAxiosError } from "axios";
 
 import { useProfileApi } from "../api/profileApi";
+import LandingLoader from "../components/common/LandingLoader";
 
 function ProtectedLayout() {
   const location = useLocation();
@@ -92,7 +93,8 @@ function ProtectedLayout() {
    * Clerk loading
    */
   if (!isLoaded) {
-    return <LoadingScreen message="Loading UniVibe..." />;
+    // return <LoadingScreen message="Loading UniVibe..." />;
+    return <LandingLoader />;
   }
 
   /*
@@ -106,7 +108,8 @@ function ProtectedLayout() {
    * Profile API is loading
    */
   if (profileLoading || profileExists === null) {
-    return <LoadingScreen message="Loading UniVibe..." />;
+    // return <LoadingScreen message="Loading UniVibe..." />;
+    return <LandingLoader />;
   }
 
   /*
@@ -130,32 +133,4 @@ function ProtectedLayout() {
    */
   return <Outlet />;
 }
-
-function LoadingScreen({ message }: { message: string }) {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
-      <div className="text-center">
-        <div
-          className="
-            mx-auto
-            h-10
-            w-10
-            animate-spin
-            rounded-full
-            border-4
-            border-slate-200
-            border-t-indigo-600
-            dark:border-slate-700
-            dark:border-t-indigo-500
-          "
-        />
-
-        <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
-          {message}
-        </p>
-      </div>
-    </div>
-  );
-}
-
 export default ProtectedLayout;

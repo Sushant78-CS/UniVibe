@@ -12,6 +12,11 @@ public record PostDto(
         String description,
         PostCategory category,
         String imageUrl,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt,
+
+        long likeCount,
+        boolean likedByMe,
+        long commentCount
 ) {
 }

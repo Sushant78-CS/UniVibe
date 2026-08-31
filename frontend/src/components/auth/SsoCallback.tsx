@@ -13,9 +13,18 @@ const SsoCallback = () => {
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           Please wait a moment.
         </p>
+
+        {/* Needed if Clerk's bot protection is triggered */}
+        <div id="clerk-captcha" />
       </div>
 
-      <AuthenticateWithRedirectCallback />
+      <AuthenticateWithRedirectCallback
+        signInUrl="/signin"
+        signUpUrl="/signup"
+        signInFallbackRedirectUrl="/home"
+        signUpFallbackRedirectUrl="/profile/setup"
+        continueSignUpUrl="/profile/setup"
+      />
     </div>
   );
 };

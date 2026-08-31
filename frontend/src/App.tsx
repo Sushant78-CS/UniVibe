@@ -20,59 +20,63 @@ import AdminPage from "./pages/admin/admin";
 import ClubApplicationsPage from "./pages/admin/clubapplications";
 import NotificationsPage from "./pages/notifications";
 import EditProfilePage from "./pages/profile/editprofile";
+import Posts from "./pages/posts";
 
 function App() {
   // Initialize Firebase auth listener
   // useAuth();
 
   return (
-    <Routes>
-      {/* ================================================= */}
-      {/* APP LAYOUT */}
-      {/* ================================================= */}
-
-      <Route element={<AppLayout />}>
+    <>
+      <Routes>
         {/* ================================================= */}
-        {/* PUBLIC LAYOUT */}
+        {/* APP LAYOUT */}
         {/* ================================================= */}
 
-        <Route element={<PublicLayout />}>
-          <Route path="/" element={<SignInPage />} />
+        <Route element={<AppLayout />}>
+          {/* ================================================= */}
+          {/* PUBLIC LAYOUT */}
+          {/* ================================================= */}
 
-          <Route path="/signup" element={<SignUpPage />} />
+          <Route element={<PublicLayout />}>
+            <Route path="/" element={<SignInPage />} />
+
+            <Route path="/signup" element={<SignUpPage />} />
+          </Route>
+
+          {/* ================================================= */}
+          {/* PROTECTED LAYOUT */}
+          {/* ================================================= */}
+
+          <Route element={<ProtectedLayout />}>
+            <Route path="/profile/setup" element={<ProfileSetupPage />} />
+            <Route path="/sso-callback" element={<SsoCallback />} />
+
+            <Route path="/home" element={<HomePage />} />
+            <Route path="/discover" element={<DiscoverPage />} />
+
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/profile/:id" element={<PersonProfilePage />} />
+
+            <Route
+              path="/connections/requests"
+              element={<ConnectionRequests />}
+            />
+            <Route path="/connections" element={<Connections />} />
+            <Route path="/clubs" element={<ClubsPage />} />
+            <Route path="/clubs/:id" element={<ClubDetailsPage />} />
+            <Route path="/admin" element={<AdminPage />} />
+            <Route
+              path="/admin/clubs/:id/applications"
+              element={<ClubApplicationsPage />}
+            />
+            <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/profile/edit" element={<EditProfilePage />} />
+            <Route path="/posts" element={<Posts />} />
+          </Route>
         </Route>
-
-        {/* ================================================= */}
-        {/* PROTECTED LAYOUT */}
-        {/* ================================================= */}
-
-        <Route element={<ProtectedLayout />}>
-          <Route path="/profile/setup" element={<ProfileSetupPage />} />
-          <Route path="/sso-callback" element={<SsoCallback />} />
-
-          <Route path="/home" element={<HomePage />} />
-          <Route path="/discover" element={<DiscoverPage />} />
-
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/profile/:id" element={<PersonProfilePage />} />
-
-          <Route
-            path="/connections/requests"
-            element={<ConnectionRequests />}
-          />
-          <Route path="/connections" element={<Connections />} />
-          <Route path="/clubs" element={<ClubsPage />} />
-          <Route path="/clubs/:id" element={<ClubDetailsPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route
-            path="/admin/clubs/:id/applications"
-            element={<ClubApplicationsPage />}
-          />
-          <Route path="/notifications" element={<NotificationsPage />} />
-          <Route path="/profile/edit" element={<EditProfilePage />} />
-        </Route>
-      </Route>
-    </Routes>
+      </Routes>
+    </>
   );
 }
 

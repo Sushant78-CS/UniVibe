@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from "react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/react";
+import LandingLoader from "../components/common/LandingLoader";
 
 interface ProfileResponse {
   profileCompleted: boolean;
@@ -72,7 +73,8 @@ function PublicLayout() {
   // =========================================
 
   if (!isLoaded) {
-    return <LoadingScreen message="Loading UniVibe..." />;
+    // return <LoadingScreen message="Loading UniVibe..." />;
+    return <LandingLoader />;
   }
 
   // =========================================
@@ -88,7 +90,7 @@ function PublicLayout() {
   // =========================================
 
   if (profileLoading) {
-    return <LoadingScreen message="Setting up your profile..." />;
+    return <LandingLoader />;
   }
 
   // =========================================
@@ -106,49 +108,6 @@ function PublicLayout() {
   // =========================================
 
   return <Navigate to="/home" replace />;
-}
-
-function LoadingScreen({ message }: { message: string }) {
-  return (
-    <div
-      className="
-        flex
-        min-h-screen
-        items-center
-        justify-center
-        bg-slate-50
-        dark:bg-slate-950
-      "
-    >
-      <div className="text-center">
-        <div
-          className="
-            mx-auto
-            h-10
-            w-10
-            animate-spin
-            rounded-full
-            border-4
-            border-slate-200
-            border-t-violet-600
-            dark:border-slate-700
-            dark:border-t-violet-500
-          "
-        />
-
-        <p
-          className="
-            mt-4
-            text-sm
-            text-slate-500
-            dark:text-slate-400
-          "
-        >
-          {message}
-        </p>
-      </div>
-    </div>
-  );
 }
 
 export default PublicLayout;

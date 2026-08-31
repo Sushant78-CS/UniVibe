@@ -61,6 +61,41 @@ public class CloudinaryService {
         );
     }
 
+    public String uploadPostImage(MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Post image is required");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null ||
+                !contentType.startsWith("image/")) {
+            throw new IllegalArgumentException("Only image files are allowed");
+        }
+        Map<?, ?> result = cloudinary.uploader().upload(
+                file.getBytes(),
+                ObjectUtils.asMap(
+                        "folder", "univibe/post-images",
+                        "resource_type", "image"
+                )
+        );
+        return result.get("secure_url").toString();
+    }
+
+    public void deletePostImage(String imageUrl) throws IOException {
+        if (imageUrl == null || imageUrl.isBlank()) {
+            return;
+        }
+        String publicId = extractPublicId(imageUrl);
+        if (publicId == null || publicId.isBlank()) {
+            return;
+        }
+        cloudinary.uploader().destroy(
+                publicId,
+                ObjectUtils.asMap(
+                        "resource_type", "image"
+                )
+        );
+    }
+
     private String extractPublicId(String imageUrl) {
         String uploadMarker = "/upload/";
         int uploadIndex = imageUrl.indexOf(uploadMarker);

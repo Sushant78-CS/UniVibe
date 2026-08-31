@@ -20,6 +20,7 @@ const SignUpForm = () => {
     isVerificationRequired,
     email: verificationEmail,
     loading,
+    signUpWithGoogle,
   } = useClerkSignUp();
 
   const [email, setEmail] = useState("");
@@ -110,6 +111,13 @@ const SignUpForm = () => {
   const handleGoogle = async () => {
     setError(null);
     setGoogleLoading(true);
+
+    const result = await signUpWithGoogle();
+
+    if (!result.success) {
+      setError(result.error ?? "Google signup failed.");
+    }
+    setGoogleLoading(false);
 
     // Connect Google OAuth here later
     console.log("Google signup clicked");

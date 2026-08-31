@@ -98,6 +98,14 @@ const useClerkSignIn = () => {
 
   const signInWithGoogle = async (): Promise<SignInResult> => {
     try {
+      console.log("signInWithGoogle called");
+      if (!signIn) {
+        return {
+          success: false,
+          error: "Sign-in is not ready yet.",
+        };
+      }
+
       const { error } = await signIn.sso({
         strategy: "oauth_google",
         redirectCallbackUrl: "/sso-callback",
@@ -105,6 +113,8 @@ const useClerkSignIn = () => {
       });
 
       if (error) {
+        console.error("Google sign-in error:", error);
+
         return {
           success: false,
           error: getClerkError(error),

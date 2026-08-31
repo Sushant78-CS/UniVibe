@@ -11,24 +11,52 @@ function ProfileTags({
 }: ProfileTagsProps) {
   return (
     <section>
-      <h3 className="mb-3 text-lg font-bold text-slate-900 dark:text-white">
+      <h3
+        className="
+          mb-2
+          text-sm
+          font-bold
+          text-slate-900
+          dark:text-white
+        "
+      >
         {title}
       </h3>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+      <div
+        className="
+          rounded-2xl
+          border
+          border-slate-200
+          bg-white
+          p-3.5
+          dark:border-slate-800
+          dark:bg-slate-900
+        "
+      >
         {tags.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full bg-indigo-50 px-3.5 py-2 text-xs font-semibold text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400"
+                className="
+                  rounded-full
+                  bg-indigo-50
+                  px-2.5
+                  py-1
+                  text-[10px]
+                  font-semibold
+                  text-indigo-600
+                  dark:bg-indigo-950
+                  dark:text-indigo-400
+                "
               >
                 {tag}
               </span>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-slate-400">{emptyText}</p>
+          <p className="text-xs text-slate-400">{emptyText}</p>
         )}
       </div>
     </section>
