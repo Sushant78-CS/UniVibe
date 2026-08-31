@@ -80,15 +80,39 @@ public class UserController {
     }
 
     @PutMapping("/profile")
-    public ResponseEntity<ProfileDto> updateProfile(
+    public ResponseEntity<?> updateProfile(
             @AuthenticationPrincipal Jwt jwt,
-            @RequestBody UpdateProfileDto dto
+            @ModelAttribute UpdateProfileDto dto,
+            @RequestParam(
+                    value = "profileImage",
+                    required = false
+            )
+            MultipartFile profileImage
     ) {
-        String clerkId = jwt.getSubject();
-
-        return ResponseEntity.ok(
-                profileService.updateProfile(clerkId, dto)
-        );
+        try {
+            String clerkId = jwt.getSubject();
+            ProfileDto profile = profileService.updateProfile(
+                    clerkId,
+                    dto,
+                    profileImage
+            );
+            return ResponseEntity.ok(profile);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "error", e.getMessage()
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "error", e.getMessage()
+            ));
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "success", false,
+                    "error", "Profile image upload failed"
+            ));
+        }
     }
 
     @DeleteMapping("/image")

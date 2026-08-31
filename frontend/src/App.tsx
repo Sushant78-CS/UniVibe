@@ -9,7 +9,7 @@ import SignUpPage from "./pages/auth/signup";
 import ProfileSetupPage from "./pages/profile/profile-setup";
 import HomePage from "./pages/home";
 import ProfilePage from "./pages/profile/profile";
-import SsoCallback from "./components/auth/SsoCallback";
+import SsoCallback from "./pages/SsoCallback";
 import DiscoverPage from "./pages/discover";
 import PersonProfilePage from "./components/discover/PersonProfilePage";
 import ConnectionRequests from "./pages/connections/requests";

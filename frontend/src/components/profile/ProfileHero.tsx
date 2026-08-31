@@ -4,6 +4,7 @@ interface ProfileHeroProps {
   department?: string;
   year?: string;
   college?: string;
+  onImageClick?: () => void;
 }
 
 function ProfileHero({
@@ -12,6 +13,7 @@ function ProfileHero({
   department = "",
   year = "",
   college = "",
+  onImageClick,
 }: ProfileHeroProps) {
   const initials = fullName.trim().charAt(0).toUpperCase() || "U";
 
@@ -31,51 +33,49 @@ function ProfileHero({
       <div className="flex flex-col items-center text-center">
         {/* Avatar */}
         <div className="relative">
-          <div
+          <button
+            type="button"
+            onClick={onImageClick}
+            aria-label="View profile picture"
             className="
-              flex
-              h-20
-              w-20
-              items-center
-              justify-center
-              overflow-hidden
-              rounded-full
-              bg-gradient-to-br
-              from-indigo-500
-              to-purple-600
-              text-2xl
-              font-bold
-              text-white
-              ring-4
-              ring-indigo-50
-              dark:ring-indigo-950
-            "
+      block rounded-full
+      outline-none
+      transition-transform
+      hover:scale-105
+      active:scale-95
+      focus-visible:ring-4
+      focus-visible:ring-violet-500/30
+    "
           >
-            {profileImage ? (
-              <img
-                src={profileImage}
-                alt={fullName || "Profile"}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              initials
-            )}
-          </div>
-
-          <span
-            className="
-              absolute
-              bottom-0.5
-              right-0.5
-              h-4
-              w-4
-              rounded-full
-              border-[3px]
-              border-white
-              bg-emerald-500
-              dark:border-slate-900
-            "
-          />
+            <div
+              className="
+        flex h-28 w-28
+        items-center justify-center
+        overflow-hidden
+        rounded-full
+        bg-gradient-to-br
+        from-indigo-500
+        to-purple-600
+        text-4xl
+        font-bold
+        text-white
+        shadow-xl
+        ring-4
+        ring-indigo-100
+        dark:ring-indigo-950
+      "
+            >
+              {profileImage ? (
+                <img
+                  src={profileImage}
+                  alt={fullName || "Profile"}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                initials
+              )}
+            </div>
+          </button>
         </div>
 
         {/* Name */}

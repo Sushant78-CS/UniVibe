@@ -77,11 +77,12 @@ public class ProfileService {
     @Transactional
     public ProfileDto updateProfile(
             String clerkId,
-            UpdateProfileDto dto) {
+            UpdateProfileDto dto,
+            MultipartFile profileImage
+    ) throws IOException {
         Profile profile = profileRepository
                 .findByUser_ClerkId(clerkId)
-                .orElseThrow(() ->
-                        new RuntimeException("Profile not found"));
+                .orElseThrow(() -> new ProfileNotFoundException("Profile not found"));
         profile.setFullName(dto.fullName());
         profile.setUsername(dto.username());
         profile.setBio(dto.bio());
@@ -89,24 +90,36 @@ public class ProfileService {
         profile.setDepartment(dto.department());
         profile.setYear(dto.year());
         profile.setInterests(dto.interests());
-        profile.setProfileImage(dto.profileImage());
+        // New image selected
+        if (profileImage != null && !profileImage.isEmpty()) {
+            // Delete old image from Cloudinary
+            if (profile.getProfileImage() != null &&
+                    !profile.getProfileImage().isBlank()) {
+                cloudinaryService.deleteProfileImage(
+                        profile.getProfileImage()
+                );
+            }
+            // Upload new image
+            String newImageUrl = cloudinaryService.uploadProfileImage(profileImage);
+            profile.setProfileImage(newImageUrl);
+        }
         profile.setProfileCompleted(
                 dto.fullName() != null &&
                         !dto.fullName().isBlank()
         );
-        Profile profile1 = profileRepository.save(profile);
+        Profile savedProfile = profileRepository.save(profile);
 
         return new ProfileDto(
-                profile1.getId(),
-                profile.getFullName(),
-                profile.getUsername(),
-                profile.getBio(),
-                profile.getProfileImage(),
-                profile.getCollege(),
-                profile.getDepartment(),
-                profile.getYear(),
-                profile.getInterests(),
-                profile.getProfileCompleted()
+                savedProfile.getId(),
+                savedProfile.getFullName(),
+                savedProfile.getUsername(),
+                savedProfile.getBio(),
+                savedProfile.getProfileImage(),
+                savedProfile.getCollege(),
+                savedProfile.getDepartment(),
+                savedProfile.getYear(),
+                savedProfile.getInterests(),
+                savedProfile.getProfileCompleted()
         );
     }
 

@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { usePostApi, type Post } from "../../api/postApi";
 
 import CommentsModal from "./CommentsModal";
+import { useNavigate } from "react-router";
 
 interface PostCardProps {
   post: Post;
@@ -63,6 +64,7 @@ const PostCard = ({
    * STATE
    * ================================
    */
+  const navigate = useNavigate();
 
   const [imagePreview, setImagePreview] = useState<boolean>(false);
 
@@ -230,103 +232,119 @@ const PostCard = ({
           {/* ================================= */}
           {/* AVATAR */}
           {/* ================================= */}
+          {/* USER PROFILE */}
 
-          {post.profileImage ? (
-            <img
-              src={post.profileImage}
-              alt={post.fullName ?? "User"}
-              className="
-                h-9
-                w-9
-                shrink-0
-                rounded-full
-                object-cover
-              "
-            />
-          ) : (
-            <div
-              className="
-                flex
-                h-9
-                w-9
-                shrink-0
-                items-center
-                justify-center
-                rounded-full
-                bg-violet-100
-                text-violet-600
-                dark:bg-violet-500/10
-                dark:text-violet-400
-              "
-            >
-              <UserRound size={17} />
+          <button
+            type="button"
+            onClick={() => {
+              if (post.userId) {
+                navigate(`/profile/${post.userId}`);
+              }
+            }}
+            className="
+    flex
+    min-w-0
+    flex-1
+    items-center
+    gap-2.5
+    rounded-xl
+    text-left
+    transition
+    hover:bg-slate-50
+    dark:hover:bg-slate-800/60
+  "
+          >
+            {/* AVATAR */}
+
+            {post.profileImage ? (
+              <img
+                src={post.profileImage}
+                alt={post.fullName ?? "User"}
+                className="
+        h-9
+        w-9
+        shrink-0
+        rounded-full
+        object-cover
+      "
+              />
+            ) : (
+              <div
+                className="
+        flex
+        h-9
+        w-9
+        shrink-0
+        items-center
+        justify-center
+        rounded-full
+        bg-violet-100
+        text-violet-600
+        dark:bg-violet-500/10
+        dark:text-violet-400
+      "
+              >
+                <UserRound size={17} />
+              </div>
+            )}
+
+            {/* USER INFORMATION */}
+
+            <div className="min-w-0 flex-1">
+              <h3
+                className="
+        truncate
+        text-xs
+        font-semibold
+        leading-4
+        text-slate-900
+        dark:text-white
+      "
+              >
+                {post.fullName ?? "Unknown User"}
+              </h3>
+
+              <div
+                className="
+        mt-0.5
+        flex
+        min-w-0
+        items-center
+        gap-1
+        overflow-hidden
+        whitespace-nowrap
+        text-[10px]
+        leading-4
+        text-slate-500
+        dark:text-slate-400
+      "
+              >
+                <span className="max-w-[110px] truncate">
+                  @{post.username ?? "user"}
+                </span>
+
+                <span>·</span>
+
+                <span className="shrink-0">{formattedDate}</span>
+
+                <span>·</span>
+
+                <span className="shrink-0">{formattedTime}</span>
+
+                {isEdited && (
+                  <>
+                    <span>·</span>
+
+                    <span className="shrink-0">Edited</span>
+                  </>
+                )}
+              </div>
             </div>
-          )}
+          </button>
 
           {/* ================================= */}
           {/* USER INFORMATION */}
           {/* ================================= */}
-
-          <div
-            className="
-              min-w-0
-              flex-1
-            "
-          >
-            <h3
-              className="
-                truncate
-                text-xs
-                font-semibold
-                leading-4
-                text-slate-900
-                dark:text-white
-              "
-            >
-              {post.fullName ?? "Unknown User"}
-            </h3>
-
-            <div
-              className="
-                mt-0.5
-                flex
-                min-w-0
-                items-center
-                gap-1
-                overflow-hidden
-                whitespace-nowrap
-                text-[10px]
-                leading-4
-                text-slate-500
-                dark:text-slate-400
-              "
-            >
-              <span
-                className="
-                  max-w-[110px]
-                  truncate
-                "
-              >
-                @{post.username ?? "user"}
-              </span>
-
-              <span>·</span>
-
-              <span className="shrink-0">{formattedDate}</span>
-
-              <span>·</span>
-
-              <span className="shrink-0">{formattedTime}</span>
-
-              {isEdited && (
-                <>
-                  <span>·</span>
-
-                  <span className="shrink-0">Edited</span>
-                </>
-              )}
-            </div>
-          </div>
 
           {/* ================================= */}
           {/* CATEGORY */}

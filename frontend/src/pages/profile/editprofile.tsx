@@ -7,7 +7,7 @@ import ConfirmModal from "../../components/common/ConfirmModal";
 const EditProfile = () => {
   const navigate = useNavigate();
 
-  const { getProfile, updateProfile } = useProfileApi();
+  const { getProfile, updateProfile, deleteProfileImage } = useProfileApi();
 
   const [form, setForm] = useState<UpdateProfileData>({
     fullName: "",
@@ -17,7 +17,7 @@ const EditProfile = () => {
     department: "",
     year: "",
     interests: "",
-    profileImage: "",
+    // profileImage: "",
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -83,41 +83,36 @@ const EditProfile = () => {
     setPreviewImage(previewUrl);
   };
 
-  //   const handleRemoveImage = () => {
-  //     setSelectedImage(null);
-  //     setPreviewImage("");
-  //     setForm((prev) => ({
-  //       ...prev,
-  //       profileImage: "",
-  //     }));
+  const handleRemoveImage = async () => {
+    try {
+      setSaving(true);
 
-  //     if (fileInputRef.current) {
-  //       fileInputRef.current.value = "";
-  //     }
+      await deleteProfileImage();
 
-  //     if (cameraInputRef.current) {
-  //       cameraInputRef.current.value = "";
-  //     }
-  //   };
+      // Remove image from UI
+      setSelectedImage(null);
+      setPreviewImage("");
 
-  const handleRemoveImage = () => {
-    setSelectedImage(null);
-    setPreviewImage("");
+      setForm((prev) => ({
+        ...prev,
+        profileImage: "",
+      }));
 
-    setForm((prev) => ({
-      ...prev,
-      profileImage: "",
-    }));
+      // Reset file inputs
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
 
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+      if (cameraInputRef.current) {
+        cameraInputRef.current.value = "";
+      }
+
+      setShowConfirmModal(false);
+    } catch (error) {
+      console.error("Failed to remove profile image:", error);
+    } finally {
+      setSaving(false);
     }
-
-    if (cameraInputRef.current) {
-      cameraInputRef.current.value = "";
-    }
-
-    setShowConfirmModal(false);
   };
 
   const handleChange = (
@@ -139,9 +134,9 @@ const EditProfile = () => {
     try {
       setSaving(true);
 
-      console.log("Selected image:", selectedImage);
+      console.log("selectedImage", selectedImage);
 
-      await updateProfile(form);
+      await updateProfile(form, selectedImage);
 
       navigate("/profile");
     } catch (error) {
@@ -530,6 +525,8 @@ const EditProfile = () => {
         </form>
         <ConfirmModal
           open={showConfirmModal}
+          loading={saving}
+          loadingText="Removing..."
           title="Remove profile picture?"
           message="Are you sure you want to remove your profile picture? This change will be applied when you save your profile."
           confirmText="Remove"

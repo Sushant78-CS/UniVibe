@@ -7,6 +7,7 @@ import ProfileTags from "../../components/profile/ProfileTags";
 import ProfileStats from "../../components/profile/ProfileStats";
 import ProfileSkeleton from "../../components/profile/ProfileSkeleton";
 import { useDiscoverApi } from "../../api/discoverApi";
+import ProfileImageModal from "../profile/ProfileImageModal";
 
 interface Profile {
   id: number;
@@ -29,6 +30,7 @@ const PersonProfilePage = () => {
   const { getPersonProfile } = useDiscoverApi();
 
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -147,6 +149,7 @@ const PersonProfilePage = () => {
           department={profile.department ?? ""}
           year={profile.year}
           college={profile.college}
+          onImageClick={() => setShowImageModal(true)}
         />
 
         {/* Username */}
@@ -240,6 +243,12 @@ const PersonProfilePage = () => {
           UniVibe · Your campus. Your people.
         </p>
       </main>
+      <ProfileImageModal
+        open={showImageModal}
+        onClose={() => setShowImageModal(false)}
+        image={profile.profileImage || null}
+        name={profile.fullName}
+      />
     </div>
   );
 };

@@ -75,10 +75,42 @@ export const useProfileApi = () => {
     return response.data;
   };
 
-  const updateProfile = async (data: UpdateProfileData) => {
+  const updateProfile = async (
+    data: UpdateProfileData,
+    profileImage?: File | null,
+  ) => {
     const token = await getToken();
 
-    const response = await api.put("/user/profile", data, {
+    const formData = new FormData();
+
+    formData.append("fullName", data.fullName);
+    formData.append("username", data.username);
+
+    if (data.bio) {
+      formData.append("bio", data.bio);
+    }
+
+    if (data.college) {
+      formData.append("college", data.college);
+    }
+
+    if (data.department) {
+      formData.append("department", data.department);
+    }
+
+    if (data.year) {
+      formData.append("year", data.year);
+    }
+
+    if (data.interests) {
+      formData.append("interests", data.interests);
+    }
+
+    if (profileImage) {
+      formData.append("profileImage", profileImage);
+    }
+
+    const response = await api.put("/user/profile", formData, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -90,7 +122,7 @@ export const useProfileApi = () => {
   const deleteProfileImage = async () => {
     const token = await getToken();
 
-    const response = await api.delete("/user/profile/image", {
+    const response = await api.delete("/user/image", {
       headers: {
         Authorization: `Bearer ${token}`,
       },

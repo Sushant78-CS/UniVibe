@@ -7,7 +7,6 @@ public record UpdateProfileDto(
         String college,
         String department,
         String year,
-        String interests,
-        String profileImage
+        String interests
 ) {
 }

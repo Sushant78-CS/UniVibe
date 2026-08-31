@@ -12,6 +12,7 @@ import FloatingTabs from "../../components/home/FloatingTabs";
 import { useProfileApi } from "../../api/profileApi";
 import ProfileSkeleton from "../../components/profile/ProfileSkeleton";
 import ConfirmModal from "../../components/common/ConfirmModal";
+import ProfileImageModal from "../../components/profile/ProfileImageModal";
 
 interface Profile {
   id: number;
@@ -34,6 +35,7 @@ const ProfilePage = () => {
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -173,6 +175,7 @@ const ProfilePage = () => {
               department={profile.department ?? ""}
               year={profile.year}
               college={profile.college}
+              onImageClick={() => setShowImageModal(true)}
             />
 
             {/* <div className="mt-3">
@@ -263,6 +266,12 @@ const ProfilePage = () => {
             setShowLogoutModal(false);
           }
         }}
+      />
+      <ProfileImageModal
+        open={showImageModal}
+        image={profile?.profileImage || null}
+        name={profile?.fullName || ""}
+        onClose={() => setShowImageModal(false)}
       />
 
       {/* Always visible */}
