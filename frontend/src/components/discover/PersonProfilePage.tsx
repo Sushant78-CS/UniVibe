@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, GraduationCap, MapPin, UserRound } from "lucide-react";
+import {
+  ArrowLeft,
+  GraduationCap,
+  MapPin,
+  MessageCircle,
+  UserRound,
+} from "lucide-react";
 import { useNavigate, useParams } from "react-router";
 import { useAuth } from "@clerk/react";
 import ProfileHero from "../../components/profile/ProfileHero";
@@ -8,6 +14,7 @@ import ProfileStats from "../../components/profile/ProfileStats";
 import ProfileSkeleton from "../../components/profile/ProfileSkeleton";
 import { useDiscoverApi } from "../../api/discoverApi";
 import ProfileImageModal from "../profile/ProfileImageModal";
+import { useMessageApi } from "../../api/messageApi";
 
 interface Profile {
   id: number;
@@ -20,6 +27,7 @@ interface Profile {
   year: string;
   interests?: string;
   profileCompleted: boolean;
+  userId: number;
 }
 
 const PersonProfilePage = () => {
@@ -28,6 +36,7 @@ const PersonProfilePage = () => {
 
   const { isLoaded } = useAuth();
   const { getPersonProfile } = useDiscoverApi();
+  const { getOrCreateConversation } = useMessageApi();
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -54,6 +63,17 @@ const PersonProfilePage = () => {
 
     loadProfile();
   }, [isLoaded, id]);
+
+  const handleMessage = async () => {
+    try {
+      if (!profile) return;
+      const conversation = await getOrCreateConversation(profile.userId);
+
+      navigate(`/messages/${conversation.id}`);
+    } catch (error) {
+      console.error("Failed to start conversation:", error);
+    }
+  };
 
   if (!isLoaded || loading) {
     return (
@@ -242,6 +262,28 @@ const PersonProfilePage = () => {
         <p className="pt-6 text-center text-xs text-slate-400 dark:text-slate-600">
           UniVibe · Your campus. Your people.
         </p>
+        <button
+          type="button"
+          onClick={handleMessage}
+          className="
+    flex
+    items-center
+    justify-center
+    gap-2
+    rounded-xl
+    bg-violet-600
+    px-4
+    py-2.5
+    text-sm
+    font-semibold
+    text-white
+    transition
+    hover:bg-violet-700
+  "
+        >
+          <MessageCircle size={17} />
+          Message
+        </button>
       </main>
       <ProfileImageModal
         open={showImageModal}

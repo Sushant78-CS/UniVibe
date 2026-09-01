@@ -179,6 +179,7 @@ public class DiscoverService {
 
         return new PersonProfileDto(
                 profile.getId(),
+                profile.getUser().getId(),
                 profile.getFullName(),
                 profile.getUsername(),
                 profile.getBio(),

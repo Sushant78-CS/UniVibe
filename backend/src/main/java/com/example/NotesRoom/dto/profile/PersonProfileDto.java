@@ -2,6 +2,7 @@ package com.example.NotesRoom.dto.profile;
 
 public record PersonProfileDto(
         Long id,
+        Long userId,
         String fullName,
         String username,
         String bio,

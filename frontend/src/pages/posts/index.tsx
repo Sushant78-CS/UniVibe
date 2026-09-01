@@ -533,6 +533,7 @@ const Posts = () => {
         confirmText="Delete"
         cancelText="Cancel"
         loading={deleting}
+        loadingText="Deleting..."
         onCancel={() => {
           if (!deleting) {
             setDeletePostTarget(null);

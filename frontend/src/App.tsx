@@ -21,6 +21,7 @@ import ClubApplicationsPage from "./pages/admin/clubapplications";
 import NotificationsPage from "./pages/notifications";
 import EditProfilePage from "./pages/profile/editprofile";
 import Posts from "./pages/posts";
+import MessagesPage from "./pages/messages";
 
 function App() {
   // Initialize Firebase auth listener
@@ -73,6 +74,11 @@ function App() {
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/profile/edit" element={<EditProfilePage />} />
             <Route path="/posts" element={<Posts />} />
+            <Route path="/messages" element={<MessagesPage />} />
+            <Route
+              path="/messages/:conversationId"
+              element={<MessagesPage />}
+            />
           </Route>
         </Route>
       </Routes>
