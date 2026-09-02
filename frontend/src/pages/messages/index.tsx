@@ -37,7 +37,7 @@ const MessagesPage = () => {
     getConversations,
     getConversation,
     getMessages,
-    sendMessage,
+    // sendMessage,
     markMessagesAsRead,
   } = useMessageApi();
 
