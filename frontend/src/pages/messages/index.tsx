@@ -1,5 +1,5 @@
 import { MessageCircle, RefreshCw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
 import ConversationList from "../../components/messages/ConversationList";
@@ -10,10 +10,28 @@ import {
   type Conversation,
   type Message,
 } from "../../api/messageApi";
+import { useProfileApi } from "../../api/profileApi";
+import { useMessageWebSocket } from "../../hooks/useMessageWebSocket";
 
 const MessagesPage = () => {
   const navigate = useNavigate();
   const { conversationId } = useParams();
+  // const { user } = useUser();
+  const { getProfile } = useProfileApi();
+  const [profile, setProfile] = useState<any>(null);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const profile = await getProfile();
+        setProfile(profile);
+        console.log("Profile:", profile);
+      } catch (error) {
+        console.error("Failed to load profile:", error);
+      }
+    };
+    loadProfile();
+  }, []);
 
   const {
     getConversations,
@@ -164,42 +182,51 @@ const MessagesPage = () => {
       return;
     }
 
+    if (!connected) {
+      console.error("WebSocket is not connected.");
+      return;
+    }
+
     try {
       setSending(true);
 
-      const message = await sendMessage(selectedConversation.id, content);
-
-      setMessages((previous) => [...previous, message]);
-
-      setSelectedConversation((previous) =>
-        previous
-          ? {
-              ...previous,
-              lastMessage: message.content,
-              lastMessageAt: message.createdAt,
-              updatedAt: message.createdAt,
-            }
-          : previous,
-      );
-
-      setConversations((previous) =>
-        previous.map((conversation) =>
-          conversation.id === selectedConversation.id
-            ? {
-                ...conversation,
-                lastMessage: message.content,
-                lastMessageAt: message.createdAt,
-                updatedAt: message.createdAt,
-              }
-            : conversation,
-        ),
-      );
+      sendWebSocketMessage(content);
     } catch (error) {
       console.error("Failed to send message:", error);
     } finally {
       setSending(false);
     }
   };
+
+  const handleIncomingMessage = useCallback((message: Message) => {
+    setMessages((previous) => {
+      const alreadyExists = previous.some(
+        (existingMessage) => existingMessage.id === message.id,
+      );
+
+      if (alreadyExists) {
+        return previous;
+      }
+
+      return [...previous, message];
+    });
+
+    setSelectedConversation((previous) =>
+      previous
+        ? {
+            ...previous,
+            lastMessage: message.content,
+            lastMessageAt: message.createdAt,
+            updatedAt: message.createdAt,
+          }
+        : previous,
+    );
+  }, []);
+
+  const { connected, sendMessage: sendWebSocketMessage } = useMessageWebSocket({
+    conversationId: selectedConversation?.id,
+    onMessage: handleIncomingMessage,
+  });
 
   /*
    * ==========================================
@@ -208,7 +235,7 @@ const MessagesPage = () => {
    */
 
   const handleBack = () => {
-    navigate("/messages");
+    navigate(-1);
   };
 
   /*
@@ -409,6 +436,7 @@ const MessagesPage = () => {
             ) : selectedConversation ? (
               <ChatWindow
                 conversation={selectedConversation}
+                currentUserId={profile?.id || 0}
                 messages={messages}
                 loading={loadingMessages}
                 sending={sending}

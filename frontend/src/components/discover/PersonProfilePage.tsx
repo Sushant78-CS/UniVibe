@@ -42,6 +42,7 @@ const PersonProfilePage = () => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [messageLoading, setMessageLoading] = useState(false);
 
   useEffect(() => {
     if (!isLoaded || !id) return;
@@ -65,13 +66,17 @@ const PersonProfilePage = () => {
   }, [isLoaded, id]);
 
   const handleMessage = async () => {
+    if (!profile || messageLoading) return;
+
     try {
-      if (!profile) return;
+      setMessageLoading(true);
+
       const conversation = await getOrCreateConversation(profile.userId);
 
       navigate(`/messages/${conversation.id}`);
     } catch (error) {
       console.error("Failed to start conversation:", error);
+      setMessageLoading(false);
     }
   };
 
@@ -79,13 +84,17 @@ const PersonProfilePage = () => {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
         <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/85 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/85">
-          <div className="mx-auto flex h-14 max-w-3xl items-center px-4 sm:px-6">
-            <div className="h-9 w-9 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
+          <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4 sm:px-6">
+            <div className="flex items-center">
+              <div className="h-9 w-9 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
 
-            <div className="ml-3 space-y-1">
-              <div className="h-4 w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
-              <div className="h-2.5 w-12 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+              <div className="ml-3 space-y-1">
+                <div className="h-4 w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                <div className="h-2.5 w-12 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+              </div>
             </div>
+
+            <div className="h-9 w-9 animate-pulse rounded-xl bg-slate-200 dark:bg-slate-800" />
           </div>
         </header>
 
@@ -131,33 +140,55 @@ const PersonProfilePage = () => {
       .filter(Boolean) ?? [];
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-28 text-slate-900 transition-colors dark:bg-slate-950 dark:text-white">
+    <div className="min-h-screen bg-slate-50 pb-10 text-slate-900 transition-colors dark:bg-slate-950 dark:text-white">
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/85 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/85">
-        <div className="mx-auto flex h-14 max-w-3xl items-center px-4 sm:px-6">
-          <button
+        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4 sm:px-6">
+          <div className="flex items-center min-w-0">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              aria-label="Go back"
+              className="
+                flex h-9 w-9 shrink-0 items-center justify-center rounded-xl
+                text-slate-600 transition
+                hover:bg-slate-100 hover:text-slate-900
+                dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white
+              "
+            >
+              <ArrowLeft size={19} />
+            </button>
+
+            <div className="ml-3 min-w-0">
+              <h1 className="truncate text-sm font-bold text-slate-900 dark:text-white">
+                {profile.fullName}
+              </h1>
+
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                UniVibe
+              </p>
+            </div>
+          </div>
+
+          {/* Message button — top, always visible */}
+          {/* <button
             type="button"
-            onClick={() => navigate(-1)}
-            aria-label="Go back"
+            onClick={handleMessage}
+            disabled={messageLoading}
+            aria-label={`Message ${profile.fullName}`}
             className="
-              flex h-9 w-9 items-center justify-center rounded-xl
-              text-slate-600 transition
-              hover:bg-slate-100 hover:text-slate-900
-              dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white
+              flex h-9 w-9 shrink-0 items-center justify-center rounded-xl
+              bg-violet-600 text-white shadow-sm transition
+              hover:bg-violet-700
+              disabled:cursor-not-allowed disabled:opacity-70
             "
           >
-            <ArrowLeft size={19} />
-          </button>
-
-          <div className="ml-3">
-            <h1 className="text-sm font-bold text-slate-900 dark:text-white">
-              Profile
-            </h1>
-
-            <p className="text-[10px] text-slate-500 dark:text-slate-400">
-              UniVibe
-            </p>
-          </div>
+            {messageLoading ? (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+            ) : (
+              <MessageCircle size={17} />
+            )}
+          </button> */}
         </div>
       </header>
 
@@ -177,6 +208,40 @@ const PersonProfilePage = () => {
           <p className="text-sm font-medium text-violet-600 dark:text-violet-400">
             @{profile.username}
           </p>
+        </div>
+
+        {/* Quick actions */}
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={handleMessage}
+            disabled={messageLoading}
+            className="
+              flex items-center justify-center gap-2
+              rounded-2xl
+              bg-gradient-to-r from-violet-600 to-fuchsia-600
+              px-6 py-3
+              text-sm font-semibold text-white
+              shadow-lg shadow-violet-500/20
+              transition
+              hover:-translate-y-0.5 hover:shadow-xl
+              active:translate-y-0
+              disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0
+              dark:shadow-violet-950/30
+            "
+          >
+            {messageLoading ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                Opening chat...
+              </>
+            ) : (
+              <>
+                <MessageCircle size={17} />
+                Message {profile.fullName.split(" ")[0]}
+              </>
+            )}
+          </button>
         </div>
 
         {/* Quick information */}
@@ -239,52 +304,11 @@ const PersonProfilePage = () => {
           />
         </section>
 
-        {/* Connect */}
-        {/* <section className="mt-6">
-          <button
-            type="button"
-            className="
-              w-full rounded-2xl
-              bg-gradient-to-r from-violet-600 to-fuchsia-600
-              px-4 py-3.5
-              text-sm font-semibold text-white
-              shadow-lg shadow-violet-500/20
-              transition
-              hover:-translate-y-0.5 hover:shadow-xl
-              active:translate-y-0
-              dark:shadow-violet-950/30
-            "
-          >
-            Connect with {firstName}
-          </button>
-        </section> */}
-
-        <p className="pt-6 text-center text-xs text-slate-400 dark:text-slate-600">
+        <p className="pt-8 text-center text-xs text-slate-400 dark:text-slate-600">
           UniVibe · Your campus. Your people.
         </p>
-        <button
-          type="button"
-          onClick={handleMessage}
-          className="
-    flex
-    items-center
-    justify-center
-    gap-2
-    rounded-xl
-    bg-violet-600
-    px-4
-    py-2.5
-    text-sm
-    font-semibold
-    text-white
-    transition
-    hover:bg-violet-700
-  "
-        >
-          <MessageCircle size={17} />
-          Message
-        </button>
       </main>
+
       <ProfileImageModal
         open={showImageModal}
         onClose={() => setShowImageModal(false)}

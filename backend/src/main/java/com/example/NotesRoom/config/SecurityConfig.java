@@ -14,47 +14,48 @@ import org.springframework.web.cors.CorsConfiguration;
 @EnableWebSecurity
 public class SecurityConfig {
 
-        @Bean
-        public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-                http.csrf(csrf -> csrf.disable())
-                                .authorizeHttpRequests(auth -> auth
-                                                .requestMatchers("/public/**").permitAll()
-                                                .anyRequest()
-                                                .authenticated())
-                                .oauth2ResourceServer(oauth -> oauth.jwt(
-                                                Customizer.withDefaults()))
-                                .cors(cors -> cors.configurationSource(request -> {
-                                        CorsConfiguration config = new CorsConfiguration();
-                                        config.setAllowedOrigins(List.of(
-                                                        "https://uni-vibe-479c.vercel.app",
-                                                        "http://localhost:5173"));
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http.csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/public/**").permitAll()
+                        .requestMatchers("/ws/**").permitAll()
+                        .anyRequest()
+                        .authenticated())
+                .oauth2ResourceServer(oauth -> oauth.jwt(
+                        Customizer.withDefaults()))
+                .cors(cors -> cors.configurationSource(request -> {
+                    CorsConfiguration config = new CorsConfiguration();
+                    config.setAllowedOrigins(List.of(
+                            "https://uni-vibe-479c.vercel.app",
+                            "http://localhost:5173"));
 
-                                        config.setAllowedMethods(List.of(
-                                                        "GET",
-                                                        "POST",
-                                                        "PUT",
-                                                        "PATCH",
-                                                        "DELETE",
-                                                        "OPTIONS"));
+                    config.setAllowedMethods(List.of(
+                            "GET",
+                            "POST",
+                            "PUT",
+                            "PATCH",
+                            "DELETE",
+                            "OPTIONS"));
 
-                                        config.setAllowedHeaders(List.of(
-                                                        "Authorization",
-                                                        "Content-Type",
-                                                        "Accept",
-                                                        "Origin",
-                                                        "X-Requested-With"));
+                    config.setAllowedHeaders(List.of(
+                            "Authorization",
+                            "Content-Type",
+                            "Accept",
+                            "Origin",
+                            "X-Requested-With"));
 
-                                        config.setAllowCredentials(true);
-                                        config.setMaxAge(3600L);
+                    config.setAllowCredentials(true);
+                    config.setMaxAge(3600L);
 
-                                        // UrlBasedCorsConfigurationSource source = new
-                                        // UrlBasedCorsConfigurationSource();
-                                        // source.registerCorsConfiguration("/**", config);
+                    // UrlBasedCorsConfigurationSource source = new
+                    // UrlBasedCorsConfigurationSource();
+                    // source.registerCorsConfiguration("/**", config);
 
-                                        return config;
-                                }));
+                    return config;
+                }));
 
-                return http.build();
-        }
+        return http.build();
+    }
 
 }
