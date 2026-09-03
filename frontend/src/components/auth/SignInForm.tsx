@@ -319,10 +319,10 @@ const SignInForm = () => {
         </form>
 
         {/* Divider */}
-        <AuthDivider />
+        {/* <AuthDivider /> */}
 
         {/* Google */}
-        <GoogleButton onClick={handleGoogle} loading={googleLoading} />
+        {/* <GoogleButton onClick={handleGoogle} loading={googleLoading} /> */}
       </div>
 
       {/* Signup */}

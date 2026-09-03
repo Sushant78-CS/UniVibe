@@ -101,7 +101,7 @@ function ProtectedLayout() {
    * Not authenticated
    */
   if (!isSignedIn || !userId) {
-    return <Navigate to="/" replace state={{ from: location }} />;
+    return <Navigate to="/signup" replace state={{ from: location }} />;
   }
 
   /*
