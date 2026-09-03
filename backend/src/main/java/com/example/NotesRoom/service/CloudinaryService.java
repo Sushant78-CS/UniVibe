@@ -165,4 +165,76 @@ public class CloudinaryService {
                 "apiKey", cloudinary.config.apiKey
         );
     }
+
+    public Map<String, String> generatePostVideoUploadSignature() {
+
+        long timestamp = System.currentTimeMillis() / 1000;
+
+        Map<String, Object> paramsToSign = ObjectUtils.asMap(
+                "timestamp", timestamp,
+                "folder", "univibe/post-videos"
+        );
+
+        String signature = cloudinary.apiSignRequest(
+                paramsToSign,
+                cloudinary.config.apiSecret
+        );
+
+        return Map.of(
+                "timestamp", String.valueOf(timestamp),
+                "signature", signature,
+                "apiKey", cloudinary.config.apiKey
+        );
+    }
+
+    public void deletePostMedia(
+            String mediaUrl,
+            String mediaType
+    ) throws IOException {
+
+        if (mediaUrl == null || mediaUrl.isBlank()) {
+            return;
+        }
+
+        String publicId = extractPublicId(mediaUrl);
+
+        if (publicId == null || publicId.isBlank()) {
+            return;
+        }
+
+        String resourceType =
+                "VIDEO".equalsIgnoreCase(mediaType)
+                        ? "video"
+                        : "image";
+
+        cloudinary.uploader().destroy(
+                publicId,
+                ObjectUtils.asMap(
+                        "resource_type",
+                        resourceType
+                )
+        );
+    }
+
+    public String uploadPostVideo(MultipartFile file)
+            throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Post video is required");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("video/")) {
+            throw new IllegalArgumentException("Only video files are allowed");
+        }
+        Map<?, ?> result = cloudinary.uploader().upload(
+                file.getBytes(),
+                ObjectUtils.asMap(
+                        "folder",
+                        "univibe/post-videos",
+                        "resource_type",
+                        "video"
+                )
+        );
+
+        return result.get("secure_url").toString();
+    }
 }

@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@clerk/react": "^6.14.5",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
     "@stomp/stompjs": "^7.3.0",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-query": "^5.102.8",

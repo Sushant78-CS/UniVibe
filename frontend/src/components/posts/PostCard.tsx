@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { usePostApi, type Post } from "../../api/postApi";
 
 import CommentsModal from "./CommentsModal";
+
 import { useNavigate } from "react-router";
 
 interface PostCardProps {
@@ -64,6 +65,7 @@ const PostCard = ({
    * STATE
    * ================================
    */
+
   const navigate = useNavigate();
 
   const [imagePreview, setImagePreview] = useState<boolean>(false);
@@ -155,6 +157,7 @@ const PostCard = ({
     /*
      * Optimistic update
      */
+
     setLiked(!previousLiked);
 
     setLikeCount(
@@ -175,6 +178,7 @@ const PostCard = ({
       /*
        * Rollback if request fails
        */
+
       setLiked(previousLiked);
       setLikeCount(previousCount);
     } finally {
@@ -230,9 +234,8 @@ const PostCard = ({
           "
         >
           {/* ================================= */}
-          {/* AVATAR */}
-          {/* ================================= */}
           {/* USER PROFILE */}
+          {/* ================================= */}
 
           <button
             type="button"
@@ -242,17 +245,17 @@ const PostCard = ({
               }
             }}
             className="
-    flex
-    min-w-0
-    flex-1
-    items-center
-    gap-2.5
-    rounded-xl
-    text-left
-    transition
-    hover:bg-slate-50
-    dark:hover:bg-slate-800/60
-  "
+              flex
+              min-w-0
+              flex-1
+              items-center
+              gap-2.5
+              rounded-xl
+              text-left
+              transition
+              hover:bg-slate-50
+              dark:hover:bg-slate-800/60
+            "
           >
             {/* AVATAR */}
 
@@ -261,28 +264,28 @@ const PostCard = ({
                 src={post.profileImage}
                 alt={post.fullName ?? "User"}
                 className="
-        h-9
-        w-9
-        shrink-0
-        rounded-full
-        object-cover
-      "
+                  h-9
+                  w-9
+                  shrink-0
+                  rounded-full
+                  object-cover
+                "
               />
             ) : (
               <div
                 className="
-        flex
-        h-9
-        w-9
-        shrink-0
-        items-center
-        justify-center
-        rounded-full
-        bg-violet-100
-        text-violet-600
-        dark:bg-violet-500/10
-        dark:text-violet-400
-      "
+                  flex
+                  h-9
+                  w-9
+                  shrink-0
+                  items-center
+                  justify-center
+                  rounded-full
+                  bg-violet-100
+                  text-violet-600
+                  dark:bg-violet-500/10
+                  dark:text-violet-400
+                "
               >
                 <UserRound size={17} />
               </div>
@@ -293,31 +296,31 @@ const PostCard = ({
             <div className="min-w-0 flex-1">
               <h3
                 className="
-        truncate
-        text-xs
-        font-semibold
-        leading-4
-        text-slate-900
-        dark:text-white
-      "
+                  truncate
+                  text-xs
+                  font-semibold
+                  leading-4
+                  text-slate-900
+                  dark:text-white
+                "
               >
                 {post.fullName ?? "Unknown User"}
               </h3>
 
               <div
                 className="
-        mt-0.5
-        flex
-        min-w-0
-        items-center
-        gap-1
-        overflow-hidden
-        whitespace-nowrap
-        text-[10px]
-        leading-4
-        text-slate-500
-        dark:text-slate-400
-      "
+                  mt-0.5
+                  flex
+                  min-w-0
+                  items-center
+                  gap-1
+                  overflow-hidden
+                  whitespace-nowrap
+                  text-[10px]
+                  leading-4
+                  text-slate-500
+                  dark:text-slate-400
+                "
               >
                 <span className="max-w-[110px] truncate">
                   @{post.username ?? "user"}
@@ -341,10 +344,6 @@ const PostCard = ({
               </div>
             </div>
           </button>
-
-          {/* ================================= */}
-          {/* USER INFORMATION */}
-          {/* ================================= */}
 
           {/* ================================= */}
           {/* CATEGORY */}
@@ -512,41 +511,65 @@ const PostCard = ({
         </div>
 
         {/* ================================= */}
-        {/* POST IMAGE */}
+        {/* POST MEDIA */}
         {/* ================================= */}
 
-        {post.imageUrl && (
+        {post.mediaUrl && post.mediaType === "IMAGE" && (
           <div className="px-3 pb-3">
             <button
               type="button"
               onClick={() => setImagePreview(true)}
               aria-label="View image"
               className="
-                group
-                block
-                w-full
-                cursor-zoom-in
-                overflow-hidden
-                rounded-xl
-                bg-slate-100
-                text-left
-                dark:bg-slate-800
-              "
+                  group
+                  block
+                  w-full
+                  cursor-zoom-in
+                  overflow-hidden
+                  rounded-xl
+                  bg-slate-100
+                  text-left
+                  dark:bg-slate-800
+                "
             >
               <img
-                src={post.imageUrl}
+                src={post.mediaUrl}
                 alt="Post attachment"
                 loading="lazy"
                 className="
-                  max-h-[380px]
-                  w-full
-                  object-cover
-                  transition-transform
-                  duration-300
-                  group-hover:scale-[1.02]
-                "
+                    max-h-[380px]
+                    w-full
+                    object-cover
+                    transition-transform
+                    duration-300
+                    group-hover:scale-[1.02]
+                  "
               />
             </button>
+          </div>
+        )}
+
+        {post.mediaUrl && post.mediaType === "VIDEO" && (
+          <div className="px-3 pb-3">
+            <div
+              className="
+                  overflow-hidden
+                  rounded-xl
+                  bg-black
+                "
+            >
+              <video
+                src={post.mediaUrl}
+                controls
+                playsInline
+                preload="metadata"
+                className="
+                    max-h-[500px]
+                    w-full
+                    object-contain
+                  "
+              />
+            </div>
           </div>
         )}
 
@@ -649,7 +672,7 @@ const PostCard = ({
       {/* IMAGE PREVIEW */}
       {/* ================================= */}
 
-      {imagePreview && post.imageUrl && (
+      {imagePreview && post.mediaUrl && post.mediaType === "IMAGE" && (
         <div
           className="
               fixed
@@ -694,7 +717,7 @@ const PostCard = ({
           {/* PREVIEW IMAGE */}
 
           <img
-            src={post.imageUrl}
+            src={post.mediaUrl}
             alt="Post attachment preview"
             onClick={(e) => e.stopPropagation()}
             className="

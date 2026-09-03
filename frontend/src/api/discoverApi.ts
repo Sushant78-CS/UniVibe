@@ -12,8 +12,8 @@ export interface DiscoverPerson {
   year: string;
   interests?: string;
   bio?: string;
-
-  connectionStatus: "NONE" | "PENDING_SENT" | "PENDING_RECEIVED" | "ACCEPTED";
+  score?: number;
+  connectionStatus: "NONE" | "PENDING_SENT" | "PENDING_RECEIVED" | "CONNECTED";
 }
 
 export interface SearchProfile {

@@ -12,19 +12,15 @@ export interface Post {
   id: number;
   userId: number;
   profileId: number | null;
-
   fullName: string | null;
   username: string | null;
-  profileImage?: string | null;
-
+  profileImage: string | null;
   description: string;
   category: PostCategory;
-
-  imageUrl?: string | null;
-
+  mediaUrl: string | null;
+  mediaType: "IMAGE" | "VIDEO" | null;
   createdAt: string;
-  updatedAt?: string | null;
-
+  updatedAt: string | null;
   likeCount: number;
   likedByMe: boolean;
   commentCount: number;
@@ -54,14 +50,24 @@ export interface PageResponse<T> {
 export interface CreatePostData {
   description: string;
   category: PostCategory;
-  imageUrl?: string | null;
+  mediaUrl?: string | null;
+  mediaType?: "IMAGE" | "VIDEO" | null;
 }
 
 export const usePostApi = () => {
   const { getToken } = useAuth();
 
+  /*
+   * ================================
+   * GET POSTS
+   * ================================
+   */
   const getPosts = async (page = 0, size = 10): Promise<PageResponse<Post>> => {
     const token = await getToken();
+
+    if (!token) {
+      throw new Error("Authentication token not available");
+    }
 
     const response = await api.get<PageResponse<Post>>("/posts", {
       headers: {
@@ -76,11 +82,20 @@ export const usePostApi = () => {
     return response.data;
   };
 
+  /*
+   * ================================
+   * GET MY POSTS
+   * ================================
+   */
   const getMyPosts = async (
     page = 0,
     size = 10,
   ): Promise<PageResponse<Post>> => {
     const token = await getToken();
+
+    if (!token) {
+      throw new Error("Authentication token not available");
+    }
 
     const response = await api.get<PageResponse<Post>>("/posts/mine", {
       headers: {
@@ -95,6 +110,11 @@ export const usePostApi = () => {
     return response.data;
   };
 
+  /*
+   * ================================
+   * CREATE POST
+   * ================================
+   */
   const createPost = async (data: CreatePostData): Promise<Post> => {
     const token = await getToken();
 
@@ -112,11 +132,26 @@ export const usePostApi = () => {
     return response.data;
   };
 
+  /*
+   * ================================
+   * UPDATE POST
+   * ================================
+   *
+   * Media is already uploaded directly to
+   * Cloudinary by EditPostModal.
+   *
+   * Spring Boot receives:
+   * - description
+   * - category
+   * - mediaUrl
+   * - mediaType
+   *
+   * removeMedia is sent as a query parameter.
+   */
   const updatePost = async (
     postId: number,
     data: CreatePostData,
-    image?: File | null,
-    removeImage: boolean = false,
+    removeMedia = false,
   ): Promise<Post> => {
     const token = await getToken();
 
@@ -124,47 +159,39 @@ export const usePostApi = () => {
       throw new Error("Authentication token not available");
     }
 
-    const formData = new FormData();
-
-    // Post JSON
-    const postBlob = new Blob(
-      [
-        JSON.stringify({
-          description: data.description,
-          category: data.category,
-          imageUrl: data.imageUrl,
-        }),
-      ],
+    const response = await api.put<Post>(
+      `/posts/${postId}`,
       {
-        type: "application/json",
+        description: data.description,
+        category: data.category,
+        mediaUrl: data.mediaUrl,
+        mediaType: data.mediaType,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        params: {
+          removeMedia,
+        },
       },
     );
-
-    formData.append("post", postBlob);
-
-    // New image
-    if (image) {
-      formData.append("image", image);
-    }
-
-    // Remove image
-    const removeImageBlob = new Blob([JSON.stringify(removeImage)], {
-      type: "application/json",
-    });
-
-    formData.append("removeImage", removeImageBlob);
-
-    const response = await api.put<Post>(`/posts/${postId}`, formData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
 
     return response.data;
   };
 
-  const deletePost = async (id: number) => {
+  /*
+   * ================================
+   * DELETE POST
+   * ================================
+   */
+  const deletePost = async (id: number): Promise<void> => {
     const token = await getToken();
+
+    if (!token) {
+      throw new Error("Authentication token not available");
+    }
 
     await api.delete(`/posts/${id}`, {
       headers: {
@@ -173,6 +200,11 @@ export const usePostApi = () => {
     });
   };
 
+  /*
+   * ================================
+   * LIKE POST
+   * ================================
+   */
   const likePost = async (postId: number): Promise<void> => {
     const token = await getToken();
 
@@ -187,6 +219,11 @@ export const usePostApi = () => {
     });
   };
 
+  /*
+   * ================================
+   * UNLIKE POST
+   * ================================
+   */
   const unlikePost = async (postId: number): Promise<void> => {
     const token = await getToken();
 
@@ -201,6 +238,11 @@ export const usePostApi = () => {
     });
   };
 
+  /*
+   * ================================
+   * GET COMMENTS
+   * ================================
+   */
   const getComments = async (postId: number): Promise<Comment[]> => {
     const token = await getToken();
 
@@ -217,6 +259,11 @@ export const usePostApi = () => {
     return response.data;
   };
 
+  /*
+   * ================================
+   * ADD COMMENT
+   * ================================
+   */
   const addComment = async (
     postId: number,
     content: string,
@@ -242,6 +289,11 @@ export const usePostApi = () => {
     return response.data;
   };
 
+  /*
+   * ================================
+   * DELETE COMMENT
+   * ================================
+   */
   const deleteComment = async (commentId: number): Promise<void> => {
     const token = await getToken();
 
@@ -256,6 +308,11 @@ export const usePostApi = () => {
     });
   };
 
+  /*
+   * ================================
+   * RETURN API
+   * ================================
+   */
   return {
     getPosts,
     getMyPosts,

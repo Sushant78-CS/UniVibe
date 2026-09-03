@@ -50,10 +50,21 @@ public class PostController {
             @RequestParam(defaultValue = "10") int size
     ) {
         String clerkId = jwt.getSubject();
-        Pageable pageable = PageRequest.of(page, size,
-                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(
+                        Sort.Order.desc("createdAt"),
+                        Sort.Order.desc("id")
+                )
+        );
+
         return ResponseEntity.ok(
-                postService.getPosts(clerkId, pageable)
+                postService.getPosts(
+                        clerkId,
+                        pageable
+                )
         );
     }
 
@@ -64,10 +75,21 @@ public class PostController {
             @RequestParam(defaultValue = "10") int size
     ) {
         String clerkId = jwt.getSubject();
-        Pageable pageable = PageRequest.of(page, size,
-                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(
+                        Sort.Order.desc("createdAt"),
+                        Sort.Order.desc("id")
+                )
+        );
+
         return ResponseEntity.ok(
-                postService.getMyPosts(clerkId, pageable)
+                postService.getMyPosts(
+                        clerkId,
+                        pageable
+                )
         );
     }
 
@@ -78,21 +100,27 @@ public class PostController {
     public ResponseEntity<PostDto> updatePost(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long id,
+
             @RequestPart("post")
             CreatePostDto dto,
-            @RequestPart(value = "image", required = false)
-            MultipartFile image,
-            @RequestPart(value = "removeImage", required = false)
-            Boolean removeImage
+
+            @RequestPart(value = "media", required = false)
+            MultipartFile media,
+
+            @RequestPart(value = "removeMedia", required = false)
+            Boolean removeMedia
+
     ) throws IOException {
+
         String clerkId = jwt.getSubject();
+
         return ResponseEntity.ok(
                 postService.updatePost(
                         clerkId,
                         id,
                         dto,
-                        image,
-                        Boolean.TRUE.equals(removeImage)
+                        media,
+                        Boolean.TRUE.equals(removeMedia)
                 )
         );
     }
@@ -101,13 +129,14 @@ public class PostController {
     public ResponseEntity<Void> deletePost(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long id
-
     ) {
         String clerkId = jwt.getSubject();
+
         postService.deletePost(
                 clerkId,
                 id
         );
+
         return ResponseEntity.noContent()
                 .build();
     }
@@ -122,7 +151,8 @@ public class PostController {
                 id
         );
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok()
+                .build();
     }
 
     @DeleteMapping("/{id}/like")
@@ -135,7 +165,8 @@ public class PostController {
                 id
         );
 
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.noContent()
+                .build();
     }
 
     @GetMapping("/{id}/comments")
@@ -172,8 +203,7 @@ public class PostController {
                 commentId
         );
 
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.noContent()
+                .build();
     }
-
-
 }

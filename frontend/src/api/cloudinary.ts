@@ -7,20 +7,24 @@ interface CloudinarySignature {
   apiKey: string;
 }
 
-interface CloudinaryUploadResponse {
+export interface CloudinaryUploadResponse {
   secure_url: string;
   public_id: string;
   bytes: number;
-  width: number;
-  height: number;
+  width?: number;
+  height?: number;
   format: string;
+  resource_type?: string;
 }
+
+type MediaType = "IMAGE" | "VIDEO";
 
 export const useCloudinaryApi = () => {
   const { getToken } = useAuth();
 
-  const uploadPostImageToCloudinary = async (
+  const uploadPostMediaToCloudinary = async (
     file: File,
+    mediaType: MediaType,
   ): Promise<CloudinaryUploadResponse> => {
     const token = await getToken();
 
@@ -28,12 +32,17 @@ export const useCloudinaryApi = () => {
       throw new Error("Authentication token not available");
     }
 
-    // Get signed upload parameters from Spring Boot
+    const resourceType = mediaType === "VIDEO" ? "video" : "image";
+
     const { data } = await api.get<CloudinarySignature>(
       "/cloudinary/signature",
       {
         headers: {
           Authorization: `Bearer ${token}`,
+        },
+
+        params: {
+          resourceType,
         },
       },
     );
@@ -44,16 +53,19 @@ export const useCloudinaryApi = () => {
       throw new Error("Cloudinary cloud name is not configured");
     }
 
+    const folder =
+      mediaType === "VIDEO" ? "univibe/post-videos" : "univibe/post-images";
+
     const formData = new FormData();
 
     formData.append("file", file);
     formData.append("api_key", data.apiKey);
     formData.append("timestamp", data.timestamp);
     formData.append("signature", data.signature);
-    formData.append("folder", "univibe/post-images");
+    formData.append("folder", folder);
 
     const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+      `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`,
       {
         method: "POST",
         body: formData,
@@ -61,14 +73,29 @@ export const useCloudinaryApi = () => {
     );
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Cloudinary upload failed: ${error}`);
+      const errorText = await response.text();
+
+      throw new Error(`Cloudinary upload failed: ${errorText}`);
     }
 
     return response.json();
   };
 
+  const uploadPostImageToCloudinary = async (
+    file: File,
+  ): Promise<CloudinaryUploadResponse> => {
+    return uploadPostMediaToCloudinary(file, "IMAGE");
+  };
+
+  const uploadPostVideoToCloudinary = async (
+    file: File,
+  ): Promise<CloudinaryUploadResponse> => {
+    return uploadPostMediaToCloudinary(file, "VIDEO");
+  };
+
   return {
+    uploadPostMediaToCloudinary,
     uploadPostImageToCloudinary,
+    uploadPostVideoToCloudinary,
   };
 };

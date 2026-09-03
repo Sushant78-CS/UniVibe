@@ -1,9 +1,6 @@
 package com.example.NotesRoom.service;
 
-import com.example.NotesRoom.dto.post.CommentDto;
-import com.example.NotesRoom.dto.post.CreateCommentDto;
-import com.example.NotesRoom.dto.post.CreatePostDto;
-import com.example.NotesRoom.dto.post.PostDto;
+import com.example.NotesRoom.dto.post.*;
 import com.example.NotesRoom.entity.*;
 import com.example.NotesRoom.repository.PostCommentRepository;
 import com.example.NotesRoom.repository.PostLikeRepository;
@@ -47,13 +44,26 @@ public class PostService {
             throw new IllegalArgumentException("Post category is required");
         }
 
-        String imageUrl = dto.imageUrl();
+        MediaType mediaType = null;
+        if (dto.mediaType() != null && !dto.mediaType().isBlank()) {
+            try {
+                mediaType = MediaType.valueOf(
+                        dto.mediaType().toUpperCase()
+                );
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(
+                        "Invalid media type. Use IMAGE or VIDEO"
+                );
+            }
+        }
+
 
         Post post = Post.builder()
                 .user(user)
                 .description(dto.description().trim())
                 .category(dto.category())
-                .imageUrl(imageUrl)
+                .mediaUrl(dto.mediaUrl())
+                .mediaType(mediaType)
                 .createdAt(LocalDateTime.now())
                 .build();
         Post savedPost = postRepository.save(post);
@@ -91,63 +101,77 @@ public class PostService {
             String clerkId,
             Long postId,
             CreatePostDto dto,
-            MultipartFile image,
-            boolean removeImage
+            MultipartFile media,
+            boolean removeMedia
     ) throws IOException {
         Users user = userRepository
                 .findByClerkId(clerkId)
-                .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("User not found"));
         Post post = postRepository
                 .findById(postId)
-                .orElseThrow(() ->
-                        new RuntimeException("Post not found"));
+                .orElseThrow(() -> new RuntimeException("Post not found"));
         // Only owner can edit
-        if (!post.getUser().getId()
-                .equals(user.getId())) {
+        if (!post.getUser().getId().equals(user.getId())) {
             throw new RuntimeException("You cannot edit this post");
         }
         // Validate description
         if (dto.description() == null || dto.description().isBlank()) {
             throw new IllegalArgumentException("Post description cannot be empty");
         }
-
         // Validate category
         if (dto.category() == null) {
             throw new IllegalArgumentException("Post category is required");
         }
         post.setDescription(dto.description().trim());
         post.setCategory(dto.category());
-        String oldImage = post.getImageUrl();
+        String oldMediaUrl = post.getMediaUrl();
+        MediaType oldMediaType = post.getMediaType();
         /*
          * Case 1:
-         * User selected a new image.
-         *
-         * Replace the old image with the new one.
+         * User selected new media.
          */
-        if (image != null && !image.isEmpty()) {
-            String newImage = cloudinaryService.uploadPostImage(image);
-            post.setImageUrl(newImage);
-            // Delete old image from Cloudinary
-            if (oldImage != null && !oldImage.isBlank()) {
-                cloudinaryService.deletePostImage(
-                        oldImage
+        if (media != null && !media.isEmpty()) {
+            String contentType = media.getContentType();
+            if (contentType == null) {
+                throw new IllegalArgumentException("Unable to determine media type");
+            }
+            String newMediaUrl;
+            MediaType newMediaType;
+            if (contentType.startsWith("image/")) {
+                newMediaUrl =
+                        cloudinaryService.uploadPostImage(media);
+                newMediaType = MediaType.IMAGE;
+            } else if (contentType.startsWith("video/")) {
+                newMediaUrl = cloudinaryService.uploadPostVideo(media);
+                newMediaType = MediaType.VIDEO;
+            } else {
+                throw new IllegalArgumentException("Only image and video files are allowed");
+            }
+            post.setMediaUrl(newMediaUrl);
+            post.setMediaType(newMediaType);
+            // Delete old media from Cloudinary
+            if (oldMediaUrl != null && !oldMediaUrl.isBlank()) {
+                cloudinaryService.deletePostMedia(
+                        oldMediaUrl,
+                        oldMediaType != null
+                                ? oldMediaType.name()
+                                : "IMAGE"
                 );
             }
         }
         /*
          * Case 2:
-         * User clicked "Remove image".
-         *
-         * Only remove the image if there is
-         * no replacement image being uploaded.
+         * User clicked "Remove media".
          */
-        else if (removeImage) {
-            post.setImageUrl(null);
-            if (oldImage != null &&
-                    !oldImage.isBlank()) {
-                cloudinaryService.deletePostImage(
-                        oldImage
+        else if (removeMedia) {
+            post.setMediaUrl(null);
+            post.setMediaType(null);
+            if (oldMediaUrl != null && !oldMediaUrl.isBlank()) {
+                cloudinaryService.deletePostMedia(
+                        oldMediaUrl,
+                        oldMediaType != null
+                                ? oldMediaType.name()
+                                : "IMAGE"
                 );
             }
         }
@@ -176,12 +200,21 @@ public class PostService {
         }
 
         // Delete post image from Cloudinary
-        if (post.getImageUrl() != null &&
-                !post.getImageUrl().isBlank()) {
+        if (post.getMediaUrl() != null &&
+                !post.getMediaUrl().isBlank()) {
+
             try {
-                cloudinaryService.deleteProfileImage(post.getImageUrl());
+                cloudinaryService.deletePostMedia(
+                        post.getMediaUrl(),
+                        post.getMediaType() != null
+                                ? post.getMediaType().name()
+                                : "IMAGE"
+                );
             } catch (IOException e) {
-                throw new RuntimeException("Failed to delete post image", e);
+                throw new RuntimeException(
+                        "Failed to delete post media",
+                        e
+                );
             }
         }
 
@@ -393,7 +426,8 @@ public class PostService {
 
                 post.getDescription(),
                 post.getCategory(),
-                post.getImageUrl(),
+                post.getMediaUrl(),
+                post.getMediaType(),
                 post.getCreatedAt(),
                 post.getUpdatedAt(),
 

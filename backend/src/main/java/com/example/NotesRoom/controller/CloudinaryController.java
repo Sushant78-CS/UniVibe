@@ -30,4 +30,17 @@ public class CloudinaryController {
         return cloudinaryService
                 .generatePostImageUploadSignature();
     }
+
+    @GetMapping("/video-signature")
+    public Map<String, String> getVideoUploadSignature(
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+
+        if (jwt == null) {
+            throw new RuntimeException("Unauthorized");
+        }
+
+        return cloudinaryService
+                .generatePostVideoUploadSignature();
+    }
 }

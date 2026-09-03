@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { X, Save, ImagePlus, Trash2 } from "lucide-react";
+import { X, Save, ImagePlus, Video, Trash2, RotateCcw } from "lucide-react";
+
 import { usePostApi, type Post, type CreatePostData } from "../../api/postApi";
+
+import { compressImage } from "../../services/compressImage";
+import { compressVideo } from "../../services/compressVideo";
+
+import { useCloudinaryApi } from "../../api/cloudinary";
 
 interface EditPostModalProps {
   open: boolean;
@@ -8,6 +14,10 @@ interface EditPostModalProps {
   onClose: () => void;
   onUpdated: (post: Post) => void;
 }
+
+type MediaType = "IMAGE" | "VIDEO";
+
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
 
 const EditPostModal = ({
   open,
@@ -17,118 +27,307 @@ const EditPostModal = ({
 }: EditPostModalProps) => {
   const { updatePost } = usePostApi();
 
+  const { uploadPostImageToCloudinary, uploadPostVideoToCloudinary } =
+    useCloudinaryApi();
+
+  // =========================================================
+  // REFS
+  // =========================================================
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // =========================================================
+  // FORM
+  // =========================================================
 
   const [description, setDescription] = useState("");
 
   const [category, setCategory] =
     useState<CreatePostData["category"]>("GENERAL");
 
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  // =========================================================
+  // MEDIA
+  // =========================================================
 
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  const [removeImage, setRemoveImage] = useState(false);
+  const [mediaType, setMediaType] = useState<MediaType | null>(null);
+
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+
+  const [removeMedia, setRemoveMedia] = useState(false);
+
+  // =========================================================
+  // UI
+  // =========================================================
 
   const [saving, setSaving] = useState(false);
+
+  const [processingMedia, setProcessingMedia] = useState(false);
+
   const [error, setError] = useState("");
 
+  // =========================================================
+  // LOAD POST
+  // =========================================================
+
   useEffect(() => {
-    if (!post) return;
+    if (!post) {
+      return;
+    }
 
     setDescription(post.description ?? "");
+
     setCategory(post.category);
 
-    setSelectedImage(null);
-    setRemoveImage(false);
+    setSelectedFile(null);
 
-    // Show existing Cloudinary image
-    setImagePreview(post.imageUrl ?? null);
+    setRemoveMedia(false);
+
+    setMediaPreview(post.mediaUrl ?? null);
+
+    setMediaType(post.mediaType ?? null);
 
     setError("");
   }, [post]);
 
-  // Create preview when a new file is selected
+  // =========================================================
+  // CREATE PREVIEW FOR NEW FILE
+  // =========================================================
+
   useEffect(() => {
-    if (!selectedImage) {
+    if (!selectedFile) {
       return;
     }
 
-    const previewUrl = URL.createObjectURL(selectedImage);
+    const previewUrl = URL.createObjectURL(selectedFile);
 
-    setImagePreview(previewUrl);
+    setMediaPreview(previewUrl);
 
     return () => {
       URL.revokeObjectURL(previewUrl);
     };
-  }, [selectedImage]);
+  }, [selectedFile]);
 
-  if (!open || !post) {
-    return null;
-  }
+  // =========================================================
+  // SELECT MEDIA
+  // =========================================================
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleMediaSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
 
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setError("Please select a valid image.");
+    if (!file) {
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Image size must be less than 5MB.");
+    // IMAGE
+    if (file.type.startsWith("image/")) {
+      setError("");
+
+      setSelectedFile(file);
+
+      setMediaType("IMAGE");
+
+      setRemoveMedia(false);
+
+      event.target.value = "";
+
       return;
     }
 
-    setError("");
-    setRemoveImage(false);
-    setSelectedImage(file);
+    // VIDEO
+    if (file.type.startsWith("video/")) {
+      if (file.size > MAX_VIDEO_SIZE) {
+        setError("Video must be smaller than 100 MB.");
+
+        event.target.value = "";
+
+        return;
+      }
+
+      setError("");
+
+      setSelectedFile(file);
+
+      setMediaType("VIDEO");
+
+      setRemoveMedia(false);
+
+      event.target.value = "";
+
+      return;
+    }
+
+    setError("Please select an image or video.");
+
+    event.target.value = "";
   };
 
-  const handleRemoveImage = () => {
-    setSelectedImage(null);
-    setImagePreview(null);
-    setRemoveImage(true);
+  // =========================================================
+  // REMOVE MEDIA
+  // =========================================================
+
+  const handleRemoveMedia = () => {
+    setSelectedFile(null);
+
+    setMediaPreview(null);
+
+    setMediaType(null);
+
+    setRemoveMedia(true);
+
+    setError("");
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // =========================================================
+  // CHANGE MEDIA
+  // =========================================================
+
+  const handleChangeMedia = () => {
+    fileInputRef.current?.click();
+  };
+
+  // =========================================================
+  // SUBMIT
+  // =========================================================
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!post) {
+      return;
+    }
 
     if (!description.trim()) {
       setError("Post description cannot be empty.");
+
       return;
     }
 
     try {
       setSaving(true);
+
       setError("");
 
-      const updatedPost = await updatePost(
-        post.id,
-        {
-          description: description.trim(),
-          category,
-        },
-        selectedImage,
-        removeImage,
-      );
+      let uploadedMediaUrl: string | null | undefined = undefined;
+
+      let uploadedMediaType: MediaType | null | undefined = undefined;
+
+      // =====================================================
+      // NEW MEDIA
+      // =====================================================
+
+      if (selectedFile && mediaType) {
+        setProcessingMedia(true);
+
+        // ===================================================
+        // IMAGE
+        // ===================================================
+
+        if (mediaType === "IMAGE") {
+          console.log(
+            "Original image:",
+            (selectedFile.size / 1024 / 1024).toFixed(2),
+            "MB",
+          );
+
+          const compressedImage = await compressImage(selectedFile);
+
+          console.log(
+            "Compressed image:",
+            (compressedImage.size / 1024 / 1024).toFixed(2),
+            "MB",
+          );
+
+          const result = await uploadPostImageToCloudinary(compressedImage);
+
+          uploadedMediaUrl = result.secure_url;
+
+          uploadedMediaType = "IMAGE";
+        }
+
+        // ===================================================
+        // VIDEO
+        // ===================================================
+
+        if (mediaType === "VIDEO") {
+          console.log(
+            "Original video:",
+            (selectedFile.size / 1024 / 1024).toFixed(2),
+            "MB",
+          );
+
+          const compressedVideo = await compressVideo(selectedFile);
+
+          console.log(
+            "Compressed video:",
+            (compressedVideo.size / 1024 / 1024).toFixed(2),
+            "MB",
+          );
+
+          const result = await uploadPostVideoToCloudinary(compressedVideo);
+
+          uploadedMediaUrl = result.secure_url;
+
+          uploadedMediaType = "VIDEO";
+        }
+
+        setProcessingMedia(false);
+      }
+
+      // =====================================================
+      // UPDATE DATA
+      // =====================================================
+
+      const data: CreatePostData = {
+        description: description.trim(),
+
+        category,
+
+        mediaUrl: uploadedMediaUrl,
+
+        mediaType: uploadedMediaType,
+      };
+
+      // =====================================================
+      // UPDATE POST
+      // =====================================================
+
+      const updatedPost = await updatePost(post.id, data, removeMedia);
 
       onUpdated(updatedPost);
+
       onClose();
     } catch (err) {
       console.error("Failed to update post:", err);
 
-      setError("Failed to update post. Please try again.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to update post. Please try again.",
+      );
     } finally {
       setSaving(false);
+
+      setProcessingMedia(false);
     }
   };
+
+  // =========================================================
+  // CLOSED
+  // =========================================================
+
+  if (!open || !post) {
+    return null;
+  }
+
+  // =========================================================
+  // RENDER
+  // =========================================================
 
   return (
     <div
@@ -143,9 +342,11 @@ const EditPostModal = ({
         p-4
         backdrop-blur-sm
       "
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          if (!saving) {
+            onClose();
+          }
         }
       }}
     >
@@ -164,7 +365,10 @@ const EditPostModal = ({
           dark:bg-slate-900
         "
       >
-        {/* Header */}
+        {/* ===================================================
+            HEADER
+        =================================================== */}
+
         <div
           className="
             sticky
@@ -183,9 +387,25 @@ const EditPostModal = ({
           "
         >
           <div>
-            <h2 className="text-sm font-semibold">Edit Post</h2>
+            <h2
+              className="
+                text-sm
+                font-semibold
+                text-slate-900
+                dark:text-white
+              "
+            >
+              Edit Post
+            </h2>
 
-            <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+            <p
+              className="
+                mt-0.5
+                text-[11px]
+                text-slate-500
+                dark:text-slate-400
+              "
+            >
               Update your post
             </p>
           </div>
@@ -204,24 +424,42 @@ const EditPostModal = ({
               text-slate-400
               hover:bg-slate-100
               dark:hover:bg-slate-800
+              disabled:opacity-50
             "
           >
             <X size={17} />
           </button>
         </div>
 
+        {/* ===================================================
+            FORM
+        =================================================== */}
+
         <form onSubmit={handleSubmit} className="space-y-4 p-4">
-          {/* Description */}
+          {/* =================================================
+              DESCRIPTION
+          ================================================= */}
+
           <div>
-            <label className="mb-1.5 block text-xs font-semibold">
+            <label
+              className="
+                mb-1.5
+                block
+                text-xs
+                font-semibold
+                text-slate-900
+                dark:text-white
+              "
+            >
               Description
             </label>
 
             <textarea
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(event) => setDescription(event.target.value)}
               rows={5}
               maxLength={1000}
+              disabled={saving}
               className="
                 w-full
                 resize-none
@@ -238,28 +476,47 @@ const EditPostModal = ({
                 dark:border-slate-700
                 dark:bg-slate-950
                 dark:text-white
+                disabled:opacity-60
               "
               placeholder="What's happening around campus?"
             />
 
             <div className="mt-1 flex justify-end">
-              <span className="text-[10px] text-slate-400">
+              <span
+                className="
+                  text-[10px]
+                  text-slate-400
+                "
+              >
                 {description.length}/1000
               </span>
             </div>
           </div>
 
-          {/* Category */}
+          {/* =================================================
+              CATEGORY
+          ================================================= */}
+
           <div>
-            <label className="mb-1.5 block text-xs font-semibold">
+            <label
+              className="
+                mb-1.5
+                block
+                text-xs
+                font-semibold
+                text-slate-900
+                dark:text-white
+              "
+            >
               Category
             </label>
 
             <select
               value={category}
-              onChange={(e) =>
-                setCategory(e.target.value as CreatePostData["category"])
+              onChange={(event) =>
+                setCategory(event.target.value as CreatePostData["category"])
               }
+              disabled={saving}
               className="
                 w-full
                 rounded-xl
@@ -288,52 +545,109 @@ const EditPostModal = ({
             </select>
           </div>
 
-          {/* Image */}
+          {/* =================================================
+              MEDIA
+          ================================================= */}
+
           <div>
-            <label className="mb-1.5 block text-xs font-semibold">
-              Post Image
+            <label
+              className="
+                mb-1.5
+                block
+                text-xs
+                font-semibold
+                text-slate-900
+                dark:text-white
+              "
+            >
+              Post Media
             </label>
 
-            {imagePreview ? (
-              <div className="relative overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700">
-                <img
-                  src={imagePreview}
-                  alt="Post preview"
-                  className="
-                    max-h-72
-                    w-full
-                    object-cover
+            {/* ===============================================
+                MEDIA PREVIEW
+            =============================================== */}
+
+            {mediaPreview && mediaType && (
+              <div
+                className="
+                    relative
+                    overflow-hidden
+                    rounded-xl
+                    border
+                    border-slate-200
+                    bg-black
+                    dark:border-slate-700
                   "
-                />
+              >
+                {/* IMAGE */}
+
+                {mediaType === "IMAGE" && (
+                  <img
+                    src={mediaPreview}
+                    alt="Post preview"
+                    className="
+                        max-h-80
+                        w-full
+                        object-contain
+                      "
+                  />
+                )}
+
+                {/* VIDEO */}
+
+                {mediaType === "VIDEO" && (
+                  <video
+                    src={mediaPreview}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    className="
+                        max-h-80
+                        w-full
+                        object-contain
+                        bg-black
+                      "
+                  />
+                )}
+
+                {/* REMOVE */}
 
                 <button
                   type="button"
-                  onClick={handleRemoveImage}
+                  onClick={handleRemoveMedia}
                   disabled={saving}
                   className="
-                    absolute
-                    right-2
-                    top-2
-                    flex
-                    h-8
-                    w-8
-                    items-center
-                    justify-center
-                    rounded-full
-                    bg-black/60
-                    text-white
-                    transition
-                    hover:bg-red-600
-                  "
-                  aria-label="Remove image"
+                      absolute
+                      right-2
+                      top-2
+                      flex
+                      h-8
+                      w-8
+                      items-center
+                      justify-center
+                      rounded-full
+                      bg-black/60
+                      text-white
+                      transition
+                      hover:bg-red-600
+                      disabled:opacity-50
+                    "
+                  aria-label="Remove media"
                 >
                   <Trash2 size={15} />
                 </button>
               </div>
-            ) : (
+            )}
+
+            {/* ===============================================
+                EMPTY MEDIA
+            =============================================== */}
+
+            {!mediaPreview && (
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={handleChangeMedia}
+                disabled={saving}
                 className="
                   flex
                   w-full
@@ -350,6 +664,8 @@ const EditPostModal = ({
                   transition
                   hover:border-violet-400
                   hover:bg-violet-50
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
                   dark:border-slate-700
                   dark:bg-slate-950
                   dark:text-slate-400
@@ -358,39 +674,120 @@ const EditPostModal = ({
               >
                 <ImagePlus size={24} />
 
-                <span className="mt-2 text-xs font-semibold">Add image</span>
+                <span
+                  className="
+                    mt-2
+                    text-xs
+                    font-semibold
+                  "
+                >
+                  Add photo or video
+                </span>
 
-                <span className="mt-1 text-[10px]">PNG, JPG up to 5MB</span>
+                <span
+                  className="
+                    mt-1
+                    text-[10px]
+                  "
+                >
+                  Images or videos up to 100MB
+                </span>
               </button>
             )}
+
+            {/* ===============================================
+                FILE INPUT
+            =============================================== */}
 
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
-              onChange={handleImageSelect}
+              accept="image/*,video/*"
+              onChange={handleMediaSelect}
               className="hidden"
             />
 
-            {imagePreview && (
+            {/* ===============================================
+                CHANGE MEDIA
+            =============================================== */}
+
+            {mediaPreview && (
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={handleChangeMedia}
+                disabled={saving}
                 className="
                   mt-2
+                  flex
+                  items-center
+                  gap-1.5
                   text-xs
                   font-medium
                   text-violet-600
                   hover:text-violet-700
+                  disabled:opacity-50
                   dark:text-violet-400
                 "
               >
-                Change image
+                {mediaType === "IMAGE" ? (
+                  <ImagePlus size={14} />
+                ) : (
+                  <Video size={14} />
+                )}
+                Change media
               </button>
+            )}
+
+            {/* ===============================================
+                REMOVE MESSAGE
+            =============================================== */}
+
+            {removeMedia && (
+              <p
+                className="
+                  mt-2
+                  text-[10px]
+                  text-red-500
+                "
+              >
+                Media will be removed when you save the post.
+              </p>
             )}
           </div>
 
-          {/* Error */}
+          {/* =================================================
+              PROCESSING
+          ================================================= */}
+
+          {processingMedia && (
+            <div
+              className="
+                flex
+                items-center
+                gap-2
+                rounded-xl
+                bg-violet-50
+                px-3
+                py-2.5
+                text-xs
+                font-medium
+                text-violet-700
+                dark:bg-violet-500/10
+                dark:text-violet-300
+              "
+            >
+              <RotateCcw size={15} className="animate-spin" />
+
+              {mediaType === "VIDEO"
+                ? "Compressing video..."
+                : "Compressing image..."}
+            </div>
+          )}
+
+          {/* =================================================
+              ERROR
+          ================================================= */}
+
           {error && (
             <div
               className="
@@ -411,7 +808,10 @@ const EditPostModal = ({
             </div>
           )}
 
-          {/* Actions */}
+          {/* =================================================
+              ACTIONS
+          ================================================= */}
+
           <div className="flex gap-2 pt-1">
             <button
               type="button"
@@ -428,6 +828,7 @@ const EditPostModal = ({
                 font-semibold
                 text-slate-600
                 hover:bg-slate-100
+                disabled:opacity-50
                 dark:border-slate-700
                 dark:text-slate-300
                 dark:hover:bg-slate-800
@@ -438,7 +839,7 @@ const EditPostModal = ({
 
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || processingMedia}
               className="
                 flex
                 flex-1
@@ -459,7 +860,11 @@ const EditPostModal = ({
             >
               <Save size={14} />
 
-              {saving ? "Saving..." : "Save Changes"}
+              {processingMedia
+                ? "Processing..."
+                : saving
+                  ? "Saving..."
+                  : "Save Changes"}
             </button>
           </div>
         </form>

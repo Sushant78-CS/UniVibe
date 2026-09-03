@@ -1,5 +1,6 @@
 package com.example.NotesRoom.entity;
 
+import com.example.NotesRoom.dto.post.MediaType;
 import com.example.NotesRoom.dto.post.PostCategory;
 import jakarta.persistence.*;
 import lombok.*;
@@ -32,7 +33,10 @@ public class Post {
     @Column(nullable = false)
     private PostCategory category;
 
-    private String imageUrl;
+    private String mediaUrl;
+
+    @Enumerated(EnumType.STRING)
+    private MediaType mediaType;
 
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();

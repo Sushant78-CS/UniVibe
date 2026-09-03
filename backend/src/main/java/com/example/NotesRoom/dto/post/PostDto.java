@@ -1,5 +1,6 @@
 package com.example.NotesRoom.dto.post;
 
+
 import java.time.LocalDateTime;
 
 public record PostDto(
@@ -11,7 +12,8 @@ public record PostDto(
         String profileImage,
         String description,
         PostCategory category,
-        String imageUrl,
+        String mediaUrl,
+        MediaType mediaType,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
 

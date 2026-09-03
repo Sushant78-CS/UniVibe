@@ -1,24 +1,27 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Search, SlidersHorizontal, X } from "lucide-react";
+import { useNavigate } from "react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import FloatingTabs from "../../components/home/FloatingTabs";
 import PersonCard from "../../components/discover/PersonCard";
 
 import { useRecommendationApi } from "../../api/recommendationApi";
-import { useNavigate } from "react-router";
+
 import { useConnectionApi } from "../../api/connectionApi";
 import { useSearchApi } from "../../api/searchApi";
+import type { DiscoverPerson } from "../../api/discoverApi";
 
 const DiscoverPage = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
   const { getRecommendations } = useRecommendationApi();
   const { sendConnection } = useConnectionApi();
   const { searchProfiles } = useSearchApi();
 
-  const [people, setPeople] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
   const [connectingId, setConnectingId] = useState<number | null>(null);
+
   const [query, setQuery] = useState("");
   const [college, setCollege] = useState("");
   const [department, setDepartment] = useState("");
@@ -26,62 +29,97 @@ const DiscoverPage = () => {
 
   const [showFilters, setShowFilters] = useState(false);
 
-  const loadPeople = async () => {
-    try {
-      setLoading(true);
+  // ================= RECOMMENDATIONS =================
 
+  const {
+    data: people = [],
+    isLoading: loading,
+    isError,
+    refetch,
+  } = useQuery<DiscoverPerson[]>({
+    queryKey: ["recommendations"],
+    queryFn: async (): Promise<DiscoverPerson[]> => {
       const data = await getRecommendations();
 
       console.log("Recommendations from backend:", data);
 
-      let mappedPeople = data.recommendations.map((person) => ({
-        id: person.profileId,
-        userId: person.userId,
-        fullName: person.fullName,
-        username: person.username,
-        bio: person.bio,
-        profileImage: person.profileImage,
-        college: person.college,
-        department: person.department,
-        year: person.year,
-        interests: person.interests,
-        compatibilityScore: person.score,
-        connectionStatus: person.connectionStatus,
-      }));
+      return data.recommendations.map(
+        (person): DiscoverPerson => ({
+          id: person.profileId,
+          userId: person.userId,
+          fullName: person.fullName,
+          username: person.username,
+          bio: person.bio,
+          profileImage: person.profileImage,
+          college: person.college || "",
+          department: person.department || "",
+          year: person.year || "",
+          interests: person.interests || "",
+          score: person.score,
+          connectionStatus: person.connectionStatus as
+            | "NONE"
+            | "PENDING_SENT"
+            | "PENDING_RECEIVED"
+            | "CONNECTED",
+        }),
+      );
+    },
 
-      // Search
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
 
-      // College filter
-      if (college.trim()) {
-        mappedPeople = mappedPeople.filter(
-          (person) => person.college?.toLowerCase() === college.toLowerCase(),
-        );
+  // ================= FILTERED PEOPLE =================
+
+  const filteredPeople = people.filter((person) => {
+    // Search
+    if (query.trim()) {
+      const searchText = query.toLowerCase();
+
+      const matchesSearch =
+        person.fullName?.toLowerCase().includes(searchText) ||
+        person.username?.toLowerCase().includes(searchText) ||
+        person.bio?.toLowerCase().includes(searchText) ||
+        person.department?.toLowerCase().includes(searchText) ||
+        person.college?.toLowerCase().includes(searchText) ||
+        person.interests
+          ?.split(",")
+          .some((interest: string) =>
+            interest.toLowerCase().includes(searchText),
+          );
+
+      if (!matchesSearch) {
+        return false;
       }
-
-      // Department filter
-      if (department.trim()) {
-        mappedPeople = mappedPeople.filter(
-          (person) =>
-            person.department?.toLowerCase() === department.toLowerCase(),
-        );
-      }
-
-      // Year filter
-      if (year) {
-        mappedPeople = mappedPeople.filter((person) => person.year === year);
-      }
-
-      setPeople(mappedPeople);
-    } catch (error) {
-      console.error("Failed to load recommendations:", error);
-    } finally {
-      setLoading(false);
     }
-  };
 
-  useEffect(() => {
-    loadPeople();
-  }, []);
+    // College
+    if (
+      college.trim() &&
+      person.college?.toLowerCase() !== college.toLowerCase()
+    ) {
+      return false;
+    }
+
+    // Department
+    if (
+      department.trim() &&
+      person.department?.toLowerCase() !== department.toLowerCase()
+    ) {
+      return false;
+    }
+
+    // Year
+    if (year && person.year !== year) {
+      return false;
+    }
+
+    return true;
+  });
+
+  // ================= CONNECT =================
 
   const handleConnect = async (userId: number) => {
     try {
@@ -89,15 +127,18 @@ const DiscoverPage = () => {
 
       await sendConnection(userId);
 
-      setPeople((prev) =>
-        prev.map((person) =>
-          person.userId === userId
-            ? {
-                ...person,
-                connectionStatus: "PENDING_SENT",
-              }
-            : person,
-        ),
+      // Update cached recommendations
+      queryClient.setQueryData(
+        ["recommendations"],
+        (currentPeople: typeof people) =>
+          currentPeople.map((person) =>
+            person.userId === userId
+              ? {
+                  ...person,
+                  connectionStatus: "PENDING_SENT",
+                }
+              : person,
+          ),
       );
     } catch (error) {
       console.error("Connection request failed:", error);
@@ -106,17 +147,16 @@ const DiscoverPage = () => {
     }
   };
 
+  // ================= SEARCH =================
+
   const handleSearch = async (event: React.FormEvent) => {
     event.preventDefault();
 
     if (!query.trim()) {
-      loadPeople();
       return;
     }
 
     try {
-      setLoading(true);
-
       const searchResponse = await searchProfiles(query.trim());
 
       console.log("Linear Search response:", searchResponse);
@@ -125,35 +165,23 @@ const DiscoverPage = () => {
         searchResponse.results.map((result) => result.profileId),
       );
 
-      const data = await getRecommendations();
-
-      const mappedPeople = data.recommendations
-        .map((person) => ({
-          id: person.profileId,
-          userId: person.userId,
-          fullName: person.fullName,
-          username: person.username,
-          bio: person.bio,
-          profileImage: person.profileImage,
-          college: person.college,
-          department: person.department,
-          year: person.year,
-          interests: person.interests,
-          compatibilityScore: person.score,
-          connectionStatus: person.connectionStatus,
-        }))
-        .filter((person) => resultIds.has(person.id));
-
-      setPeople(mappedPeople);
+      // Update the query-filtered result using
+      // the cached recommendation data.
+      queryClient.setQueryData(
+        ["recommendations"],
+        (currentPeople: typeof people) =>
+          currentPeople.filter((person) => resultIds.has(person.id)),
+      );
 
       console.log("Algorithm:", searchResponse.algorithm);
+
       console.log("Time Complexity:", searchResponse.timeComplexity);
     } catch (error) {
       console.error("Search failed:", error);
-    } finally {
-      setLoading(false);
     }
   };
+
+  // ================= CLEAR FILTERS =================
 
   const clearFilters = () => {
     setQuery("");
@@ -161,66 +189,68 @@ const DiscoverPage = () => {
     setDepartment("");
     setYear("");
 
-    setTimeout(() => {
-      loadPeople();
-    }, 0);
+    // Restore fresh recommendations
+    refetch();
   };
+
+  // ================= UI =================
 
   return (
     <div
       className="
-      min-h-screen
-      bg-slate-50
-      pb-28
-      text-slate-900
-      dark:bg-slate-950
-      dark:text-white
-    "
+        min-h-screen
+        bg-slate-50
+        pb-28
+        text-slate-900
+        dark:bg-slate-950
+        dark:text-white
+      "
     >
       <main
         className="
-        mx-auto
-        w-full
-        max-w-6xl
-        px-4
-        py-6
-        sm:px-6
-      "
+          mx-auto
+          w-full
+          max-w-6xl
+          px-4
+          py-6
+          sm:px-6
+        "
       >
         {/* Header */}
+
         <section>
           <p
             className="
-            text-sm
-            font-semibold
-            text-violet-600
-            dark:text-violet-400
-          "
+              text-sm
+              font-semibold
+              text-violet-600
+              dark:text-violet-400
+            "
           >
             DISCOVER
           </p>
 
           <h1
             className="
-            mt-2
-            text-3xl
-            font-bold
-            tracking-tight
-            sm:text-4xl
-          "
+              mt-2
+              text-3xl
+              font-bold
+              tracking-tight
+              sm:text-4xl
+            "
           >
             Find your people. ✨
           </h1>
 
           <p
             className="
-            mt-2
-            max-w-xl
-            text-sm
-            leading-6
-            text-slate-500
-            dark:text-slate-400
-          "
+              mt-2
+              max-w-xl
+              text-sm
+              leading-6
+              text-slate-500
+              dark:text-slate-400
+            "
           >
             Discover students who share your interests, course, college and
             vibe.
@@ -228,18 +258,20 @@ const DiscoverPage = () => {
         </section>
 
         {/* Search */}
+
         <form onSubmit={handleSearch} className="mt-6 flex h-12 gap-3">
-          {/* Search Input */}
           <div className="relative min-w-0 flex-1">
             <Search
               size={18}
               strokeWidth={2}
               className="
-        pointer-events-none
-        absolute left-4 top-1/2
-        -translate-y-1/2
-        text-slate-400
-      "
+                pointer-events-none
+                absolute
+                left-4
+                top-1/2
+                -translate-y-1/2
+                text-slate-400
+              "
             />
 
             <input
@@ -247,91 +279,97 @@ const DiscoverPage = () => {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search people, interests or department..."
               className="
-        h-12 w-full
-        rounded-2xl
-        border border-slate-200
-        bg-white
-        pl-11 pr-4
-        text-sm text-slate-900
-        outline-none
-        transition
-        placeholder:text-slate-400
-        focus:border-violet-500
-        focus:ring-4
-        focus:ring-violet-500/10
-        dark:border-slate-800
-        dark:bg-slate-900
-        dark:text-white
-        dark:placeholder:text-slate-500
-      "
+                h-12
+                w-full
+                rounded-2xl
+                border
+                border-slate-200
+                bg-white
+                pl-11
+                pr-4
+                text-sm
+                text-slate-900
+                outline-none
+                transition
+                placeholder:text-slate-400
+                focus:border-violet-500
+                focus:ring-4
+                focus:ring-violet-500/10
+                dark:border-slate-800
+                dark:bg-slate-900
+                dark:text-white
+                dark:placeholder:text-slate-500
+              "
             />
           </div>
 
-          {/* Search Button */}
           <button
             type="submit"
             className="
-      flex h-12 shrink-0
-      items-center justify-center
-      rounded-2xl
-      bg-violet-600
-      px-5
-      text-sm font-semibold
-      text-white
-      transition
-      hover:bg-violet-700
-      active:scale-[0.98]
-    "
+              flex
+              h-12
+              shrink-0
+              items-center
+              justify-center
+              rounded-2xl
+              bg-violet-600
+              px-5
+              text-sm
+              font-semibold
+              text-white
+              transition
+              hover:bg-violet-700
+              active:scale-[0.98]
+            "
           >
             Search
           </button>
 
-          {/* Filter Button */}
           <button
             type="button"
             onClick={() => setShowFilters((value) => !value)}
             aria-label="Open filters"
             className="
-      flex h-12 w-12 shrink-0
-      items-center justify-center
-      rounded-2xl
-      border border-slate-200
-      bg-white
-      text-slate-600
-      transition
-      hover:bg-slate-50
-      active:scale-[0.98]
-      dark:border-slate-800
-      dark:bg-slate-900
-      dark:text-slate-300
-      dark:hover:bg-slate-800
-    "
+              flex
+              h-12
+              w-12
+              shrink-0
+              items-center
+              justify-center
+              rounded-2xl
+              border
+              border-slate-200
+              bg-white
+              text-slate-600
+              transition
+              hover:bg-slate-50
+              active:scale-[0.98]
+              dark:border-slate-800
+              dark:bg-slate-900
+              dark:text-slate-300
+              dark:hover:bg-slate-800
+            "
           >
             <SlidersHorizontal size={18} />
           </button>
         </form>
 
         {/* Filters */}
+
         {showFilters && (
           <div
             className="
-            mt-4
-            rounded-3xl
-            border
-            border-slate-200
-            bg-white
-            p-5
-            dark:border-slate-800
-            dark:bg-slate-900
-          "
-          >
-            <div
-              className="
-              flex
-              items-center
-              justify-between
+              mt-4
+              rounded-3xl
+              border
+              border-slate-200
+              bg-white
+              p-5
+              dark:border-slate-800
+              dark:bg-slate-900
             "
-            >
+          >
+            <div className="flex items-center justify-between">
               <h2 className="font-semibold">Filters</h2>
 
               <button
@@ -354,11 +392,11 @@ const DiscoverPage = () => {
 
             <div
               className="
-              mt-4
-              grid
-              gap-3
-              sm:grid-cols-3
-            "
+                mt-4
+                grid
+                gap-3
+                sm:grid-cols-3
+              "
             >
               <input
                 value={college}
@@ -429,7 +467,7 @@ const DiscoverPage = () => {
 
             <button
               type="button"
-              onClick={loadPeople}
+              onClick={() => refetch()}
               className="
                 mt-4
                 w-full
@@ -449,39 +487,34 @@ const DiscoverPage = () => {
         )}
 
         {/* Results */}
+
         <section className="mt-8">
-          <div
-            className="
-            mb-4
-            flex
-            items-center
-            justify-between
-          "
-          >
+          <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-bold">People</h2>
 
             {!loading && (
               <span
                 className="
-                text-sm
-                text-slate-500
-                dark:text-slate-400
-              "
+                  text-sm
+                  text-slate-500
+                  dark:text-slate-400
+                "
               >
-                {people.length} found
+                {filteredPeople.length} found
               </span>
             )}
           </div>
 
           {/* Loading */}
+
           {loading && (
             <div
               className="
-              grid
-              gap-4
-              sm:grid-cols-2
-              lg:grid-cols-3
-            "
+                grid
+                gap-4
+                sm:grid-cols-2
+                lg:grid-cols-3
+              "
             >
               {[1, 2, 3, 4, 5, 6].map((item) => (
                 <div
@@ -498,36 +531,68 @@ const DiscoverPage = () => {
             </div>
           )}
 
-          {/* Empty */}
-          {!loading && people.length === 0 && (
+          {/* Error */}
+
+          {!loading && isError && (
             <div
               className="
-              rounded-3xl
-              border
-              border-dashed
-              border-slate-300
-              bg-white
-              p-10
-              text-center
-              dark:border-slate-700
-              dark:bg-slate-900
-            "
-            >
-              <h3
-                className="
-                font-semibold
+                rounded-3xl
+                border
+                border-dashed
+                border-slate-300
+                bg-white
+                p-10
+                text-center
+                dark:border-slate-700
+                dark:bg-slate-900
               "
+            >
+              <h3 className="font-semibold">Failed to load people</h3>
+
+              <button
+                type="button"
+                onClick={() => refetch()}
+                className="
+                  mt-4
+                  rounded-xl
+                  bg-violet-600
+                  px-4
+                  py-2
+                  text-sm
+                  font-semibold
+                  text-white
+                "
               >
-                No people found
-              </h3>
+                Try again
+              </button>
+            </div>
+          )}
+
+          {/* Empty */}
+
+          {!loading && !isError && filteredPeople.length === 0 && (
+            <div
+              className="
+                  rounded-3xl
+                  border
+                  border-dashed
+                  border-slate-300
+                  bg-white
+                  p-10
+                  text-center
+                  dark:border-slate-700
+                  dark:bg-slate-900
+                "
+            >
+              <h3 className="font-semibold">No people found</h3>
 
               <p
                 className="
-                mt-2
-                text-sm
-                text-slate-500
-                dark:text-slate-400
-              "
+                    mt-2
+                    text-sm
+                    text-slate-500
+                    dark:text-slate-400
+                  "
               >
                 Try changing your search or filters.
               </p>
@@ -535,16 +600,17 @@ const DiscoverPage = () => {
           )}
 
           {/* People */}
-          {!loading && people.length > 0 && (
+
+          {!loading && !isError && filteredPeople.length > 0 && (
             <div
               className="
-              grid
-              gap-4
-              sm:grid-cols-2
-              lg:grid-cols-3
-            "
+                  grid
+                  gap-4
+                  sm:grid-cols-2
+                  lg:grid-cols-3
+                "
             >
-              {people.map((person) => (
+              {filteredPeople.map((person) => (
                 <div key={person.id}>
                   <PersonCard
                     person={person}
