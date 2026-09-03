@@ -7,7 +7,6 @@ import FloatingTabs from "../../components/home/FloatingTabs";
 import CreatePostModal from "../../components/posts/CreatePostModal";
 import EditPostModal from "../../components/posts/EditPostModal";
 import ConfirmModal from "../../components/common/ConfirmModal";
-import imageCompression from "browser-image-compression";
 
 const Posts = () => {
   const { getPosts, getMyPosts, deletePost } = usePostApi();

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 
-import AuthDivider from "./AuthDivider";
+// import AuthDivider from "./AuthDivider";
 import AuthError from "./AuthError";
-import GoogleButton from "./GoogleButton";
+// import GoogleButton from "./GoogleButton";
 import AuthFooter from "./AuthFooter";
 import EmailVerification from "./EmailVerification";
 import useClerkSignUp from "../../hooks/useClerkSignUp";
@@ -20,13 +20,13 @@ const SignUpForm = () => {
     isVerificationRequired,
     email: verificationEmail,
     loading,
-    signUpWithGoogle,
+    // signUpWithGoogle,
   } = useClerkSignUp();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [googleLoading, setGoogleLoading] = useState(false);
+  // const [googleLoading, setGoogleLoading] = useState(false);
 
   // --------------------------------
   // SIGN UP
@@ -108,20 +108,20 @@ const SignUpForm = () => {
   // GOOGLE
   // --------------------------------
 
-  const handleGoogle = async () => {
-    setError(null);
-    setGoogleLoading(true);
+  // const handleGoogle = async () => {
+  //   setError(null);
+  //   setGoogleLoading(true);
 
-    const result = await signUpWithGoogle();
+  //   const result = await signUpWithGoogle();
 
-    if (!result.success) {
-      setError(result.error ?? "Google signup failed.");
-    }
-    setGoogleLoading(false);
+  //   if (!result.success) {
+  //     setError(result.error ?? "Google signup failed.");
+  //   }
+  //   setGoogleLoading(false);
 
-    // Connect Google OAuth here later
-    console.log("Google signup clicked");
-  };
+  //   // Connect Google OAuth here later
+  //   console.log("Google signup clicked");
+  // };
 
   // --------------------------------
   // EMAIL VERIFICATION SCREEN

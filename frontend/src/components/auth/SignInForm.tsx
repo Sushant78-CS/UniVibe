@@ -1,21 +1,21 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 
-import AuthDivider from "./AuthDivider";
+// import AuthDivider from "./AuthDivider";
 import AuthError from "./AuthError";
-import GoogleButton from "./GoogleButton";
+// import GoogleButton from "./GoogleButton";
 
 import useClerkSignIn from "../../hooks/useClerkSignIn";
 
 const SignInForm = () => {
   const navigate = useNavigate();
 
-  const { signInUser, signInWithGoogle, loading } = useClerkSignIn();
+  const { signInUser, loading } = useClerkSignIn();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loadingState, setLoadingState] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
+  // const [googleLoading, setGoogleLoading] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -48,17 +48,17 @@ const SignInForm = () => {
   // GOOGLE
   // --------------------------------
 
-  const handleGoogle = async () => {
-    setError(null);
-    setGoogleLoading(true);
+  // const handleGoogle = async () => {
+  //   setError(null);
+  //   setGoogleLoading(true);
 
-    const result = await signInWithGoogle();
+  //   const result = await signInWithGoogle();
 
-    if (!result.success) {
-      setError(result.error ?? "Google sign in failed.");
-    }
-    setGoogleLoading(false);
-  };
+  //   if (!result.success) {
+  //     setError(result.error ?? "Google sign in failed.");
+  //   }
+  //   setGoogleLoading(false);
+  // };
 
   return (
     <div className="w-full max-w-md">
