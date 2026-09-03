@@ -114,7 +114,7 @@ const PostCard = ({
    * ================================
    */
 
-  const createdDate = new Date(post.createdAt);
+  const createdDate = new Date(`${post.createdAt}Z`);
 
   const formattedDate = createdDate.toLocaleDateString("en-IN", {
     day: "numeric",
@@ -135,8 +135,8 @@ const PostCard = ({
 
   const isEdited =
     post.updatedAt &&
-    new Date(post.updatedAt).getTime() >
-      new Date(post.createdAt).getTime() + 1000;
+    new Date(`${post.updatedAt}Z`).getTime() >
+      new Date(`${post.createdAt}Z`).getTime() + 1000;
 
   /*
    * ================================

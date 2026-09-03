@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, RefreshCw, Newspaper } from "lucide-react";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 
 import { usePostApi, type Post } from "../../api/postApi";
 import PostCard from "../../components/posts/PostCard";
@@ -9,73 +10,170 @@ import EditPostModal from "../../components/posts/EditPostModal";
 import ConfirmModal from "../../components/common/ConfirmModal";
 
 const Posts = () => {
+  /*
+   * ================================
+   * API / QUERY
+   * ================================
+   */
+
+  const queryClient = useQueryClient();
+
   const { getPosts, getMyPosts, deletePost } = usePostApi();
+
+  /*
+   * ================================
+   * REFS
+   * ================================
+   */
+
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  const [posts, setPosts] = useState<Post[]>([]);
+  /*
+   * ================================
+   * STATE
+   * ================================
+   */
+
   const [view, setView] = useState<"all" | "my">("all");
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [loadingMore, setLoadingMore] = useState(false);
+
   const [deletePostTarget, setDeletePostTarget] = useState<Post | null>(null);
+
   const [deleting, setDeleting] = useState(false);
+
   const [showCreatePostModal, setShowCreatePostModal] = useState(false);
+
   const [editingPost, setEditingPost] = useState<Post | null>(null);
-  const [loading, setLoading] = useState(true);
+
   const [error, setError] = useState("");
 
-  const loadPosts = async (pageNumber: number, append = false) => {
-    try {
-      if (append) {
-        setLoadingMore(true);
-      } else {
-        setLoading(true);
+  /*
+   * ================================
+   * POSTS QUERY
+   * ================================
+   */
+
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+    isError,
+  } = useInfiniteQuery({
+    /*
+     * Different cache for:
+     *
+     * ["posts", "all"]
+     * ["posts", "my"]
+     */
+    queryKey: ["posts", view],
+
+    /*
+     * Fetch the requested page
+     */
+    queryFn: async ({ pageParam }) => {
+      return view === "all"
+        ? getPosts(pageParam, 10)
+        : getMyPosts(pageParam, 10);
+    },
+
+    /*
+     * First page
+     */
+    initialPageParam: 0,
+
+    /*
+     * Determine whether another page exists
+     */
+    getNextPageParam: (lastPage, allPages) => {
+      const nextPage = allPages.length;
+
+      if (nextPage < lastPage.totalPages) {
+        return nextPage;
       }
 
-      setError("");
+      return undefined;
+    },
 
-      const data =
-        view === "all"
-          ? await getPosts(pageNumber, 10)
-          : await getMyPosts(pageNumber, 10);
+    /*
+     * Data is considered fresh for 2 minutes.
+     *
+     * If the user leaves Posts and comes back
+     * within 2 minutes, React Query uses the
+     * cached data instead of requesting it again.
+     */
+    staleTime: 1000 * 60 * 2,
 
-      if (append) {
-        setPosts((prev) => [...prev, ...data.content]);
-      } else {
-        setPosts(data.content);
-      }
+    /*
+     * Keep unused post cache for 30 minutes.
+     */
+    gcTime: 1000 * 60 * 30,
 
-      setTotalPages(data.totalPages);
-      setPage(pageNumber);
-    } catch (err) {
-      console.error("Failed to load posts:", err);
+    /*
+     * Don't automatically refetch simply because
+     * the browser window gets focus.
+     */
+    refetchOnWindowFocus: false,
+
+    /*
+     * Retry failed requests once.
+     */
+    retry: 1,
+  });
+
+  /*
+   * ================================
+   * FLATTEN POSTS
+   * ================================
+   *
+   * React Query stores:
+   *
+   * pages = [
+   *   page 0,
+   *   page 1,
+   *   page 2
+   * ]
+   *
+   * We turn them into one array for PostCard.
+   */
+
+  const posts: Post[] = data?.pages.flatMap((page) => page.content) ?? [];
+
+  /*
+   * ================================
+   * ERROR
+   * ================================
+   */
+
+  useEffect(() => {
+    if (isError) {
       setError("Unable to load posts. Please try again.");
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
+    } else {
+      setError("");
     }
-  };
+  }, [isError]);
+
+  /*
+   * ================================
+   * INFINITE SCROLL
+   * ================================
+   */
 
   useEffect(() => {
-    setPage(0);
-    setPosts([]);
-    setTotalPages(0);
+    const element = loadMoreRef.current;
 
-    loadPosts(0, false);
-  }, [view]);
+    if (!element) {
+      return;
+    }
 
-  useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         const target = entries[0];
 
-        if (
-          target.isIntersecting &&
-          !loading &&
-          !loadingMore &&
-          page < totalPages - 1
-        ) {
-          loadPosts(page + 1, true);
+        if (target.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
         }
       },
       {
@@ -83,50 +181,43 @@ const Posts = () => {
       },
     );
 
-    const element = loadMoreRef.current;
-
-    if (element) {
-      observer.observe(element);
-    }
+    observer.observe(element);
 
     return () => {
-      if (element) {
-        observer.unobserve(element);
-      }
+      observer.unobserve(element);
+      observer.disconnect();
     };
-  }, [page, totalPages, loading, loadingMore, view]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  /*
+   * ================================
+   * EDIT
+   * ================================
+   */
 
   const handleEdit = (post: Post) => {
     setEditingPost(post);
   };
 
-  const handlePostUpdated = (updatedPost: Post) => {
-    setPosts((prev) =>
-      prev.map((post) => (post.id === updatedPost.id ? updatedPost : post)),
-    );
-
+  const handlePostUpdated = async (_updatedPost: Post) => {
     setEditingPost(null);
+
+    /*
+     * The server has the latest version.
+     *
+     * Mark cached posts as stale and fetch
+     * the updated data.
+     */
+    await queryClient.invalidateQueries({
+      queryKey: ["posts"],
+    });
   };
 
-  // const handleDelete = async (post: Post) => {
-  //   const confirmed = window.confirm(
-  //     "Are you sure you want to delete this post?",
-  //   );
-
-  //   if (!confirmed) {
-  //     return;
-  //   }
-
-  //   try {
-  //     await deletePost(post.id);
-
-  //     setPosts((prev) => prev.filter((item) => item.id !== post.id));
-  //   } catch (err) {
-  //     console.error("Failed to delete post:", err);
-
-  //     setError("Failed to delete the post.");
-  //   }
-  // };
+  /*
+   * ================================
+   * DELETE
+   * ================================
+   */
 
   const handleDelete = (post: Post) => {
     setDeletePostTarget(post);
@@ -143,31 +234,77 @@ const Posts = () => {
 
       await deletePost(deletePostTarget.id);
 
-      if (posts.length === 1 && page > 0) {
-        setPage(page - 1);
-        await loadPosts(page - 1);
-      } else {
-        setPosts((prev) =>
-          prev.filter((item) => item.id !== deletePostTarget.id),
-        );
-      }
+      /*
+       * Refresh all post caches.
+       *
+       * This keeps:
+       *
+       * All Posts
+       * My Posts
+       *
+       * synchronized after deletion.
+       */
+      await queryClient.invalidateQueries({
+        queryKey: ["posts"],
+      });
 
       setDeletePostTarget(null);
     } catch (err) {
       console.error("Failed to delete post:", err);
+
       setError("Failed to delete the post. Please try again.");
     } finally {
       setDeleting(false);
     }
   };
 
+  /*
+   * ================================
+   * CREATE POST
+   * ================================
+   */
+
   const handlePostCreated = async () => {
     setShowCreatePostModal(false);
-    setPage(0);
-    setPosts([]);
-    setTotalPages(0);
-    await loadPosts(0, false);
+
+    /*
+     * A new post has been created.
+     *
+     * Invalidate both:
+     *
+     * ["posts", "all"]
+     * ["posts", "my"]
+     *
+     * so the feed gets the newest data.
+     */
+    await queryClient.invalidateQueries({
+      queryKey: ["posts"],
+    });
   };
+
+  /*
+   * ================================
+   * REFRESH
+   * ================================
+   */
+
+  const handleRefresh = async () => {
+    try {
+      setError("");
+
+      await refetch();
+    } catch (err) {
+      console.error("Failed to refresh posts:", err);
+
+      setError("Unable to refresh posts. Please try again.");
+    }
+  };
+
+  /*
+   * ================================
+   * RENDER
+   * ================================
+   */
 
   return (
     <div
@@ -191,137 +328,158 @@ const Posts = () => {
         "
       >
         {/* ================= HEADER ================= */}
+
         <div className="mb-3">
           <div className="flex items-center justify-between">
             <div className="min-w-0">
-              {/* <p className="text-[10px] font-semibold tracking-wider text-violet-600 dark:text-violet-400">
-                COMMUNITY
-              </p> */}
-
-              <h1 className="mt-0.5 text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+              <h1
+                className="
+                  mt-0.5
+                  text-xl
+                  font-bold
+                  tracking-tight
+                  text-slate-900
+                  dark:text-white
+                "
+              >
                 Campus Posts
               </h1>
 
-              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              <p
+                className="
+                  mt-0.5
+                  text-xs
+                  text-slate-500
+                  dark:text-slate-400
+                "
+              >
                 Discover what's happening around campus.
               </p>
             </div>
 
+            {/* REFRESH */}
+
             <button
               type="button"
-              onClick={async () => {
-                setPage(0);
-                setPosts([]);
-                await loadPosts(0, false);
-              }}
-              disabled={loading}
+              onClick={handleRefresh}
+              disabled={isFetching}
               aria-label="Refresh posts"
               className="
-        ml-3
-        flex
-        h-8
-        w-8
-        shrink-0
-        items-center
-        justify-center
-        rounded-lg
-        border
-        border-slate-200
-        bg-white
-        text-slate-500
-        transition
-        hover:bg-slate-100
-        active:scale-95
-        disabled:cursor-not-allowed
-        dark:border-slate-800
-        dark:bg-slate-900
-        dark:text-slate-400
-      "
+                ml-3
+                flex
+                h-8
+                w-8
+                shrink-0
+                items-center
+                justify-center
+                rounded-lg
+                border
+                border-slate-200
+                bg-white
+                text-slate-500
+                transition
+                hover:bg-slate-100
+                active:scale-95
+                disabled:cursor-not-allowed
+                dark:border-slate-800
+                dark:bg-slate-900
+                dark:text-slate-400
+              "
             >
-              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+              <RefreshCw
+                size={14}
+                className={isFetching ? "animate-spin" : ""}
+              />
             </button>
           </div>
         </div>
 
         {/* ================= POST FILTER ================= */}
-        {/* ================= POST FILTER ================= */}
+
         <div
           className="
-    mb-3
-    flex
-    w-full
-    rounded-lg
-    bg-slate-100
-    p-0.5
-    dark:bg-slate-800
-  "
+            mb-3
+            flex
+            w-full
+            rounded-lg
+            bg-slate-100
+            p-0.5
+            dark:bg-slate-800
+          "
         >
+          {/* ALL POSTS */}
+
           <button
             type="button"
             onClick={() => setView("all")}
             className={`
-      flex-1
-      rounded-md
-      px-3
-      py-1.5
-      text-[11px]
-      font-semibold
-      transition-all
-      ${
-        view === "all"
-          ? `
-            bg-white
-            text-violet-600
-            shadow-sm
-            dark:bg-slate-900
-            dark:text-violet-400
-          `
-          : `
-            text-slate-500
-            hover:text-slate-700
-            dark:text-slate-400
-            dark:hover:text-slate-200
-          `
-      }
-    `}
+              flex-1
+              rounded-md
+              px-3
+              py-1.5
+              text-[11px]
+              font-semibold
+              transition-all
+
+              ${
+                view === "all"
+                  ? `
+                    bg-white
+                    text-violet-600
+                    shadow-sm
+                    dark:bg-slate-900
+                    dark:text-violet-400
+                  `
+                  : `
+                    text-slate-500
+                    hover:text-slate-700
+                    dark:text-slate-400
+                    dark:hover:text-slate-200
+                  `
+              }
+            `}
           >
             All Posts
           </button>
+
+          {/* MY POSTS */}
 
           <button
             type="button"
             onClick={() => setView("my")}
             className={`
-      flex-1
-      rounded-md
-      px-3
-      py-1.5
-      text-[11px]
-      font-semibold
-      transition-all
-      ${
-        view === "my"
-          ? `
-            bg-white
-            text-violet-600
-            shadow-sm
-            dark:bg-slate-900
-            dark:text-violet-400
-          `
-          : `
-            text-slate-500
-            hover:text-slate-700
-            dark:text-slate-400
-            dark:hover:text-slate-200
-          `
-      }
-    `}
+              flex-1
+              rounded-md
+              px-3
+              py-1.5
+              text-[11px]
+              font-semibold
+              transition-all
+
+              ${
+                view === "my"
+                  ? `
+                    bg-white
+                    text-violet-600
+                    shadow-sm
+                    dark:bg-slate-900
+                    dark:text-violet-400
+                  `
+                  : `
+                    text-slate-500
+                    hover:text-slate-700
+                    dark:text-slate-400
+                    dark:hover:text-slate-200
+                  `
+              }
+            `}
           >
             My Posts
           </button>
         </div>
 
         {/* ================= ERROR ================= */}
+
         {error && (
           <div
             className="
@@ -342,8 +500,9 @@ const Posts = () => {
           </div>
         )}
 
-        {/* ================= LOADING ================= */}
-        {loading && (
+        {/* ================= INITIAL LOADING ================= */}
+
+        {isLoading && (
           <div className="space-y-4">
             {[1, 2, 3].map((item) => (
               <div
@@ -361,7 +520,8 @@ const Posts = () => {
         )}
 
         {/* ================= EMPTY ================= */}
-        {!loading && posts.length === 0 && (
+
+        {!isLoading && posts.length === 0 && (
           <div
             className="
               rounded-3xl
@@ -440,7 +600,8 @@ const Posts = () => {
         )}
 
         {/* ================= FEED ================= */}
-        {!loading && posts.length > 0 && (
+
+        {!isLoading && posts.length > 0 && (
           <>
             <div className="space-y-4">
               {posts.map((post) => (
@@ -454,23 +615,44 @@ const Posts = () => {
               ))}
             </div>
 
-            {/* Infinite scroll trigger */}
+            {/* ================= INFINITE SCROLL ================= */}
+
             <div
               ref={loadMoreRef}
-              className="flex min-h-16 items-center justify-center"
+              className="
+                flex
+                min-h-16
+                items-center
+                justify-center
+              "
             >
-              {loadingMore && (
-                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              {isFetchingNextPage && (
+                <div
+                  className="
+                    flex
+                    items-center
+                    gap-2
+                    text-xs
+                    text-slate-500
+                    dark:text-slate-400
+                  "
+                >
                   <RefreshCw size={14} className="animate-spin" />
                   Loading more posts...
                 </div>
               )}
 
-              {/* {!loadingMore && page >= totalPages - 1 && posts.length > 0 && (
-                <p className="py-4 text-xs text-slate-400">
+              {!hasNextPage && !isFetchingNextPage && posts.length > 0 && (
+                <p
+                  className="
+                      py-4
+                      text-xs
+                      text-slate-400
+                    "
+                >
                   You're all caught up.
                 </p>
-              )} */}
+              )}
             </div>
           </>
         )}
@@ -478,56 +660,71 @@ const Posts = () => {
 
       {/* ================= CREATE POST BUTTON ================= */}
 
-      {/* Create Post Button */}
-      <div className="fixed bottom-23 right-4 z-40 sm:right-6">
+      <div
+        className="
+          fixed
+          bottom-23
+          right-4
+          z-40
+          sm:right-6
+        "
+      >
         <button
           type="button"
           onClick={() => setShowCreatePostModal(true)}
           aria-label="Create post"
           className="
-      flex
-      h-14
-      w-14
-      items-center
-      justify-center
-      rounded-full
-      bg-violet-600
-      text-white
-      shadow-md
-      transition-all
-      duration-200
-      hover:scale-105
-      hover:bg-violet-700
-      active:scale-95
-      dark:bg-violet-500
-      dark:hover:bg-violet-600
-    "
+            flex
+            h-14
+            w-14
+            items-center
+            justify-center
+            rounded-full
+            bg-violet-600
+            text-white
+            shadow-md
+            transition-all
+            duration-200
+            hover:scale-105
+            hover:bg-violet-700
+            active:scale-95
+            dark:bg-violet-500
+            dark:hover:bg-violet-600
+          "
         >
           <Plus size={27} strokeWidth={2.5} />
         </button>
       </div>
 
       {/* ================= BOTTOM NAV ================= */}
+
       <FloatingTabs />
 
       {/* ================= CREATE POST MODAL ================= */}
+
       <CreatePostModal
         open={showCreatePostModal}
         onClose={() => setShowCreatePostModal(false)}
         onCreated={handlePostCreated}
       />
+
+      {/* ================= EDIT POST MODAL ================= */}
+
       <EditPostModal
         open={editingPost !== null}
         post={editingPost!}
         onClose={() => setEditingPost(null)}
         onUpdated={handlePostUpdated}
       />
+
+      {/* ================= DELETE CONFIRMATION ================= */}
+
       <ConfirmModal
         open={deletePostTarget !== null}
         title="Delete Post?"
         message={
           deletePostTarget
-            ? `Are you sure you want to delete this post? This action cannot be undone.`
+            ? "Are you sure you want to delete this post? This action cannot be undone."
             : ""
         }
         confirmText="Delete"

@@ -1,4 +1,4 @@
-import { ArrowLeft, Pencil, Sparkles } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 import { useNavigate } from "react-router";
 import ThemeToggle from "../common/ThemeToggle";
 
@@ -35,8 +35,11 @@ const ProfileTopBar = ({ showBackButton = false }: ProfileTopBarProps) => {
           sm:px-6
         "
       >
-        {/* Left */}
+        {/* ================= LEFT ================= */}
+
         <div className="flex items-center gap-2.5">
+          {/* Back Button */}
+
           {showBackButton && (
             <button
               type="button"
@@ -63,70 +66,60 @@ const ProfileTopBar = ({ showBackButton = false }: ProfileTopBarProps) => {
             </button>
           )}
 
-          {/* Logo */}
+          {/* ================= UNIVIBE WORDMARK ================= */}
+
           <button
             type="button"
             onClick={() => navigate("/home")}
+            aria-label="Go to home"
             className="
-              flex
-              items-center
-              gap-2
+              rounded-xl
               text-left
               transition
-              active:scale-[0.98]
+              active:scale-[0.97]
             "
           >
-            {/* Logo mark */}
             <div
               className="
-    flex
-    h-8
-    w-8
-    items-center
-    justify-center
-    rounded-xl
-    bg-gradient-to-br
-    from-indigo-600
-    to-violet-600
-    text-white
-    shadow-sm
-  "
+                bg-gradient-to-r
+                from-violet-600
+                via-purple-600
+                to-fuchsia-500
+                bg-clip-text
+                text-[20px]
+                font-extrabold
+                leading-none
+                tracking-[-0.04em]
+                text-transparent
+                dark:from-violet-400
+                dark:via-purple-400
+                dark:to-fuchsia-400
+              "
             >
-              <Sparkles size={16} />
+              UniVibe
             </div>
 
-            {/* Brand */}
-            <div className="leading-none">
-              <h1
-                className="
-                  text-sm
-                  font-bold
-                  tracking-tight
-                  text-slate-900
-                  dark:text-white
-                "
-              >
-                UniVibe
-              </h1>
-
-              <p
-                className="
-                  mt-0.5
-                  text-[9px]
-                  font-medium
-                  text-slate-400
-                  dark:text-slate-500
-                "
-              >
-                Your campus. Your people.
-              </p>
+            <div
+              className="
+                mt-1
+                text-[8px]
+                font-semibold
+                uppercase
+                tracking-[0.16em]
+                text-slate-400
+                dark:text-slate-500
+              "
+            >
+              Campus Community
             </div>
           </button>
         </div>
 
-        {/* Right */}
+        {/* ================= RIGHT ================= */}
+
         <div className="flex items-center gap-2">
           {/* Edit Profile */}
+
           <button
             type="button"
             onClick={() => navigate("/profile/edit")}
@@ -169,6 +162,7 @@ const ProfileTopBar = ({ showBackButton = false }: ProfileTopBarProps) => {
           </button>
 
           {/* Theme */}
+
           <ThemeToggle />
         </div>
       </div>

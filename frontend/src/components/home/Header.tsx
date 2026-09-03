@@ -1,4 +1,4 @@
-import { Bell, Sparkles } from "lucide-react";
+import { Bell } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useNotificationApi } from "../../api/notificationApi";
@@ -48,130 +48,121 @@ function DashboardHeader() {
       <div
         className="
           mx-auto
+          flex
           max-w-6xl
+          items-center
+          justify-between
           px-4
-          py-2.5
+          py-2
           sm:px-6
         "
       >
-        <div className="flex items-center justify-between">
-          {/* ================= LOGO ================= */}
-          <button
-            type="button"
-            onClick={() => navigate("/home")}
-            aria-label="Go to home"
+        {/* ================= UNIVIBE LOGO ================= */}
+
+        <button
+          type="button"
+          onClick={() => navigate("/home")}
+          aria-label="Go to home"
+          className="
+            rounded-xl
+            text-left
+            transition
+            active:scale-[0.97]
+          "
+        >
+          <div
             className="
-              flex
-              items-center
-              gap-2.5
-              rounded-xl
-              transition
-              active:scale-95
+              bg-gradient-to-r
+              from-violet-600
+              via-purple-600
+              to-fuchsia-500
+              bg-clip-text
+              text-[20px]
+              font-extrabold
+              leading-none
+              tracking-[-0.04em]
+              text-transparent
+              dark:from-violet-400
+              dark:via-purple-400
+              dark:to-fuchsia-400
             "
           >
-            {/* Logo Icon */}
-            <div
+            UniVibe
+          </div>
+
+          <div
+            className="
+              mt-1
+              text-[8px]
+              font-semibold
+              uppercase
+              tracking-[0.16em]
+              text-slate-400
+              dark:text-slate-500
+            "
+          >
+            Campus Community
+          </div>
+        </button>
+
+        {/* ================= NOTIFICATIONS ================= */}
+
+        <button
+          type="button"
+          onClick={() => navigate("/notifications")}
+          aria-label="Notifications"
+          className="
+            relative
+            flex
+            h-9
+            w-9
+            items-center
+            justify-center
+            rounded-xl
+            border
+            border-slate-200
+            bg-white
+            text-slate-600
+            transition
+            hover:bg-slate-100
+            active:scale-95
+            dark:border-slate-800
+            dark:bg-slate-900
+            dark:text-slate-300
+            dark:hover:bg-slate-800
+          "
+        >
+          <Bell size={18} strokeWidth={2} />
+
+          {/* Unread Badge */}
+
+          {unreadCount > 0 && (
+            <span
               className="
+                absolute
+                -right-1
+                -top-1
                 flex
-                h-9
-                w-9
+                min-h-4
+                min-w-4
                 items-center
                 justify-center
-                rounded-xl
-                bg-violet-600
+                rounded-full
+                bg-red-500
+                px-1
+                text-[9px]
+                font-bold
+                leading-none
                 text-white
-                dark:bg-violet-500
+                ring-2
+                ring-slate-50
+                dark:ring-slate-950
               "
             >
-              <Sparkles size={18} strokeWidth={2.5} />
-            </div>
-
-            {/* Brand */}
-            <div className="text-left">
-              <h1
-                className="
-                  text-base
-                  font-bold
-                  tracking-tight
-                  text-slate-900
-                  dark:text-white
-                "
-              >
-                UniVibe
-              </h1>
-
-              <p
-                className="
-                  -mt-0.5
-                  text-[9px]
-                  font-medium
-                  tracking-wide
-                  text-slate-400
-                  dark:text-slate-500
-                "
-              >
-                CAMPUS COMMUNITY
-              </p>
-            </div>
-          </button>
-
-          {/* ================= NOTIFICATIONS ================= */}
-          <button
-            type="button"
-            onClick={() => navigate("/notifications")}
-            aria-label="Notifications"
-            className="
-              relative
-              flex
-              h-9
-              w-9
-              items-center
-              justify-center
-              rounded-xl
-              border
-              border-slate-200
-              bg-white
-              text-slate-600
-              transition
-              hover:bg-slate-100
-              active:scale-95
-              dark:border-slate-800
-              dark:bg-slate-900
-              dark:text-slate-300
-              dark:hover:bg-slate-800
-            "
-          >
-            <Bell size={18} strokeWidth={2} />
-
-            {/* Unread Badge */}
-            {unreadCount > 0 && (
-              <span
-                className="
-                  absolute
-                  -right-1
-                  -top-1
-                  flex
-                  min-h-4
-                  min-w-4
-                  items-center
-                  justify-center
-                  rounded-full
-                  bg-red-500
-                  px-1
-                  text-[9px]
-                  font-bold
-                  leading-none
-                  text-white
-                  ring-2
-                  ring-slate-50
-                  dark:ring-slate-950
-                "
-              >
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
-            )}
-          </button>
-        </div>
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
+        </button>
       </div>
     </header>
   );
