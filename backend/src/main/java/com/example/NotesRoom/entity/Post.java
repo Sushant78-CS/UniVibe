@@ -5,6 +5,7 @@ import com.example.NotesRoom.dto.post.PostCategory;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,10 +39,11 @@ public class Post {
     @Enumerated(EnumType.STRING)
     private MediaType mediaType;
 
+    @Column(nullable = false)
     @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private Instant createdAt = Instant.now();
 
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     @OneToMany(
             mappedBy = "post",

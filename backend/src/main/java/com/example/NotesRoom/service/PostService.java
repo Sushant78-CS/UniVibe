@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -64,7 +65,7 @@ public class PostService {
                 .category(dto.category())
                 .mediaUrl(dto.mediaUrl())
                 .mediaType(mediaType)
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .build();
         Post savedPost = postRepository.save(post);
 
@@ -175,7 +176,7 @@ public class PostService {
                 );
             }
         }
-        post.setUpdatedAt(LocalDateTime.now());
+        post.setUpdatedAt(Instant.now());
         Post savedPost = postRepository.save(post);
 
         return toDto(savedPost, user);

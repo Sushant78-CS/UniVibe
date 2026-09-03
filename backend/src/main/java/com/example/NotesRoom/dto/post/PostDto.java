@@ -1,6 +1,7 @@
 package com.example.NotesRoom.dto.post;
 
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 public record PostDto(
@@ -14,8 +15,8 @@ public record PostDto(
         PostCategory category,
         String mediaUrl,
         MediaType mediaType,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt,
+        Instant createdAt,
+        Instant updatedAt,
 
         long likeCount,
         boolean likedByMe,

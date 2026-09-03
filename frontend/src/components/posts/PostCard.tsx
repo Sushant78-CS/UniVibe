@@ -116,29 +116,29 @@ const PostCard = ({
    * ================================
    */
 
-  const createdDate = new Date(`${post.createdAt}Z`);
+  const createdDate = new Date(post.createdAt);
 
   const formattedDate = createdDate.toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
     day: "numeric",
     month: "short",
     year: "numeric",
   });
 
   const formattedTime = createdDate.toLocaleTimeString("en-IN", {
+    timeZone: "Asia/Kolkata",
     hour: "numeric",
     minute: "2-digit",
   });
 
-  /*
-   * ================================
-   * EDITED
-   * ================================
-   */
+  const createdTimestamp = new Date(post.createdAt).getTime();
+
+  const updatedTimestamp = post.updatedAt
+    ? new Date(post.updatedAt).getTime()
+    : 0;
 
   const isEdited =
-    post.updatedAt &&
-    new Date(`${post.updatedAt}Z`).getTime() >
-      new Date(`${post.createdAt}Z`).getTime() + 1000;
+    Boolean(post.updatedAt) && updatedTimestamp > createdTimestamp + 1000;
 
   /*
    * ================================
