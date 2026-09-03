@@ -16,22 +16,38 @@ const loadFFmpeg = async (): Promise<FFmpeg> => {
   loadingPromise = (async () => {
     const instance = new FFmpeg();
 
-    const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd";
+    console.log("Loading FFmpeg from local ESM files...");
+
+    const baseURL = `${window.location.origin}/ffmpeg`;
+
+    const coreURL = await toBlobURL(
+      `${baseURL}/ffmpeg-core.js`,
+      "text/javascript",
+    );
+
+    const wasmURL = await toBlobURL(
+      `${baseURL}/ffmpeg-core.wasm`,
+      "application/wasm",
+    );
 
     await instance.load({
-      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-      wasmURL: await toBlobURL(
-        `${baseURL}/ffmpeg-core.wasm`,
-        "application/wasm",
-      ),
+      coreURL,
+      wasmURL,
     });
+
+    console.log("FFmpeg loaded successfully.");
 
     ffmpeg = instance;
 
     return instance;
   })();
 
-  return loadingPromise;
+  try {
+    return await loadingPromise;
+  } catch (error) {
+    loadingPromise = null;
+    throw error;
+  }
 };
 
 export const compressVideo = async (file: File): Promise<File> => {
@@ -39,9 +55,11 @@ export const compressVideo = async (file: File): Promise<File> => {
     throw new Error("Invalid video file.");
   }
 
+  console.log(`Original video: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+
   const instance = await loadFFmpeg();
 
-  const extension = file.name.split(".").pop()?.toLowerCase() || "mp4";
+  const extension = file.name.split(".").pop()?.toLowerCase() || "webm";
 
   const inputName = `input.${extension}`;
   const outputName = "univibe-compressed.mp4";
@@ -49,37 +67,25 @@ export const compressVideo = async (file: File): Promise<File> => {
   try {
     await instance.writeFile(inputName, await fetchFile(file));
 
+    console.log("Starting video compression...");
+
     await instance.exec([
       "-i",
       inputName,
-
-      // H.264 video
       "-c:v",
       "libx264",
-
-      // Good compression/quality balance
-      "-crf",
-      "28",
-
-      // Encoding speed
       "-preset",
       "veryfast",
-
-      // Maximum width 1280px
+      "-crf",
+      "28",
       "-vf",
       "scale='min(1280,iw)':-2",
-
-      // AAC audio
       "-c:a",
       "aac",
-
       "-b:a",
       "128k",
-
-      // Better web playback
       "-movflags",
       "+faststart",
-
       outputName,
     ]);
 
@@ -89,21 +95,27 @@ export const compressVideo = async (file: File): Promise<File> => {
       type: "video/mp4",
     });
 
-    return new File([blob], `univibe-${Date.now()}.mp4`, {
+    const compressedFile = new File([blob], `univibe-${Date.now()}.mp4`, {
       type: "video/mp4",
       lastModified: Date.now(),
     });
+
+    console.log(
+      `Compressed video: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`,
+    );
+
+    return compressedFile;
   } finally {
     try {
       await instance.deleteFile(inputName);
     } catch {
-      // Ignore cleanup error
+      // Ignore cleanup errors
     }
 
     try {
       await instance.deleteFile(outputName);
     } catch {
-      // Ignore cleanup error
+      // Ignore cleanup errors
     }
   }
 };

@@ -6,6 +6,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
@@ -19,28 +20,16 @@ public class CloudinaryController {
 
     @GetMapping("/signature")
     public Map<String, String> getUploadSignature(
-            @AuthenticationPrincipal Jwt jwt
-    ) {
-
-        // Make sure the request is authenticated
-        if (jwt == null) {
-            throw new RuntimeException("Unauthorized");
-        }
-
-        return cloudinaryService
-                .generatePostImageUploadSignature();
-    }
-
-    @GetMapping("/video-signature")
-    public Map<String, String> getVideoUploadSignature(
-            @AuthenticationPrincipal Jwt jwt
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(defaultValue = "image") String resourceType
     ) {
 
         if (jwt == null) {
             throw new RuntimeException("Unauthorized");
         }
 
-        return cloudinaryService
-                .generatePostVideoUploadSignature();
+        return cloudinaryService.generatePostMediaUploadSignature(
+                resourceType
+        );
     }
 }

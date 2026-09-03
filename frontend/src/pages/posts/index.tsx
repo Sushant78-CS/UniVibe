@@ -8,6 +8,8 @@ import FloatingTabs from "../../components/home/FloatingTabs";
 import CreatePostModal from "../../components/posts/CreatePostModal";
 import EditPostModal from "../../components/posts/EditPostModal";
 import ConfirmModal from "../../components/common/ConfirmModal";
+import { useNavigate } from "react-router";
+import { usePublishingStore } from "../../store/publishingStore";
 
 const Posts = () => {
   /*
@@ -15,8 +17,11 @@ const Posts = () => {
    * API / QUERY
    * ================================
    */
-
+  const publishingCompletedAt = usePublishingStore(
+    (state) => state.completedAt,
+  );
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { getPosts, getMyPosts, deletePost } = usePostApi();
 
@@ -154,6 +159,16 @@ const Posts = () => {
       setError("");
     }
   }, [isError]);
+
+  useEffect(() => {
+    if (!publishingCompletedAt) {
+      return;
+    }
+
+    queryClient.invalidateQueries({
+      queryKey: ["posts"],
+    });
+  }, [publishingCompletedAt, queryClient]);
 
   /*
    * ================================
@@ -659,42 +674,6 @@ const Posts = () => {
       </main>
 
       {/* ================= CREATE POST BUTTON ================= */}
-
-      <div
-        className="
-          fixed
-          bottom-23
-          right-4
-          z-40
-          sm:right-6
-        "
-      >
-        <button
-          type="button"
-          onClick={() => setShowCreatePostModal(true)}
-          aria-label="Create post"
-          className="
-            flex
-            h-14
-            w-14
-            items-center
-            justify-center
-            rounded-full
-            bg-violet-600
-            text-white
-            shadow-md
-            transition-all
-            duration-200
-            hover:scale-105
-            hover:bg-violet-700
-            active:scale-95
-            dark:bg-violet-500
-            dark:hover:bg-violet-600
-          "
-        >
-          <Plus size={27} strokeWidth={2.5} />
-        </button>
-      </div>
 
       {/* ================= BOTTOM NAV ================= */}
 

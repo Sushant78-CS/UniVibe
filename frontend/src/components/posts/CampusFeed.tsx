@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 
@@ -6,6 +7,14 @@ import PostCard from "./PostCard";
 
 const CampusFeed = () => {
   const { getPosts } = usePostApi();
+
+  /*
+   * Sentinel element used for infinite scrolling.
+   *
+   * When this element becomes visible near the bottom
+   * of the screen, we load the next page.
+   */
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } =
     useInfiniteQuery({
@@ -24,12 +33,82 @@ const CampusFeed = () => {
       },
 
       staleTime: 1000 * 60 * 2,
+
       gcTime: 1000 * 60 * 30,
+
       refetchOnWindowFocus: false,
+
       retry: 1,
     });
 
+  /*
+   * Flatten all loaded pages into one posts array.
+   */
   const posts: Post[] = data?.pages.flatMap((page) => page.content) ?? [];
+
+  /*
+   * ================================
+   * INFINITE SCROLL
+   * ================================
+   *
+   * Watch the invisible element near the bottom.
+   *
+   * When it enters the viewport, fetch another page.
+   */
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+
+    if (!sentinel) {
+      return;
+    }
+
+    /*
+     * Don't create the observer when there is
+     * nothing left to load.
+     */
+    if (!hasNextPage) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const firstEntry = entries[0];
+
+        if (!firstEntry?.isIntersecting) {
+          return;
+        }
+
+        /*
+         * Prevent duplicate requests.
+         */
+        if (isFetchingNextPage) {
+          return;
+        }
+
+        fetchNextPage();
+      },
+      {
+        /*
+         * Start loading slightly before the user
+         * actually reaches the bottom.
+         */
+        rootMargin: "400px 0px",
+        threshold: 0,
+      },
+    );
+
+    observer.observe(sentinel);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  /*
+   * ================================
+   * LOADING
+   * ================================
+   */
 
   if (isLoading) {
     return (
@@ -61,6 +140,12 @@ const CampusFeed = () => {
       </section>
     );
   }
+
+  /*
+   * ================================
+   * EMPTY STATE
+   * ================================
+   */
 
   if (posts.length === 0) {
     return (
@@ -103,7 +188,9 @@ const CampusFeed = () => {
 
   return (
     <section className="mt-7">
-      {/* HEADER */}
+      {/* ================================
+          HEADER
+          ================================ */}
 
       <div className="mb-3 flex items-center justify-between">
         <div>
@@ -117,7 +204,9 @@ const CampusFeed = () => {
         </div>
       </div>
 
-      {/* POSTS */}
+      {/* ================================
+          POSTS
+          ================================ */}
 
       <div className="space-y-4">
         {posts.map((post) => (
@@ -125,10 +214,34 @@ const CampusFeed = () => {
         ))}
       </div>
 
-      {/* LOAD MORE */}
+      {/* ================================
+          INFINITE SCROLL SENTINEL
+          ================================ */}
 
       {hasNextPage && (
-        <div className="mt-4 flex justify-center">
+        <div ref={loadMoreRef} className="h-10 w-full" aria-hidden="true" />
+      )}
+
+      {/* ================================
+          AUTO LOADING INDICATOR
+          ================================ */}
+
+      {isFetchingNextPage && (
+        <div className="flex items-center justify-center gap-2 py-4">
+          <RefreshCw size={14} className="animate-spin text-violet-500" />
+
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            Loading more posts...
+          </span>
+        </div>
+      )}
+
+      {/* ================================
+          MANUAL LOAD BUTTON
+          ================================ */}
+
+      {hasNextPage && !isFetchingNextPage && (
+        <div className="mt-2 flex justify-center">
           <button
             type="button"
             onClick={() => fetchNextPage()}
@@ -147,26 +260,31 @@ const CampusFeed = () => {
               font-semibold
               text-slate-600
               transition
+
               hover:bg-slate-50
+
               disabled:cursor-not-allowed
+              disabled:opacity-50
+
               dark:border-slate-800
               dark:bg-slate-900
               dark:text-slate-300
               dark:hover:bg-slate-800
             "
           >
-            {isFetchingNextPage && (
-              <RefreshCw size={13} className="animate-spin" />
-            )}
-
-            {isFetchingNextPage ? "Loading..." : "Load more posts"}
+            <RefreshCw size={13} />
+            Load more posts
           </button>
         </div>
       )}
 
+      {/* ================================
+          ALL CAUGHT UP
+          ================================ */}
+
       {!hasNextPage && (
         <p className="py-5 text-center text-xs text-slate-400">
-          You're all caught up ✨
+          You're all caught up
         </p>
       )}
     </section>

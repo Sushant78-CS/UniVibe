@@ -237,4 +237,42 @@ public class CloudinaryService {
 
         return result.get("secure_url").toString();
     }
+
+    public Map<String, String> generatePostMediaUploadSignature(
+            String resourceType
+    ) {
+
+        if (resourceType == null || resourceType.isBlank()) {
+            resourceType = "image";
+        }
+
+        String normalizedResourceType =
+                resourceType.equalsIgnoreCase("video")
+                        ? "video"
+                        : "image";
+
+        long timestamp =
+                System.currentTimeMillis() / 1000;
+
+        String folder =
+                normalizedResourceType.equals("video")
+                        ? "univibe/post-videos"
+                        : "univibe/post-images";
+
+        Map<String, Object> paramsToSign = ObjectUtils.asMap(
+                "timestamp", timestamp,
+                "folder", folder
+        );
+
+        String signature = cloudinary.apiSignRequest(
+                paramsToSign,
+                cloudinary.config.apiSecret
+        );
+
+        return Map.of(
+                "timestamp", String.valueOf(timestamp),
+                "signature", signature,
+                "apiKey", cloudinary.config.apiKey
+        );
+    }
 }
