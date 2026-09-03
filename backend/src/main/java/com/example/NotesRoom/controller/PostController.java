@@ -27,23 +27,18 @@ public class PostController {
 
     private final PostService postService;
 
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping
     public ResponseEntity<PostDto> createPost(
             @AuthenticationPrincipal Jwt jwt,
-            @RequestPart("post")
-            CreatePostDto dto,
-            @RequestPart(
-                    value = "image",
-                    required = false
-            )
-            MultipartFile image
+            @RequestBody CreatePostDto dto
     ) throws IOException {
+
         String clerkId = jwt.getSubject();
+
         return ResponseEntity.ok(
                 postService.createPost(
                         clerkId,
-                        dto,
-                        image
+                        dto
                 )
         );
     }

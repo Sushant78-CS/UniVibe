@@ -54,6 +54,7 @@ export interface PageResponse<T> {
 export interface CreatePostData {
   description: string;
   category: PostCategory;
+  imageUrl?: string | null;
 }
 
 export const usePostApi = () => {
@@ -94,36 +95,17 @@ export const usePostApi = () => {
     return response.data;
   };
 
-  const createPost = async (
-    data: CreatePostData,
-    image?: File | null,
-  ): Promise<Post> => {
+  const createPost = async (data: CreatePostData): Promise<Post> => {
     const token = await getToken();
 
-    const formData = new FormData();
-
-    formData.append(
-      "post",
-      new Blob(
-        [
-          JSON.stringify({
-            description: data.description,
-            category: data.category,
-          }),
-        ],
-        {
-          type: "application/json",
-        },
-      ),
-    );
-
-    if (image) {
-      formData.append("image", image);
+    if (!token) {
+      throw new Error("Authentication token not available");
     }
 
-    const response = await api.post<Post>("/posts", formData, {
+    const response = await api.post<Post>("/posts", data, {
       headers: {
         Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
     });
 
@@ -150,6 +132,7 @@ export const usePostApi = () => {
         JSON.stringify({
           description: data.description,
           category: data.category,
+          imageUrl: data.imageUrl,
         }),
       ],
       {

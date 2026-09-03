@@ -4,7 +4,7 @@ import SockJS from "sockjs-client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Message } from "../api/messageApi";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
 
 interface UseMessageWebSocketProps {
   conversationId?: number;

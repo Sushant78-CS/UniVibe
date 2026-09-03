@@ -33,8 +33,7 @@ public class PostService {
     @Transactional
     public PostDto createPost(
             String clerkId,
-            CreatePostDto dto,
-            MultipartFile image
+            CreatePostDto dto
     ) throws IOException {
         Users user = userRepository
                 .findByClerkId(clerkId)
@@ -47,10 +46,8 @@ public class PostService {
         if (dto.category() == null) {
             throw new IllegalArgumentException("Post category is required");
         }
-        String imageUrl = null;
-        if (image != null && !image.isEmpty()) {
-            imageUrl = cloudinaryService.uploadPostImage(image);
-        }
+
+        String imageUrl = dto.imageUrl();
 
         Post post = Post.builder()
                 .user(user)

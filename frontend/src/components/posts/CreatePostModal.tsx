@@ -5,6 +5,8 @@ import {
   type CreatePostData,
   type PostCategory,
 } from "../../api/postApi";
+import { compressImage } from "../../services/compressImage";
+import { useCloudinaryApi } from "../../api/cloudinary";
 
 interface CreatePostModalProps {
   open: boolean;
@@ -46,6 +48,7 @@ const CreatePostModal = ({
   onCreated,
 }: CreatePostModalProps) => {
   const { createPost } = usePostApi();
+  const { uploadPostImageToCloudinary } = useCloudinaryApi();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -131,12 +134,41 @@ const CreatePostModal = ({
       setPosting(true);
       setError("");
 
+      let imageUrl: string | null = null;
+
+      // Upload image directly to Cloudinary
+      if (selectedImage) {
+        // 1. Compress image in browser
+        const compressedImage = await compressImage(selectedImage);
+
+        console.log(
+          "Original size:",
+          (selectedImage.size / 1024 / 1024).toFixed(2),
+          "MB",
+        );
+
+        console.log(
+          "Compressed size:",
+          (compressedImage.size / 1024 / 1024).toFixed(2),
+          "MB",
+        );
+
+        // 2. Upload directly to Cloudinary
+        const cloudinaryResult =
+          await uploadPostImageToCloudinary(compressedImage);
+
+        // 3. Get Cloudinary URL
+        imageUrl = cloudinaryResult.secure_url;
+      }
+
+      // 4. Send only post data + Cloudinary URL
       const data: CreatePostData = {
         description: description.trim(),
         category,
+        imageUrl,
       };
 
-      const createdPost = await createPost(data, selectedImage);
+      const createdPost = await createPost(data);
 
       onCreated(createdPost);
       onClose();

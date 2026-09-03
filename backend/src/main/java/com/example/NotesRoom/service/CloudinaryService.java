@@ -144,4 +144,25 @@ public class CloudinaryService {
                 "apiKey", cloudinary.config.apiKey
         );
     }
+
+    public Map<String, String> generatePostImageUploadSignature() {
+
+        long timestamp = System.currentTimeMillis() / 1000;
+
+        Map<String, Object> paramsToSign = ObjectUtils.asMap(
+                "timestamp", timestamp,
+                "folder", "univibe/post-images"
+        );
+
+        String signature = cloudinary.apiSignRequest(
+                paramsToSign,
+                cloudinary.config.apiSecret
+        );
+
+        return Map.of(
+                "timestamp", String.valueOf(timestamp),
+                "signature", signature,
+                "apiKey", cloudinary.config.apiKey
+        );
+    }
 }
