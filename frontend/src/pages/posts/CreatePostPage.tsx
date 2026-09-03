@@ -56,6 +56,7 @@ export default function CreatePostPage() {
       setPreviewUrl(null);
       return;
     }
+    console.log(setProcessingMedia);
 
     const url = URL.createObjectURL(selectedFile);
 

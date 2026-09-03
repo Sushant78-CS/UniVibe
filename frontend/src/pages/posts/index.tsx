@@ -8,7 +8,6 @@ import FloatingTabs from "../../components/home/FloatingTabs";
 import CreatePostModal from "../../components/posts/CreatePostModal";
 import EditPostModal from "../../components/posts/EditPostModal";
 import ConfirmModal from "../../components/common/ConfirmModal";
-import { useNavigate } from "react-router";
 import { usePublishingStore } from "../../store/publishingStore";
 
 const Posts = () => {
@@ -21,7 +20,6 @@ const Posts = () => {
     (state) => state.completedAt,
   );
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
 
   const { getPosts, getMyPosts, deletePost } = usePostApi();
 
