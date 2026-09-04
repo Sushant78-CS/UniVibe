@@ -2,6 +2,7 @@ import Header from "../components/home/Header";
 import ConnectionsSection from "../components/home/ConnectionsSection";
 import FloatingTabs from "../components/home/FloatingTabs";
 import CampusFeed from "../components/posts/CampusFeed";
+import NotificationPrompt from "../components/notifications/NotificationPrompt";
 
 function Home() {
   return (
@@ -30,7 +31,7 @@ function Home() {
       >
         {/* Connections */}
         <ConnectionsSection />
-
+        <NotificationPrompt />
         {/* Feed */}
         <CampusFeed />
       </main>

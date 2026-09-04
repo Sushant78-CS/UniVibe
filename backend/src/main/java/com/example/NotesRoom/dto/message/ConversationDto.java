@@ -1,5 +1,6 @@
 package com.example.NotesRoom.dto.message;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 public record ConversationDto(
@@ -11,10 +12,10 @@ public record ConversationDto(
         String otherProfileImage,
 
         String lastMessage,
-        LocalDateTime lastMessageAt,
+        Instant lastMessageAt,
 
         Long unreadCount,
 
-        LocalDateTime updatedAt
+        Instant updatedAt
 ) {
 }

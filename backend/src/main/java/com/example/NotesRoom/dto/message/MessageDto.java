@@ -1,5 +1,6 @@
 package com.example.NotesRoom.dto.message;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 public record MessageDto(
@@ -10,7 +11,7 @@ public record MessageDto(
         String senderUsername,
         String senderProfileImage,
         String content,
-        LocalDateTime createdAt,
+        Instant createdAt,
         Boolean read
 ) {
 }

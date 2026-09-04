@@ -4,6 +4,7 @@ import com.example.NotesRoom.dto.notification.NotificationType;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Entity
@@ -54,5 +55,5 @@ public class Notification {
     private boolean read;
 
     @Column(nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 }

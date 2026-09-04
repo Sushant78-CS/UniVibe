@@ -35,6 +35,7 @@ export interface Comment {
   content: string;
   createdAt: string;
   updatedAt?: string | null;
+  isOwner?: boolean;
 }
 
 export interface PageResponse<T> {

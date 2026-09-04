@@ -113,28 +113,172 @@ const CampusFeed = () => {
   if (isLoading) {
     return (
       <section className="mt-0">
-        <div className="mb-3">
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">
-            Campus Posts
-          </h2>
-
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-            What's happening around campus.
-          </p>
-        </div>
-
         <div className="space-y-4">
-          {[1, 2].map((item) => (
+          {[1, 2, 3].map((item) => (
             <div
               key={item}
               className="
-                h-48
+              overflow-hidden
+              rounded-2xl
+              border
+              border-slate-200
+              bg-white
+              dark:border-neutral-800
+              dark:bg-[#171717]
+            "
+            >
+              {/* Post header */}
+              <div className="flex items-center gap-3 px-4 py-3">
+                {/* Avatar */}
+                <div
+                  className="
+                  h-10
+                  w-10
+                  shrink-0
+                  animate-pulse
+                  rounded-full
+                  bg-slate-200
+                  dark:bg-neutral-800
+                "
+                />
+
+                <div className="min-w-0 flex-1 space-y-2">
+                  {/* Name */}
+                  <div
+                    className="
+                    h-3
+                    w-28
+                    animate-pulse
+                    rounded-md
+                    bg-slate-200
+                    dark:bg-neutral-800
+                  "
+                  />
+
+                  {/* Username / date */}
+                  <div
+                    className="
+                    h-2.5
+                    w-20
+                    animate-pulse
+                    rounded-md
+                    bg-slate-100
+                    dark:bg-neutral-900
+                  "
+                  />
+                </div>
+
+                {/* More button */}
+                <div
+                  className="
+                  h-7
+                  w-7
+                  animate-pulse
+                  rounded-full
+                  bg-slate-100
+                  dark:bg-neutral-900
+                "
+                />
+              </div>
+
+              {/* Post content */}
+              <div className="px-4 pb-3">
+                <div className="space-y-2">
+                  <div
+                    className="
+                    h-3
+                    w-full
+                    animate-pulse
+                    rounded-md
+                    bg-slate-200
+                    dark:bg-neutral-800
+                  "
+                  />
+
+                  <div
+                    className="
+                    h-3
+                    w-4/5
+                    animate-pulse
+                    rounded-md
+                    bg-slate-200
+                    dark:bg-neutral-800
+                  "
+                  />
+
+                  <div
+                    className="
+                    h-3
+                    w-2/5
+                    animate-pulse
+                    rounded-md
+                    bg-slate-200
+                    dark:bg-neutral-800
+                  "
+                  />
+                </div>
+              </div>
+
+              {/* Media skeleton */}
+              <div
+                className="
+                mx-4
+                mb-3
+                h-64
                 animate-pulse
-                rounded-2xl
+                rounded-xl
                 bg-slate-200
-                dark:bg-slate-800
+                dark:bg-neutral-800
               "
-            />
+              />
+
+              {/* Actions */}
+              <div
+                className="
+                flex
+                items-center
+                gap-5
+                border-t
+                border-slate-100
+                px-4
+                py-3
+                dark:border-neutral-800
+              "
+              >
+                <div
+                  className="
+                  h-7
+                  w-14
+                  animate-pulse
+                  rounded-lg
+                  bg-slate-100
+                  dark:bg-neutral-900
+                "
+                />
+
+                <div
+                  className="
+                  h-7
+                  w-14
+                  animate-pulse
+                  rounded-lg
+                  bg-slate-100
+                  dark:bg-neutral-900
+                "
+                />
+
+                <div
+                  className="
+                  h-7
+                  w-14
+                  animate-pulse
+                  rounded-lg
+                  bg-slate-100
+                  dark:bg-neutral-900
+                "
+                />
+              </div>
+            </div>
           ))}
         </div>
       </section>

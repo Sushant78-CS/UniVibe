@@ -3,6 +3,7 @@ package com.example.NotesRoom.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Entity
@@ -36,9 +37,9 @@ public class Conversation {
 
     @Column(name = "created_at", nullable = false)
     @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private Instant createdAt = Instant.now();
 
     @Column(name = "updated_at", nullable = false)
     @Builder.Default
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    private Instant updatedAt = Instant.now();
 }

@@ -74,7 +74,7 @@ public class ConnectionService {
                 sender,
                 NotificationType.CONNECTION_REQUEST,
                 sender.getProfile().getFullName()
-                        + " send you a connection request",
+                        + " sent you a connection request",
                 savedConnection.getId()
         );
         return savedConnection;

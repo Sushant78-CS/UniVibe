@@ -1,16 +1,19 @@
-import { LogOut } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
+import { useNavigate } from "react-router";
 
 interface ProfileActionsProps {
   onLogout: () => void;
 }
 
 function ProfileActions({ onLogout }: ProfileActionsProps) {
+  const navigate = useNavigate();
+
   return (
     <section className="space-y-2">
       {/* Account Settings */}
-      {/*
       <button
         type="button"
+        onClick={() => navigate("/settings")}
         className="
           flex
           w-full
@@ -51,7 +54,6 @@ function ProfileActions({ onLogout }: ProfileActionsProps) {
           Account Settings
         </span>
       </button>
-      */}
 
       {/* Sign Out */}
       <button

@@ -3,6 +3,7 @@ package com.example.NotesRoom.service;
 import com.example.NotesRoom.dto.message.ConversationDto;
 import com.example.NotesRoom.dto.message.CreateMessageDto;
 import com.example.NotesRoom.dto.message.MessageDto;
+import com.example.NotesRoom.dto.notification.NotificationType;
 import com.example.NotesRoom.entity.Conversation;
 import com.example.NotesRoom.entity.Message;
 import com.example.NotesRoom.entity.Profile;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -24,6 +26,7 @@ public class MessageService {
     private final UserRepository userRepository;
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
+    private final NotificationService notificationService;
 
     // ==========================================
     // CREATE / GET CONVERSATION
@@ -193,7 +196,7 @@ public class MessageService {
                 .conversation(conversation)
                 .sender(currentUser)
                 .content(dto.content().trim())
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .read(false)
                 .build();
 
@@ -201,10 +204,30 @@ public class MessageService {
                 messageRepository.save(message);
 
         conversation.setUpdatedAt(
-                LocalDateTime.now()
+                Instant.now()
         );
 
         conversationRepository.save(conversation);
+
+        Users recipient;
+
+        if (conversation.getUserOne().getId().equals(currentUser.getId())) {
+            recipient = conversation.getUserTwo();
+        } else {
+            recipient = conversation.getUserOne();
+        }
+
+        Profile senderProfile = currentUser.getProfile();
+
+        String senderName = senderProfile != null ? senderProfile.getFullName() : currentUser.getEmail();
+
+        notificationService.createNotification(
+                recipient,
+                currentUser,
+                NotificationType.MESSAGE,
+                senderName + " sent you a message",
+                conversation.getId()
+        );
 
         return toMessageDto(saved);
     }

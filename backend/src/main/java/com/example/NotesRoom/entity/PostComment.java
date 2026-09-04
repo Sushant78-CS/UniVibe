@@ -3,6 +3,7 @@ package com.example.NotesRoom.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Entity
@@ -42,8 +43,8 @@ public class PostComment {
             name = "created_at",
             nullable = false
     )
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 }

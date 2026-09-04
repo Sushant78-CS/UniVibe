@@ -157,13 +157,13 @@ public class PostController {
                 .build();
     }
 
-    @GetMapping("/{id}/comments")
-    public ResponseEntity<List<CommentDto>> getComments(
-            @PathVariable Long id
+    @GetMapping("/{postId}/comments")
+    public List<CommentDto> getComments(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long postId
     ) {
-        return ResponseEntity.ok(
-                postService.getComments(id)
-        );
+        String clerkId = jwt.getSubject();
+        return postService.getComments(clerkId, postId);
     }
 
     @PostMapping("/{id}/comments")

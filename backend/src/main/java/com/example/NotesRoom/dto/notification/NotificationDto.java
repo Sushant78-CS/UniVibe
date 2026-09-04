@@ -1,5 +1,6 @@
 package com.example.NotesRoom.dto.notification;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 public record NotificationDto(
@@ -21,6 +22,6 @@ public record NotificationDto(
 
         boolean read,
 
-        LocalDateTime createdAt
+        Instant createdAt
 ) {
 }

@@ -138,7 +138,7 @@ const EditProfile = () => {
 
       await updateProfile(form, selectedImage);
 
-      navigate("/profile");
+      navigate(-1);
     } catch (error) {
       console.error("Failed to update profile:", error);
     } finally {
@@ -172,7 +172,7 @@ const EditProfile = () => {
         <div className="mb-6 flex items-center gap-3">
           <button
             type="button"
-            onClick={() => navigate("/profile")}
+            onClick={() => navigate(-1)}
             className="
               flex h-9 w-9 items-center justify-center
               rounded-xl

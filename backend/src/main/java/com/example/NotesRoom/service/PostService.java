@@ -361,19 +361,25 @@ public class PostService {
                 .post(post)
                 .user(user)
                 .content(dto.content().trim())
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .build();
 
         PostComment saved =
                 postCommentRepository.save(comment);
 
-        return toCommentDto(saved);
+        return toCommentDto(saved, user);
     }
 
-    @Transactional
+    @Transactional()
     public List<CommentDto> getComments(
+            String clerkId,
             Long postId
     ) {
+        Users currentUser = userRepository
+                .findByClerkId(clerkId)
+                .orElseThrow(() ->
+                        new RuntimeException("User not found"));
+
         Post post = postRepository
                 .findById(postId)
                 .orElseThrow(() ->
@@ -382,7 +388,9 @@ public class PostService {
         return postCommentRepository
                 .findByPostOrderByCreatedAtAsc(post)
                 .stream()
-                .map(this::toCommentDto)
+                .map(comment ->
+                        toCommentDto(comment, currentUser)
+                )
                 .toList();
     }
 
@@ -416,11 +424,16 @@ public class PostService {
     }
 
     private CommentDto toCommentDto(
-            PostComment comment
+            PostComment comment,
+            Users currentUser
     ) {
         Users user = comment.getUser();
 
         Profile profile = user.getProfile();
+
+        boolean isOwner =
+                currentUser != null &&
+                        user.getId().equals(currentUser.getId());
 
         return new CommentDto(
                 comment.getId(),
@@ -436,7 +449,8 @@ public class PostService {
                         : null,
                 comment.getContent(),
                 comment.getCreatedAt(),
-                comment.getUpdatedAt()
+                comment.getUpdatedAt(),
+                isOwner
         );
     }
 

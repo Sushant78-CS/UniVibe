@@ -1,4 +1,5 @@
 import { Routes, Route } from "react-router";
+import { useEffect } from "react";
 
 import AppLayout from "./layouts/AppLayout";
 import PublicLayout from "./layouts/PublicLayout";
@@ -33,8 +34,18 @@ import CreatePostPage from "./pages/posts/CreatePostPage";
 import PostCameraPage from "./components/posts/create/PostCameraPage";
 
 import PublishProgress from "./components/posts/PublishProgress";
+import { initializeForegroundMessages } from "./firebase/messaging";
+import { useAuth } from "@clerk/react";
+import SettingsPage from "./pages/settings";
+import AboutPage from "./pages/about";
 
 function App() {
+  const { getToken } = useAuth();
+  useEffect(() => {
+    initializeForegroundMessages().catch((error) => {
+      console.error("FCM foreground initialization failed:", error);
+    });
+  }, [getToken]);
   return (
     <>
       <PublishProgress />
@@ -99,6 +110,10 @@ function App() {
             <Route path="/posts/create" element={<CreatePostPage />} />
 
             <Route path="/posts/create/camera" element={<PostCameraPage />} />
+
+            <Route path="/settings" element={<SettingsPage />} />
+
+            <Route path="/about" element={<AboutPage />} />
           </Route>
         </Route>
       </Routes>

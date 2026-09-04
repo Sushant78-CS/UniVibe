@@ -20,6 +20,7 @@ import com.example.NotesRoom.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
@@ -67,7 +68,7 @@ public class RecommendationService {
                         candidateProfiles
                 );
 
-        // 6. Call Python DSA API
+        // 6. Call Python recommendation API
         RestClient restClient = RestClient.builder()
                 .baseUrl(pythonApiUrl)
                 .build();
@@ -76,6 +77,8 @@ public class RecommendationService {
                 restClient
                         .post()
                         .uri("/recommend")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
                         .body(request)
                         .retrieve()
                         .body(PythonRecommendationResponse.class);
@@ -87,7 +90,6 @@ public class RecommendationService {
         }
 
         // 7. Create profile lookup map
-        // profileId -> Profile
         Map<Long, Profile> profileMap =
                 candidates.stream()
                         .collect(
@@ -97,7 +99,6 @@ public class RecommendationService {
                                 )
                         );
 
-        // Current logged-in user's database ID
         Long currentUserId =
                 userProfile.getUser().getId();
 
@@ -117,7 +118,6 @@ public class RecommendationService {
                                 return null;
                             }
 
-                            // Get actual connection status
                             String connectionStatus =
                                     getConnectionStatus(
                                             currentUserId,
@@ -142,14 +142,10 @@ public class RecommendationService {
                         .filter(result -> result != null)
                         .toList();
 
-        // 9. Return enriched recommendations to React
+        // 9. Return enriched recommendations
         return new RecommendationResponse(results);
     }
 
-    /**
-     * Convert Profile entity to the DTO
-     * required by the Python recommendation API.
-     */
     private RecommendationProfile toRecommendationProfile(
             Profile profile
     ) {
@@ -167,9 +163,6 @@ public class RecommendationService {
         );
     }
 
-    /**
-     * Convert comma-separated interests into a List.
-     */
     private List<String> parseInterests(
             String interests
     ) {
@@ -186,10 +179,6 @@ public class RecommendationService {
                 .toList();
     }
 
-    /**
-     * Get the connection status between
-     * the logged-in user and another user.
-     */
     private String getConnectionStatus(
             Long currentUserId,
             Long otherUserId
@@ -202,14 +191,12 @@ public class RecommendationService {
                 )
                 .map(connection -> {
 
-                    // Already connected
                     if (connection.getStatus()
                             == ConnectionStatus.ACCEPTED) {
 
                         return "CONNECTED";
                     }
 
-                    // Current user sent the request
                     if (connection.getSender()
                             .getId()
                             .equals(currentUserId)) {
@@ -217,7 +204,6 @@ public class RecommendationService {
                         return "PENDING_SENT";
                     }
 
-                    // Current user received the request
                     if (connection.getReceiver()
                             .getId()
                             .equals(currentUserId)) {

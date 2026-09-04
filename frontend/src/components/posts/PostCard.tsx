@@ -11,6 +11,7 @@ import {
   X,
   Heart,
   Send,
+  RefreshCw,
 } from "lucide-react";
 
 import { useEffect, useState } from "react";
@@ -20,6 +21,10 @@ import { useNavigate } from "react-router";
 import { usePostApi, type Post } from "../../api/postApi";
 import CommentsModal from "./CommentsModal";
 import SharePost from "./SharePost";
+import {
+  optimizeCloudinaryImage,
+  optimizeCloudinaryVideo,
+} from "../../utils/cloudinary";
 
 interface PostCardProps {
   post: Post;
@@ -103,12 +108,21 @@ const PostCard = ({
    */
 
   const { likePost, unlikePost } = usePostApi();
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  // const isCommentOwner = comment.userId === currentUserId;
 
   /*
    * ==========================================
    * SYNC WITH QUERY DATA
    * ==========================================
    */
+
+  const optimizedMediaUrl =
+    post.mediaType === "IMAGE"
+      ? optimizeCloudinaryImage(post.mediaUrl, 1080)
+      : post.mediaType === "VIDEO"
+        ? optimizeCloudinaryVideo(post.mediaUrl, 1080)
+        : post.mediaUrl;
 
   useEffect(() => {
     setLiked(post.likedByMe);
@@ -659,7 +673,7 @@ const PostCard = ({
                 "
             >
               <img
-                src={post.mediaUrl}
+                src={optimizedMediaUrl ?? ""}
                 alt="Post attachment"
                 loading="lazy"
                 className="
@@ -687,7 +701,7 @@ const PostCard = ({
               "
           >
             <video
-              src={post.mediaUrl}
+              src={optimizedMediaUrl ?? ""}
               controls
               playsInline
               preload="metadata"
@@ -788,6 +802,7 @@ const PostCard = ({
               type="button"
               onClick={() => setShowComments(true)}
               aria-label="View comments"
+              disabled={commentsLoading}
               className="
         flex
         min-h-10
@@ -810,8 +825,11 @@ const PostCard = ({
         dark:hover:text-neutral-200
       "
             >
-              <MessageCircle size={19} strokeWidth={2} />
-
+              {commentsLoading ? (
+                <RefreshCw size={19} strokeWidth={2} className="animate-spin" />
+              ) : (
+                <MessageCircle size={19} strokeWidth={2} />
+              )}
               <span>{commentCount}</span>
             </button>
 
@@ -902,7 +920,7 @@ const PostCard = ({
           {/* Image */}
 
           <img
-            src={post.mediaUrl}
+            src={optimizedMediaUrl ?? ""}
             alt="Post attachment preview"
             onClick={(event) => event.stopPropagation()}
             className="
@@ -925,6 +943,7 @@ const PostCard = ({
         post={post}
         onClose={() => setShowComments(false)}
         onCommentCountChange={handleCommentCountChange}
+        onLoadingChange={setCommentsLoading}
       />
 
       {/* ========================================

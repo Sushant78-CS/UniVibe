@@ -1,6 +1,6 @@
 package com.example.NotesRoom.dto.post;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record CommentDto(
         Long id,
@@ -9,7 +9,8 @@ public record CommentDto(
         String username,
         String profileImage,
         String content,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        Instant createdAt,
+        Instant updatedAt,
+        boolean isOwner
 ) {
 }

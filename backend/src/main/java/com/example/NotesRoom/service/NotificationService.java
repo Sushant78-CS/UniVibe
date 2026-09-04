@@ -7,18 +7,22 @@ import com.example.NotesRoom.entity.Users;
 import com.example.NotesRoom.repository.NotificationRepository;
 import com.example.NotesRoom.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final FcmService fcmService;
 
     /**
      * Create a notification.
@@ -39,10 +43,43 @@ public class NotificationService {
                 .message(message)
                 .referenceId(referenceId)
                 .read(false)
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .build();
 
-        return notificationRepository.save(notification);
+        Notification saved = notificationRepository.save(notification);
+
+        String title;
+
+        switch (type) {
+            case MESSAGE -> title = "New message";
+            case CONNECTION_REQUEST -> title = "New connection request";
+            case CONNECTION_ACCEPTED -> title = "Connection accepted";
+            case CONNECTION_REJECTED -> title = "Connection request declined";
+            default -> title = "UniVibe";
+        }
+
+        String url;
+
+        switch (type) {
+            case MESSAGE -> url = "/messages/" + referenceId;
+            default -> url = "/discover";
+        }
+
+        try {
+            fcmService.sendToUser(
+                    recipient,
+                    title,
+                    message,
+                    url
+            );
+        } catch (Exception e) {
+            log.error(
+                    "Failed to send push notification",
+                    e
+            );
+        }
+
+        return saved;
     }
 
     /**
