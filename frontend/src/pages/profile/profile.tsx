@@ -38,32 +38,11 @@ const ProfilePage = () => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
-  // useEffect(() => {
-  //   const handleProfileChanged = () => {
-  //     queryClient.invalidateQueries({
-  //       queryKey: ["profile", "me"],
-  //     });
-  //   };
-
-  //   window.addEventListener("profile-created", handleProfileChanged);
-
-  //   window.addEventListener("profile-updated", handleProfileChanged);
-
-  //   return () => {
-  //     window.removeEventListener("profile-created", handleProfileChanged);
-
-  //     window.removeEventListener("profile-updated", handleProfileChanged);
-  //   };
-  // }, []);
-
   const handleLogout = async () => {
     try {
       setLoggingOut(true);
 
       await signOut();
-
-      // await queryClient.cancelQueries();
-      // queryClient.clear();
 
       navigate("/", {
         replace: true,

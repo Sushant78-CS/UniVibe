@@ -294,11 +294,11 @@ const PostCard = ({
    */
 
   const openProfile = () => {
-    if (!post.userId) {
+    if (!post.profileId) {
       return;
     }
 
-    navigate(`/profile/${post.userId}`);
+    navigate(`/profile/${post.profileId}`);
   };
 
   /*
