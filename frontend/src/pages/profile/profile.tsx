@@ -1,16 +1,12 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { useState } from "react";
+import { useNavigate, useOutletContext } from "react-router";
 import { useAuth } from "@clerk/react";
 
 import ProfileTopBar from "../../components/profile/ProfileTopBar";
 import ProfileHero from "../../components/profile/ProfileHero";
 import ProfileInfo from "../../components/profile/ProfileInfo";
-import ProfileTags from "../../components/profile/ProfileTags";
 import ProfileActions from "../../components/profile/ProfileActions";
 import FloatingTabs from "../../components/home/FloatingTabs";
-
-import { useProfileApi } from "../../api/profileApi";
-import ProfileSkeleton from "../../components/profile/ProfileSkeleton";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import ProfileImageModal from "../../components/profile/ProfileImageModal";
 
@@ -27,54 +23,47 @@ interface Profile {
   profileCompleted: boolean;
 }
 
+interface ProtectedLayoutContext {
+  profile: Profile;
+}
+
 const ProfilePage = () => {
   const navigate = useNavigate();
-  const { isLoaded, signOut } = useAuth();
 
-  const { getProfile } = useProfileApi();
+  const { signOut } = useAuth();
 
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const { profile } = useOutletContext<ProtectedLayoutContext>();
+
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (!isLoaded) return;
+  // useEffect(() => {
+  //   const handleProfileChanged = () => {
+  //     queryClient.invalidateQueries({
+  //       queryKey: ["profile", "me"],
+  //     });
+  //   };
 
-    const loadProfile = async () => {
-      try {
-        setLoading(true);
-        setError("");
+  //   window.addEventListener("profile-created", handleProfileChanged);
 
-        const data = await getProfile();
+  //   window.addEventListener("profile-updated", handleProfileChanged);
 
-        setProfile(data);
-      } catch (error: any) {
-        console.error("Failed to load profile:", error);
+  //   return () => {
+  //     window.removeEventListener("profile-created", handleProfileChanged);
 
-        if (error?.response?.status === 404) {
-          navigate("/profile/setup", {
-            replace: true,
-          });
-          return;
-        }
-
-        setError("We couldn't load your profile. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadProfile();
-  }, [isLoaded]);
+  //     window.removeEventListener("profile-updated", handleProfileChanged);
+  //   };
+  // }, []);
 
   const handleLogout = async () => {
     try {
       setLoggingOut(true);
 
       await signOut();
+
+      // await queryClient.cancelQueries();
+      // queryClient.clear();
 
       navigate("/", {
         replace: true,
@@ -87,88 +76,47 @@ const ProfilePage = () => {
     }
   };
 
-  if (error) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-5 dark:bg-slate-950">
-        <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-xl dark:bg-red-500/10">
-            !
-          </div>
-
-          <h2 className="mt-4 text-lg font-bold text-slate-900 dark:text-white">
-            Something went wrong
-          </h2>
-
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-            {error}
-          </p>
-
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-5 w-full rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-violet-700"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const interests = profile?.interests
-    ? profile.interests
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean)
-    : [];
-
   return (
-    <div className="min-h-screen bg-slate-50 pb-28 text-slate-900 transition-colors dark:bg-slate-950 dark:text-white">
-      {/* Header */}
+    <div
+      className="
+        min-h-screen
+        bg-slate-50
+        pb-28
+        text-slate-900
+        transition-colors
+        duration-200
+        dark:bg-black
+        dark:text-white
+      "
+    >
       <ProfileTopBar />
 
-      {/* <main className="mx-auto w-full max-w-3xl px-4 py-4 sm:px-6 sm:py-6"> */}
       <main
         className="
-    mx-auto
-    w-full
-    max-w-3xl
-    px-4
-    py-3
-    sm:px-6
-    sm:py-4
-  "
+          mx-auto
+          w-full
+          max-w-[680px]
+          px-4
+          pb-8
+          pt-3
+          sm:px-0
+          sm:pt-5
+        "
       >
-        {loading ? (
-          /* Skeleton while profile loads */
-          <ProfileSkeleton />
-        ) : error ? (
-          /* Error */
-          <div className="flex min-h-[60vh] items-center justify-center">
-            <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-xl dark:bg-red-500/10">
-                !
-              </div>
-
-              <h2 className="mt-4 text-lg font-bold text-slate-900 dark:text-white">
-                Something went wrong
-              </h2>
-
-              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                {error}
-              </p>
-
-              <button
-                onClick={() => window.location.reload()}
-                className="mt-5 w-full rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-violet-700"
-              >
-                Try Again
-              </button>
-            </div>
-          </div>
-        ) : profile ? (
-          <>
-            {/* Profile Hero */}
-
+        <div className="space-y-4">
+          <section
+            className="
+              overflow-hidden
+              rounded-2xl
+              border
+              border-slate-200
+              bg-white
+              shadow-[0_1px_4px_rgba(15,23,42,0.04)]
+              dark:border-neutral-800
+              dark:bg-[#171717]
+              dark:shadow-none
+            "
+          >
             <ProfileHero
               profileImage={profile.profileImage || null}
               fullName={profile.fullName}
@@ -177,81 +125,111 @@ const ProfilePage = () => {
               college={profile.college}
               onImageClick={() => setShowImageModal(true)}
             />
+          </section>
 
-            {/* <div className="mt-3">
-              <ProfileStats connections={0} clubs={clubs.length} events={0} />
-            </div> */}
+          {profile.bio && (
+            <section
+              className="
+                rounded-2xl
+                border
+                border-slate-200
+                bg-white
+                p-4
+                shadow-[0_1px_4px_rgba(15,23,42,0.04)]
+                dark:border-neutral-800
+                dark:bg-[#171717]
+                dark:shadow-none
+              "
+            >
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
+                About
+              </h2>
 
-            {profile.bio && (
-              <section className="mt-4">
-                <h2
-                  className="
-        mb-2
-        text-sm
-        font-bold
-        text-slate-900
-        dark:text-white
-      "
-                >
-                  About
-                </h2>
-
-                <div
-                  className="
-        rounded-2xl
-        border
-        border-slate-200
-        bg-white
-        p-3.5
-        shadow-sm
-        dark:border-slate-800
-        dark:bg-slate-900
-      "
-                >
-                  <p
-                    className="
-          text-xs
-          leading-5
-          text-slate-600
-          dark:text-slate-300
-        "
-                  >
-                    {profile.bio}
-                  </p>
-                </div>
-              </section>
-            )}
-
-            <section className="mt-4">
-              <ProfileInfo
-                college={profile.college}
-                department={profile.department ?? ""}
-                year={profile.year}
-              />
+              <p
+                className="
+                  mt-2
+                  whitespace-pre-wrap
+                  text-sm
+                  leading-6
+                  text-slate-600
+                  dark:text-neutral-400
+                "
+              >
+                {profile.bio}
+              </p>
             </section>
+          )}
 
-            <section className="mt-4">
-              <ProfileTags
-                title="Interests"
-                tags={interests}
-                emptyText="Add interests to find people who match your vibe."
-              />
-            </section>
+          <section
+            className="
+              rounded-2xl
+              border
+              border-slate-200
+              bg-white
+              p-1
+              shadow-[0_1px_4px_rgba(15,23,42,0.04)]
+              dark:border-neutral-800
+              dark:bg-[#171717]
+              dark:shadow-none
+            "
+          >
+            <ProfileInfo
+              college={profile.college}
+              department={profile.department ?? ""}
+              year={profile.year}
+            />
+          </section>
 
-            {/* <section className="mt-4">
-              <ProfileClubs clubs={clubs} />
-            </section> */}
+          {/* <section
+            className="
+              rounded-2xl
+              border
+              border-slate-200
+              bg-white
+              p-1
+              shadow-[0_1px_4px_rgba(15,23,42,0.04)]
+              dark:border-neutral-800
+              dark:bg-[#171717]
+              dark:shadow-none
+            "
+          >
+            <ProfileTags
+              title="Interests"
+              tags={interests}
+              emptyText="Add interests to find people who match your vibe."
+            />
+          </section> */}
 
-            <section className="mt-4">
-              <ProfileActions onLogout={() => setShowLogoutModal(true)} />
-            </section>
+          <section
+            className="
+              rounded-2xl
+              border
+              border-slate-200
+              bg-white
+              p-1
+              shadow-[0_1px_4px_rgba(15,23,42,0.04)]
+              dark:border-neutral-800
+              dark:bg-[#171717]
+              dark:shadow-none
+            "
+          >
+            <ProfileActions onLogout={() => setShowLogoutModal(true)} />
+          </section>
 
-            <p className="pt-6 text-center text-xs text-slate-400 dark:text-slate-600">
-              UniVibe · Your campus. Your people.
-            </p>
-          </>
-        ) : null}
+          <p
+            className="
+              py-4
+              text-center
+              text-[11px]
+              text-slate-400
+              dark:text-neutral-600
+            "
+          >
+            UniVibe · Your campus. Your people.
+          </p>
+        </div>
       </main>
+
       <ConfirmModal
         open={showLogoutModal}
         title="Sign out?"
@@ -267,14 +245,14 @@ const ProfilePage = () => {
           }
         }}
       />
+
       <ProfileImageModal
         open={showImageModal}
-        image={profile?.profileImage || null}
-        name={profile?.fullName || ""}
+        image={profile.profileImage || null}
+        name={profile.fullName || ""}
         onClose={() => setShowImageModal(false)}
       />
 
-      {/* Always visible */}
       <FloatingTabs />
     </div>
   );

@@ -16,11 +16,11 @@ const ProfileTopBar = ({ showBackButton = false }: ProfileTopBarProps) => {
         top-0
         z-40
         border-b
-        border-slate-200/70
-        bg-white/85
+        border-slate-200
+        bg-white/90
         backdrop-blur-xl
-        dark:border-slate-800/70
-        dark:bg-slate-950/85
+        dark:border-neutral-800
+        dark:bg-black/90
       "
     >
       <div
@@ -36,10 +36,8 @@ const ProfileTopBar = ({ showBackButton = false }: ProfileTopBarProps) => {
         "
       >
         {/* ================= LEFT ================= */}
-
         <div className="flex items-center gap-2.5">
           {/* Back Button */}
-
           {showBackButton && (
             <button
               type="button"
@@ -53,12 +51,12 @@ const ProfileTopBar = ({ showBackButton = false }: ProfileTopBarProps) => {
                 justify-center
                 rounded-xl
                 text-slate-500
-                transition
+                transition-all
                 hover:bg-slate-100
                 hover:text-slate-900
                 active:scale-95
-                dark:text-slate-400
-                dark:hover:bg-slate-800
+                dark:text-neutral-400
+                dark:hover:bg-[#171717]
                 dark:hover:text-white
               "
             >
@@ -67,7 +65,6 @@ const ProfileTopBar = ({ showBackButton = false }: ProfileTopBarProps) => {
           )}
 
           {/* ================= UNIVIBE WORDMARK ================= */}
-
           <button
             type="button"
             onClick={() => navigate("/home")}
@@ -81,19 +78,12 @@ const ProfileTopBar = ({ showBackButton = false }: ProfileTopBarProps) => {
           >
             <div
               className="
-                bg-gradient-to-r
-                from-violet-600
-                via-purple-600
-                to-fuchsia-500
-                bg-clip-text
                 text-[20px]
                 font-extrabold
                 leading-none
                 tracking-[-0.04em]
-                text-transparent
-                dark:from-violet-400
-                dark:via-purple-400
-                dark:to-fuchsia-400
+                text-violet-600
+                dark:text-violet-400
               "
             >
               UniVibe
@@ -107,7 +97,7 @@ const ProfileTopBar = ({ showBackButton = false }: ProfileTopBarProps) => {
                 uppercase
                 tracking-[0.16em]
                 text-slate-400
-                dark:text-slate-500
+                dark:text-neutral-500
               "
             >
               Campus Community
@@ -116,10 +106,8 @@ const ProfileTopBar = ({ showBackButton = false }: ProfileTopBarProps) => {
         </div>
 
         {/* ================= RIGHT ================= */}
-
         <div className="flex items-center gap-2">
           {/* Edit Profile */}
-
           <button
             type="button"
             onClick={() => navigate("/profile/edit")}
@@ -130,24 +118,22 @@ const ProfileTopBar = ({ showBackButton = false }: ProfileTopBarProps) => {
               gap-1.5
               rounded-xl
               border
-              border-indigo-200
-              bg-indigo-50
+              border-violet-200
+              bg-violet-50
               px-3
               py-1.5
               text-[11px]
               font-semibold
-              text-indigo-600
-              shadow-sm
+              text-violet-600
               transition-all
-              hover:border-indigo-300
-              hover:bg-indigo-100
-              hover:shadow
+              hover:border-violet-300
+              hover:bg-violet-100
               active:scale-95
-              dark:border-indigo-500/20
-              dark:bg-indigo-500/10
-              dark:text-indigo-400
-              dark:hover:border-indigo-500/30
-              dark:hover:bg-indigo-500/20
+              dark:border-violet-500/20
+              dark:bg-violet-500/10
+              dark:text-violet-400
+              dark:hover:border-violet-500/30
+              dark:hover:bg-violet-500/15
             "
           >
             <Pencil
@@ -162,7 +148,6 @@ const ProfileTopBar = ({ showBackButton = false }: ProfileTopBarProps) => {
           </button>
 
           {/* Theme */}
-
           <ThemeToggle />
         </div>
       </div>

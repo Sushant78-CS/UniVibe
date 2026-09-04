@@ -17,19 +17,21 @@ function ProfileInput({
 }: ProfileInputProps) {
   return (
     <div className="w-full">
+      {/* Label */}
       <label
         className="
           mb-2
           block
           text-sm
           font-semibold
-          text-slate-700
-          dark:text-slate-200
+          text-slate-800
+          dark:text-neutral-200
         "
       >
         {label}
       </label>
 
+      {/* Input */}
       <input
         type={type}
         value={value}
@@ -54,27 +56,26 @@ function ProfileInput({
 
           hover:border-slate-300
 
-          focus:border-indigo-500
+          focus:border-violet-500
           focus:bg-white
           focus:ring-4
-          focus:ring-indigo-100
+          focus:ring-violet-500/10
 
           disabled:cursor-not-allowed
           disabled:opacity-60
 
-          dark:border-slate-700
-          dark:bg-slate-800
+          dark:border-neutral-700
+          dark:bg-[#0f0f0f]
           dark:text-white
+          dark:placeholder:text-neutral-500
 
-          dark:placeholder:text-slate-500
+          dark:hover:border-neutral-600
 
-          dark:hover:border-slate-600
+          dark:focus:border-violet-500
+          dark:focus:bg-[#0f0f0f]
+          dark:focus:ring-violet-500/10
 
-          dark:focus:border-indigo-500
-          dark:focus:bg-slate-800
-          dark:focus:ring-indigo-950
-
-          dark:disabled:bg-slate-900
+          dark:disabled:bg-[#111111]
         "
       />
     </div>

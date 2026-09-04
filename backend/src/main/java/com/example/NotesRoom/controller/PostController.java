@@ -93,23 +93,12 @@ public class PostController {
         );
     }
 
-    @PutMapping(
-            value = "/{id}",
-            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
-    )
+    @PutMapping("/{id}")
     public ResponseEntity<PostDto> updatePost(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long id,
-
-            @RequestPart("post")
-            CreatePostDto dto,
-
-            @RequestPart(value = "media", required = false)
-            MultipartFile media,
-
-            @RequestPart(value = "removeMedia", required = false)
-            Boolean removeMedia
-
+            @RequestBody CreatePostDto dto,
+            @RequestParam(defaultValue = "false") boolean removeMedia
     ) throws IOException {
 
         String clerkId = jwt.getSubject();
@@ -119,8 +108,7 @@ public class PostController {
                         clerkId,
                         id,
                         dto,
-                        media,
-                        Boolean.TRUE.equals(removeMedia)
+                        removeMedia
                 )
         );
     }

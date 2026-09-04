@@ -11,62 +11,75 @@ const SignUpPage = () => {
         bg-slate-50
         text-slate-900
         transition-colors
-        duration-300
-        dark:bg-slate-950
+        duration-200
+        dark:bg-black
         dark:text-white
       "
     >
-      {/* Mobile Header */}
-      <AuthHeader />
+      {/* =========================================
+          MOBILE HEADER
+          ========================================= */}
 
-      {/* Main Authentication Layout */}
+      <div
+        className="
+          border-b
+          border-slate-200
+          bg-white
+          dark:border-neutral-800
+          dark:bg-black
+          lg:hidden
+        "
+      >
+        <AuthHeader />
+      </div>
+
+      {/* =========================================
+          MAIN
+          ========================================= */}
+
       <div
         className="
           mx-auto
           flex
           min-h-[calc(100vh-80px)]
           w-full
-          max-w-[1600px]
-
+          max-w-[1400px]
           lg:min-h-screen
         "
       >
-        {/* ============================= */}
-        {/* LEFT - HERO */}
-        {/* ============================= */}
+        {/* =======================================
+            LEFT — HERO
+            ======================================= */}
 
         <AuthHero />
 
-        {/* ============================= */}
-        {/* RIGHT - SIGN UP */}
-        {/* ============================= */}
+        {/* =======================================
+            RIGHT — SIGN UP
+            ======================================= */}
 
         <main
           className="
             relative
             flex
+            min-h-full
             w-full
             items-center
             justify-center
-
             bg-slate-50
-
             px-5
             py-8
-
             sm:px-8
-            sm:py-10
-
-            dark:bg-slate-950
-
             lg:w-1/2
             lg:px-12
             lg:py-12
-
-            xl:px-20
+            dark:bg-black
+            xl:px-16
           "
         >
-          {/* Desktop Theme Toggle */}
+          {/* =====================================
+              THEME TOGGLE
+              ===================================== */}
+
           <div
             className="
               absolute
@@ -74,30 +87,16 @@ const SignUpPage = () => {
               top-6
               z-20
               hidden
-
               lg:block
             "
           >
             <ThemeToggle />
           </div>
 
-          {/* Sign Up Form */}
-          {/* <div
-            className="
-              flex
-              w-full
-              items-center
-              justify-center
-            "
-          > */}
-          <div
-            className="
-            flex
-            w-full
-            items-center
-            justify-center
-          "
-          >
+          {/* =====================================
+              FORM
+              ===================================== */}
+          <div className="flex w-full max-w-110 items-center justify-center -translate-y-10 lg:-translate-y-6">
             <SignUpForm />
           </div>
         </main>

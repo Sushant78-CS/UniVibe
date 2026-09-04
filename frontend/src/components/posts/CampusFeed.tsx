@@ -112,7 +112,7 @@ const CampusFeed = () => {
 
   if (isLoading) {
     return (
-      <section className="mt-7">
+      <section className="mt-0">
         <div className="mb-3">
           <h2 className="text-base font-bold text-slate-900 dark:text-white">
             Campus Posts
@@ -149,8 +149,8 @@ const CampusFeed = () => {
 
   if (posts.length === 0) {
     return (
-      <section className="mt-7">
-        <div className="mb-3">
+      <section className="mt-0">
+        {/* <div className="mb-3">
           <h2 className="text-base font-bold text-slate-900 dark:text-white">
             Campus Posts
           </h2>
@@ -158,7 +158,7 @@ const CampusFeed = () => {
           <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
             What's happening around campus.
           </p>
-        </div>
+        </div> */}
 
         <div
           className="
@@ -187,12 +187,12 @@ const CampusFeed = () => {
   }
 
   return (
-    <section className="mt-7">
+    <section className="mt-0">
       {/* ================================
           HEADER
           ================================ */}
 
-      <div className="mb-3 flex items-center justify-between">
+      {/* <div className="mb-3 flex items-center justify-between">
         <div>
           <h2 className="text-base font-bold text-slate-900 dark:text-white">
             Campus Posts
@@ -202,7 +202,7 @@ const CampusFeed = () => {
             What's happening around campus.
           </p>
         </div>
-      </div>
+      </div> */}
 
       {/* ================================
           POSTS

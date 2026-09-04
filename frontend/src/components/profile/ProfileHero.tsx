@@ -24,52 +24,69 @@ function ProfileHero({
         border
         border-slate-200
         bg-white
-        p-4
-        shadow-sm
-        dark:border-slate-800
-        dark:bg-slate-900
+        p-5
+        shadow-[0_1px_4px_rgba(15,23,42,0.04)]
+        transition-colors
+
+        dark:border-neutral-800
+        dark:bg-[#171717]
+        dark:shadow-none
       "
     >
       <div className="flex flex-col items-center text-center">
-        {/* Avatar */}
+        {/* =====================================
+            PROFILE IMAGE
+            ===================================== */}
+
         <div className="relative">
           <button
             type="button"
             onClick={onImageClick}
             aria-label="View profile picture"
             className="
-      block rounded-full
-      outline-none
-      transition-transform
-      hover:scale-105
-      active:scale-95
-      focus-visible:ring-4
-      focus-visible:ring-violet-500/30
-    "
+              block
+              rounded-full
+              outline-none
+              transition-transform
+              duration-150
+              hover:scale-[1.03]
+              active:scale-95
+              focus-visible:ring-4
+              focus-visible:ring-violet-500/20
+            "
           >
             <div
               className="
-        flex h-28 w-28
-        items-center justify-center
-        overflow-hidden
-        rounded-full
-        bg-gradient-to-br
-        from-indigo-500
-        to-purple-600
-        text-4xl
-        font-bold
-        text-white
-        shadow-xl
-        ring-4
-        ring-indigo-100
-        dark:ring-indigo-950
-      "
+                flex
+                h-28
+                w-28
+                items-center
+                justify-center
+                overflow-hidden
+                rounded-full
+                bg-slate-100
+                text-4xl
+                font-bold
+                text-violet-600
+                ring-4
+                ring-violet-100
+                transition-colors
+
+                dark:bg-neutral-900
+                dark:text-violet-400
+                dark:ring-violet-500/15
+              "
             >
               {profileImage ? (
                 <img
                   src={profileImage}
                   alt={fullName || "Profile"}
-                  className="h-full w-full object-cover"
+                  draggable={false}
+                  className="
+                    h-full
+                    w-full
+                    object-cover
+                  "
                 />
               ) : (
                 initials
@@ -78,45 +95,57 @@ function ProfileHero({
           </button>
         </div>
 
-        {/* Name */}
+        {/* =====================================
+            NAME
+            ===================================== */}
+
         <h2
           className="
-            mt-3
+            mt-4
             text-lg
             font-bold
             tracking-tight
             text-slate-900
+
             dark:text-white
           "
         >
           {fullName || "User"}
         </h2>
 
-        {/* Department / Year */}
+        {/* =====================================
+            DEPARTMENT / YEAR
+            ===================================== */}
+
         {(department || year) && (
           <p
             className="
-              mt-0.5
+              mt-1
               text-xs
               text-slate-500
-              dark:text-slate-400
+
+              dark:text-neutral-500
             "
           >
             {[department, year].filter(Boolean).join(" · ")}
           </p>
         )}
 
-        {/* College */}
+        {/* =====================================
+            COLLEGE
+            ===================================== */}
+
         {college && (
           <p
             className="
-              mt-0.5
+              mt-1
               max-w-[90%]
               truncate
               text-xs
               font-medium
-              text-indigo-600
-              dark:text-indigo-400
+              text-violet-600
+
+              dark:text-violet-400
             "
           >
             {college}

@@ -1,11 +1,12 @@
+import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
+
 import { useState } from "react";
 import { useNavigate } from "react-router";
 
-// import AuthDivider from "./AuthDivider";
 import AuthError from "./AuthError";
-// import GoogleButton from "./GoogleButton";
 import AuthFooter from "./AuthFooter";
 import EmailVerification from "./EmailVerification";
+
 import useClerkSignUp from "../../hooks/useClerkSignUp";
 import { useUserApi } from "../../api/userApi";
 
@@ -20,23 +21,29 @@ const SignUpForm = () => {
     isVerificationRequired,
     email: verificationEmail,
     loading,
-    // signUpWithGoogle,
   } = useClerkSignUp();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  // const [googleLoading, setGoogleLoading] = useState(false);
 
-  // --------------------------------
-  // SIGN UP
-  // --------------------------------
+  const [showPassword, setShowPassword] = useState(false);
+
+  const [error, setError] = useState<string | null>(null);
+
+  /*
+   * ==========================================
+   * SIGN UP
+   * ==========================================
+   */
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
     setError(null);
 
-    if (!email.trim()) {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail) {
       setError("Please enter your email.");
       return;
     }
@@ -52,7 +59,7 @@ const SignUpForm = () => {
     }
 
     const result = await signUpUser({
-      email,
+      email: normalizedEmail,
       password,
     });
 
@@ -61,9 +68,11 @@ const SignUpForm = () => {
     }
   };
 
-  // --------------------------------
-  // VERIFY EMAIL
-  // --------------------------------
+  /*
+   * ==========================================
+   * VERIFY EMAIL
+   * ==========================================
+   */
 
   const handleVerify = async (code: string) => {
     setError(null);
@@ -76,23 +85,27 @@ const SignUpForm = () => {
     }
 
     try {
-      await syncUser({ email });
+      await syncUser({
+        email,
+      });
+
       navigate("/profile/setup", {
         replace: true,
       });
     } catch (error) {
       console.error("Failed to sync user:", error);
+
       setError(
         "Your email was verified, but we couldn't create your account. Please try again.",
       );
     }
-
-    // Clerk session is active now
   };
 
-  // --------------------------------
-  // RESEND VERIFICATION
-  // --------------------------------
+  /*
+   * ==========================================
+   * RESEND
+   * ==========================================
+   */
 
   const handleResend = async () => {
     const result = await resendVerificationCode();
@@ -104,28 +117,11 @@ const SignUpForm = () => {
     return result;
   };
 
-  // --------------------------------
-  // GOOGLE
-  // --------------------------------
-
-  // const handleGoogle = async () => {
-  //   setError(null);
-  //   setGoogleLoading(true);
-
-  //   const result = await signUpWithGoogle();
-
-  //   if (!result.success) {
-  //     setError(result.error ?? "Google signup failed.");
-  //   }
-  //   setGoogleLoading(false);
-
-  //   // Connect Google OAuth here later
-  //   console.log("Google signup clicked");
-  // };
-
-  // --------------------------------
-  // EMAIL VERIFICATION SCREEN
-  // --------------------------------
+  /*
+   * ==========================================
+   * EMAIL VERIFICATION
+   * ==========================================
+   */
 
   if (isVerificationRequired) {
     return (
@@ -139,140 +135,180 @@ const SignUpForm = () => {
     );
   }
 
-  // --------------------------------
-  // SIGN UP UI
-  // --------------------------------
+  /*
+   * ==========================================
+   * SIGN UP UI
+   * ==========================================
+   */
 
   return (
     <div className="w-full max-w-md">
-      {/* Header */}
-      <div className="mb-6">
-        <p
+      {/* ======================================
+          INTRO
+          ====================================== */}
+
+      <div className="mb-7">
+        <div
           className="
-      text-xs
-      font-bold
-      tracking-[0.16em]
-      text-violet-600
-      dark:text-violet-400
-    "
+            mb-3
+            inline-flex
+            items-center
+            rounded-full
+            border
+            border-violet-200
+            bg-violet-50
+            px-3
+            py-1.5
+            text-[10px]
+            font-bold
+            uppercase
+            tracking-[0.14em]
+            text-violet-600
+            dark:border-violet-900
+            dark:bg-violet-950/50
+            dark:text-violet-300
+          "
         >
-          JOIN YOUR CAMPUS
-        </p>
+          Join UniVibe
+        </div>
 
         <h1
           className="
-      mt-2
-      text-3xl
-      font-bold
-      leading-tight
-      tracking-tight
-      text-slate-950
-      dark:text-white
-      sm:text-4xl
-    "
+            text-3xl
+            font-bold
+            leading-tight
+            tracking-[-0.03em]
+            text-slate-950
+            dark:text-white
+            sm:text-4xl
+          "
         >
-          Create your UniVibe account
+          Create your account
         </h1>
 
         <p
           className="
-      mt-2
-      text-sm
-      text-slate-500
-      dark:text-slate-400
-    "
+            mt-2
+            max-w-sm
+            text-sm
+            leading-6
+            text-slate-500
+            dark:text-neutral-400
+          "
         >
-          Meet people. Find your vibe.
+          Join your campus community and start connecting with people, clubs,
+          and events.
         </p>
       </div>
-      {/* Form Card */}
+
+      {/* ======================================
+          FORM CARD
+          ====================================== */}
+
       <div
         className="
           rounded-[26px]
           border
           border-slate-200
           bg-white
-          p-6
-          shadow-[0_20px_60px_-20px_rgba(15,23,42,0.15)]
-          dark:border-slate-800
-          dark:bg-slate-950/70
-          dark:shadow-[0_20px_60px_-20px_rgba(0,0,0,0.45)]
+          p-5
+          shadow-[0_12px_40px_-20px_rgba(15,23,42,0.22)]
+          dark:border-neutral-800
+          dark:bg-[#171717]
+          dark:shadow-[0_12px_40px_-20px_rgba(0,0,0,0.5)]
           sm:p-7
         "
       >
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Email */}
+          {/* ==================================
+              EMAIL
+              ================================== */}
+
           <div>
             <label
               htmlFor="email"
               className="
                 mb-2
                 block
-                text-sm
+                text-xs
                 font-semibold
-                text-slate-800
-                dark:text-slate-200
+                text-slate-700
+                dark:text-neutral-200
               "
             >
-              Email
+              Email address
             </label>
 
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="you@example.com"
-              autoComplete="email"
-              disabled={loading}
-              className="
-                w-full
-                rounded-2xl
-                border
-                border-slate-200
-                bg-slate-50
-                px-4
-                py-3.5
-                text-sm
-                text-slate-900
-                outline-none
-                transition-all
-                duration-200
+            <div className="relative">
+              <Mail
+                className="
+                  pointer-events-none
+                  absolute
+                  left-4
+                  top-1/2
+                  h-4
+                  w-4
+                  -translate-y-1/2
+                  text-slate-400
+                  dark:text-neutral-500
+                "
+              />
 
-                placeholder:text-slate-400
-
-                hover:border-slate-300
-
-                focus:border-violet-500
-                focus:bg-white
-                focus:ring-4
-                focus:ring-violet-500/10
-
-                disabled:cursor-not-allowed
-                disabled:opacity-60
-
-                dark:border-slate-700
-                dark:bg-slate-900
-                dark:text-white
-                dark:placeholder:text-slate-500
-                dark:hover:border-slate-600
-                dark:focus:border-violet-500
-                dark:focus:bg-slate-900
-                dark:focus:ring-violet-500/10
-              "
-            />
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="you@example.com"
+                autoComplete="email"
+                disabled={loading}
+                className="
+                  h-12
+                  w-full
+                  rounded-xl
+                  border
+                  border-slate-200
+                  bg-slate-50
+                  pl-11
+                  pr-4
+                  text-sm
+                  text-slate-900
+                  outline-none
+                  transition
+                  placeholder:text-slate-400
+                  hover:border-slate-300
+                  focus:border-violet-500
+                  focus:bg-white
+                  focus:ring-4
+                  focus:ring-violet-500/10
+                  disabled:cursor-not-allowed
+                  disabled:opacity-60
+                  dark:border-neutral-800
+                  dark:bg-[#0f0f0f]
+                  dark:text-white
+                  dark:placeholder:text-neutral-600
+                  dark:hover:border-neutral-700
+                  dark:focus:border-violet-500
+                  dark:focus:bg-[#0f0f0f]
+                  dark:focus:ring-violet-500/10
+                "
+              />
+            </div>
           </div>
 
-          {/* Password */}
+          {/* ==================================
+              PASSWORD
+              ================================== */}
+
           <div>
             <div className="mb-2 flex items-center justify-between">
               <label
                 htmlFor="password"
                 className="
-                  text-sm
+                  text-xs
                   font-semibold
-                  text-slate-800
-                  dark:text-slate-200
+                  text-slate-700
+                  dark:text-neutral-200
                 "
               >
                 Password
@@ -280,133 +316,251 @@ const SignUpForm = () => {
 
               <span
                 className="
-                  text-xs
+                  text-[10px]
+                  font-medium
                   text-slate-400
-                  dark:text-slate-500
+                  dark:text-neutral-500
                 "
               >
-                Min. 8 characters
+                At least 8 characters
               </span>
             </div>
 
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Create a password"
-              autoComplete="new-password"
-              disabled={loading}
-              className="
-                w-full
-                rounded-2xl
-                border
-                border-slate-200
-                bg-slate-50
-                px-4
-                py-3.5
-                text-sm
-                text-slate-900
-                outline-none
-                transition-all
-                duration-200
+            <div className="relative">
+              <LockKeyhole
+                className="
+                  pointer-events-none
+                  absolute
+                  left-4
+                  top-1/2
+                  h-4
+                  w-4
+                  -translate-y-1/2
+                  text-slate-400
+                  dark:text-neutral-500
+                "
+              />
 
-                placeholder:text-slate-400
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Create a password"
+                autoComplete="new-password"
+                disabled={loading}
+                className="
+                  h-12
+                  w-full
+                  rounded-xl
+                  border
+                  border-slate-200
+                  bg-slate-50
+                  pl-11
+                  pr-12
+                  text-sm
+                  text-slate-900
+                  outline-none
+                  transition
+                  placeholder:text-slate-400
+                  hover:border-slate-300
+                  focus:border-violet-500
+                  focus:bg-white
+                  focus:ring-4
+                  focus:ring-violet-500/10
+                  disabled:cursor-not-allowed
+                  disabled:opacity-60
+                  dark:border-neutral-800
+                  dark:bg-[#0f0f0f]
+                  dark:text-white
+                  dark:placeholder:text-neutral-600
+                  dark:hover:border-neutral-700
+                  dark:focus:border-violet-500
+                  dark:focus:bg-[#0f0f0f]
+                  dark:focus:ring-violet-500/10
+                "
+              />
 
-                hover:border-slate-300
-
-                focus:border-violet-500
-                focus:bg-white
-                focus:ring-4
-                focus:ring-violet-500/10
-
-                disabled:cursor-not-allowed
-                disabled:opacity-60
-
-                dark:border-slate-700
-                dark:bg-slate-900
-                dark:text-white
-                dark:placeholder:text-slate-500
-                dark:hover:border-slate-600
-                dark:focus:border-violet-500
-                dark:focus:bg-slate-900
-                dark:focus:ring-violet-500/10
-              "
-            />
+              <button
+                type="button"
+                onClick={() => setShowPassword((current) => !current)}
+                disabled={loading}
+                className="
+                  absolute
+                  right-2
+                  top-1/2
+                  flex
+                  h-8
+                  w-8
+                  -translate-y-1/2
+                  items-center
+                  justify-center
+                  rounded-lg
+                  text-slate-400
+                  transition
+                  hover:bg-slate-200
+                  hover:text-slate-700
+                  dark:text-neutral-500
+                  dark:hover:bg-neutral-800
+                  dark:hover:text-neutral-200
+                "
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           </div>
 
-          {/* Error */}
+          {/* ==================================
+              PASSWORD STRENGTH
+              ================================== */}
+
+          {password.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex gap-1.5">
+                {[1, 2, 3, 4].map((segment) => {
+                  const strength =
+                    password.length >= 12
+                      ? 4
+                      : password.length >= 10
+                        ? 3
+                        : password.length >= 8
+                          ? 2
+                          : 1;
+
+                  return (
+                    <div
+                      key={segment}
+                      className={`
+                          h-1
+                          flex-1
+                          rounded-full
+                          transition-colors
+                          ${
+                            segment <= strength
+                              ? "bg-violet-500"
+                              : "bg-slate-200 dark:bg-neutral-800"
+                          }
+                        `}
+                    />
+                  );
+                })}
+              </div>
+
+              <p
+                className="
+                  text-[10px]
+                  text-slate-400
+                  dark:text-neutral-500
+                "
+              >
+                {password.length < 8
+                  ? "Password is too short"
+                  : password.length < 10
+                    ? "Good start — make it longer for better security"
+                    : password.length < 12
+                      ? "Good password"
+                      : "Strong password"}
+              </p>
+            </div>
+          )}
+
+          {/* ==================================
+              ERROR
+              ================================== */}
+
           <AuthError message={error} />
 
-          {/* Clerk CAPTCHA */}
-          <div id="clerk-captcha" />
+          {/* ==================================
+              CLERK CAPTCHA
+              ================================== */}
+          <div
+            id="clerk-captcha"
+            className="min-h-0"
+            data-cl-theme="auto"
+            data-cl-size="flexible"
+          />
 
-          {/* Submit */}
+          {/* ==================================
+              SUBMIT
+              ================================== */}
+
           <button
             type="submit"
             disabled={loading}
             className="
               group
-              relative
+              flex
+              h-12
               w-full
-              overflow-hidden
-              rounded-2xl
-              bg-gradient-to-r
-              from-violet-600
-              via-purple-600
-              to-fuchsia-600
+              items-center
+              justify-center
+              gap-2
+              rounded-xl
+              bg-violet-600
               px-4
-              py-3.5
               text-sm
-              font-bold
+              font-semibold
               text-white
-              shadow-lg
-              shadow-violet-500/20
+              shadow-md
+              shadow-violet-600/15
               transition-all
-              duration-300
-
-              hover:-translate-y-0.5
-              hover:shadow-xl
-              hover:shadow-violet-500/25
-
-              active:translate-y-0
-
+              hover:bg-violet-700
+              hover:shadow-lg
+              hover:shadow-violet-600/20
+              active:scale-[0.99]
               disabled:cursor-not-allowed
               disabled:opacity-60
-              disabled:hover:translate-y-0
+              dark:bg-violet-500
+              dark:hover:bg-violet-600
             "
           >
-            <span className="relative z-10">
-              {loading ? "Creating account..." : "Create My UniVibe Account"}
-            </span>
+            <span>{loading ? "Creating account..." : "Create account"}</span>
 
-            {/* Hover shine */}
-            <span
-              className="
-                absolute
-                inset-0
-                -translate-x-full
-                bg-gradient-to-r
-                from-transparent
-                via-white/20
-                to-transparent
-                transition-transform
-                duration-700
-                group-hover:translate-x-full
-              "
-            />
+            {!loading && (
+              <ArrowRight
+                className="
+                  h-4
+                  w-4
+                  transition-transform
+                  duration-200
+                  group-hover:translate-x-0.5
+                "
+              />
+            )}
           </button>
+
+          {/* ==================================
+              TRUST TEXT
+              ================================== */}
+
+          <p
+            className="
+              text-center
+              text-[10px]
+              leading-5
+              text-slate-400
+              dark:text-neutral-500
+            "
+          >
+            {/* Your account is secured by Clerk. */}
+            <br />
+            You'll verify your email before setting up your profile.
+          </p>
         </form>
-
-        {/* Divider */}
-        {/* <AuthDivider /> */}
-
-        {/* Google */}
-        {/* <GoogleButton onClick={handleGoogle} loading={googleLoading} /> */}
       </div>
 
-      {/* Footer */}
-      <AuthFooter />
+      {/* ======================================
+          FOOTER
+          ====================================== */}
+
+      <div className="mt-5">
+        <AuthFooter />
+      </div>
     </div>
   );
 };

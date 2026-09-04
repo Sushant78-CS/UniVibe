@@ -1,40 +1,45 @@
-import { Sparkles } from "lucide-react";
 import ThemeToggle from "../common/ThemeToggle";
 
 const AuthHeader = () => {
   return (
-    <div className="flex items-center justify-between px-5 py-5 lg:hidden">
-      {/* Logo */}
-      <div className="flex items-center gap-3">
+    <div
+      className="
+        flex
+        items-center
+        justify-between
+        px-5
+        py-5
+      "
+    >
+      <div>
         <div
           className="
-                flex h-10 w-10
-                items-center justify-center
-                rounded-xl
-                bg-gradient-to-br
-                from-indigo-600
-                to-purple-600
-                text-lg
-                font-bold
-                text-white
-                shadow-md
-              "
+            text-[22px]
+            font-extrabold
+            leading-none
+            tracking-[-0.04em]
+            text-slate-900
+            dark:text-white
+          "
         >
-          <Sparkles size={20} />
+          UniVibe
         </div>
 
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white">
-            UniVibe
-          </h1>
-
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Your campus. Your people.
-          </p>
+        <div
+          className="
+            mt-1
+            text-[8px]
+            font-semibold
+            uppercase
+            tracking-[0.16em]
+            text-slate-400
+            dark:text-neutral-500
+          "
+        >
+          Campus Community
         </div>
       </div>
 
-      {/* Mobile Theme Toggle */}
       <ThemeToggle />
     </div>
   );

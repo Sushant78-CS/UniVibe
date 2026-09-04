@@ -1,10 +1,11 @@
-import { ArrowRight, UserRound } from "lucide-react";
+import { UserRound } from "lucide-react";
 import { useNavigate } from "react-router";
+import { useQuery } from "@tanstack/react-query";
+
 import {
   useConnectionApi,
   type ConnectedPerson,
 } from "../../api/connectionApi";
-import { useQuery } from "@tanstack/react-query";
 
 const ConnectionsSection = () => {
   const navigate = useNavigate();
@@ -18,83 +19,113 @@ const ConnectionsSection = () => {
     queryKey: ["connections"],
     queryFn: getConnections,
 
-    // Keep connections cached
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    gcTime: 1000 * 60 * 30, // 30 minutes
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
 
-    // Don't refetch every time the user returns to the tab
     refetchOnWindowFocus: false,
-
     retry: 1,
   });
 
-  // Only show the first 4 on Home
-  const visibleConnections = connections.slice(0, 4);
+  const visibleConnections = connections.slice(0, 10);
 
-  // Don't show the section if there are no connections
+  /*
+   * No connections = no section.
+   */
   if (!isLoading && !isError && visibleConnections.length === 0) {
     return null;
   }
 
   return (
-    <section className="mt-0">
-      {/* ================= HEADER ================= */}
+    <section
+      className="
+        w-full
+        border-b
+        border-slate-100
+        bg-white
+        py-2.5
 
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">
-            Your Connections
-          </h2>
-
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-            People you're connected with
-          </p>
-        </div>
-
-        {!isLoading && visibleConnections.length > 0 && (
-          <button
-            type="button"
-            onClick={() => navigate("/connections")}
-            className="
-              flex
-              items-center
-              gap-1
-              text-xs
-              font-semibold
-              text-violet-600
-              transition
-              hover:text-violet-700
-              dark:text-violet-400
-            "
-          >
-            See all
-            <ArrowRight size={14} />
-          </button>
-        )}
-      </div>
-
-      {/* ================= LOADING ================= */}
-
+        dark:border-neutral-900
+        dark:bg-black
+      "
+    >
       {isLoading ? (
-        <div className="flex gap-3 overflow-hidden">
-          {[1, 2, 3, 4].map((item) => (
+        /* =====================================
+           LOADING
+           ===================================== */
+
+        <div
+          className="
+            flex
+            gap-4
+            overflow-hidden
+            px-4
+            sm:px-0
+          "
+        >
+          {[1, 2, 3, 4, 5, 6].map((item) => (
             <div
               key={item}
               className="
-                h-20
-                min-w-[72px]
-                animate-pulse
-                rounded-2xl
-                bg-slate-200
-                dark:bg-slate-800
+                flex
+                w-[60px]
+                shrink-0
+                flex-col
+                items-center
               "
-            />
+            >
+              <div
+                className="
+                  h-[52px]
+                  w-[52px]
+                  animate-pulse
+                  rounded-full
+                  bg-slate-200
+
+                  dark:bg-neutral-800
+                "
+              />
+
+              <div
+                className="
+                  mt-1.5
+                  h-2
+                  w-10
+                  animate-pulse
+                  rounded-full
+                  bg-slate-200
+
+                  dark:bg-neutral-800
+                "
+              />
+            </div>
           ))}
         </div>
       ) : (
-        /* ================= CONNECTIONS ================= */
+        /* =====================================
+           CONNECTIONS
+           ===================================== */
 
-        <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+        <div
+          className="
+            flex
+            w-full
+            gap-4
+            overflow-x-auto
+            overflow-y-hidden
+            overscroll-x-contain
+            px-4
+            py-0.5
+
+            scrollbar-hide
+
+            sm:px-0
+          "
+          style={{
+            WebkitOverflowScrolling: "touch",
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+          }}
+        >
           {visibleConnections.map((person) => (
             <button
               key={person.connectionId}
@@ -103,69 +134,89 @@ const ConnectionsSection = () => {
               className="
                 group
                 flex
-                min-w-[76px]
+                w-[60px]
+                shrink-0
                 flex-col
                 items-center
+                rounded-xl
+                outline-none
+                transition-transform
+                duration-150
+                active:scale-[0.95]
+                focus-visible:ring-2
+                focus-visible:ring-violet-500/30
               "
             >
               {/* Avatar */}
 
-              <div className="relative">
-                {person.profileImage ? (
-                  <img
-                    src={person.profileImage}
-                    alt={person.fullName}
-                    className="
-                      h-14
-                      w-14
-                      rounded-full
-                      object-cover
-                      ring-2
-                      ring-white
-                      transition
-                      group-hover:ring-violet-500
-                      dark:ring-slate-950
-                    "
-                  />
-                ) : (
-                  <div
-                    className="
-                      flex
-                      h-14
-                      w-14
-                      items-center
-                      justify-center
-                      rounded-full
-                      bg-violet-100
-                      text-violet-600
-                      ring-2
-                      ring-white
-                      dark:bg-violet-500/10
-                      dark:text-violet-400
-                      dark:ring-slate-950
-                    "
-                  >
-                    <UserRound size={22} />
-                  </div>
-                )}
-              </div>
+              {person.profileImage ? (
+                <img
+                  src={person.profileImage}
+                  alt={person.fullName}
+                  draggable={false}
+                  className="
+                    h-[52px]
+                    w-[52px]
+                    rounded-full
+                    object-cover
+                    ring-1
+                    ring-slate-200
+                    transition-all
+                    duration-200
+                    group-hover:ring-2
+                    group-hover:ring-violet-500
+
+                    dark:ring-neutral-700
+                    dark:group-hover:ring-violet-500
+                  "
+                />
+              ) : (
+                <div
+                  className="
+                    flex
+                    h-[52px]
+                    w-[52px]
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-slate-100
+                    text-slate-500
+                    ring-1
+                    ring-slate-200
+                    transition-all
+                    duration-200
+                    group-hover:ring-2
+                    group-hover:ring-violet-500
+
+                    dark:bg-neutral-900
+                    dark:text-neutral-400
+                    dark:ring-neutral-700
+                    dark:group-hover:ring-violet-500
+                  "
+                >
+                  <UserRound size={19} strokeWidth={1.8} />
+                </div>
+              )}
 
               {/* Name */}
 
-              <p
+              <span
                 className="
-                  mt-2
+                  mt-1
                   w-full
                   truncate
+                  px-0.5
                   text-center
-                  text-[11px]
+                  text-[10px]
                   font-medium
-                  text-slate-700
-                  dark:text-slate-300
+                  leading-3
+                  text-slate-600
+
+                  dark:text-neutral-400
                 "
               >
                 {person.fullName}
-              </p>
+              </span>
             </button>
           ))}
         </div>

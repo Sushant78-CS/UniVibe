@@ -1,10 +1,11 @@
 import { useNavigate } from "react-router";
 import { useState } from "react";
+
 import ProfileHeader from "../../components/profile-setup/ProfileHeader";
 import ProfilePhoto from "../../components/profile-setup/ProfilePhoto";
 import ProfileInput from "../../components/profile-setup/ProfileInput";
 import ProfileSelect from "../../components/profile-setup/ProfileSelect";
-import TagInput from "../../components/profile-setup/TagInput";
+
 import { useProfileApi } from "../../api/profileApi";
 import axios from "axios";
 
@@ -19,20 +20,41 @@ function ProfileSetupPage() {
     fullName: "",
     username: "",
     college: "",
-    department: "",
     year: "",
-    bio: "",
-    interests: [] as string[],
   });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const update = (key: keyof typeof form, value: string) =>
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!form.fullName.trim()) {
+      setError("Please enter your full name.");
+      return;
+    }
+
+    if (!form.username.trim()) {
+      setError("Please choose a username.");
+      return;
+    }
+
+    if (!form.college.trim()) {
+      setError("Please enter your college.");
+      return;
+    }
+
+    if (!form.year) {
+      setError("Please select your year.");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
@@ -40,12 +62,18 @@ function ProfileSetupPage() {
       await createProfile(
         {
           ...form,
-          interests: form.interests.join(","),
+          interests: "",
+          department: "",
+          bio: "",
         },
         profileFile,
       );
 
-      navigate("/home", { replace: true });
+      window.dispatchEvent(new Event("profile-created"));
+
+      navigate("/home", {
+        replace: true,
+      });
     } catch (error) {
       setError(
         axios.isAxiosError(error)
@@ -58,35 +86,97 @@ function ProfileSetupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-slate-950 dark:via-slate-950 dark:to-indigo-950">
-      <header className="border-b border-slate-200 bg-white/80 px-5 py-4 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/80">
+    <div
+      className="
+        min-h-screen
+        bg-slate-50
+        text-slate-900
+        transition-colors
+        duration-300
+        dark:bg-black
+        dark:text-white
+      "
+    >
+      {/* HEADER */}
+      <header
+        className="
+          border-b
+          border-slate-200
+          bg-white
+          px-5
+          py-4
+          dark:border-neutral-800
+          dark:bg-[#111111]
+        "
+      >
         <div className="mx-auto max-w-2xl">
           <ProfileHeader />
         </div>
       </header>
 
-      <main className="px-5 py-8 sm:px-8">
+      {/* MAIN */}
+      <main
+        className="
+          px-5
+          py-8
+          sm:px-8
+          sm:py-10
+        "
+      >
         <div className="mx-auto max-w-2xl">
+          {/* TITLE */}
           <div className="mb-6">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
-              Build your profile ✨
+            <h2
+              className="
+                text-2xl
+                font-bold
+                text-slate-900
+                dark:text-white
+                sm:text-3xl
+              "
+            >
+              Build your profile
             </h2>
-            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-              Tell us a little about yourself.
+
+            <p
+              className="
+                mt-2
+                text-sm
+                leading-6
+                text-slate-500
+                dark:text-neutral-400
+              "
+            >
+              Set up the basics and start connecting with your campus.
             </p>
           </div>
 
+          {/* FORM */}
           <form
             onSubmit={handleSubmit}
-            className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xl dark:border-slate-800 dark:bg-slate-900 sm:p-8"
+            className="
+              rounded-[24px]
+              border
+              border-slate-200
+              bg-white
+              p-5
+              shadow-[0_16px_45px_-20px_rgba(15,23,42,0.18)]
+              transition-colors
+              dark:border-neutral-800
+              dark:bg-[#171717]
+              dark:shadow-[0_16px_45px_-20px_rgba(0,0,0,0.5)]
+              sm:p-8
+            "
           >
+            {/* PROFILE PHOTO */}
             <ProfilePhoto
               image={profileImage}
               onChange={setProfileImage}
               onFileChange={setProfileFile}
             />
 
-            <div className="mt-5 space-y-5">
+            <div className="mt-6 space-y-5">
+              {/* FULL NAME */}
               <ProfileInput
                 label="Full Name"
                 value={form.fullName}
@@ -94,6 +184,7 @@ function ProfileSetupPage() {
                 onChange={(value) => update("fullName", value)}
               />
 
+              {/* USERNAME */}
               <ProfileInput
                 label="Username"
                 value={form.username}
@@ -101,6 +192,7 @@ function ProfileSetupPage() {
                 onChange={(value) => update("username", value)}
               />
 
+              {/* COLLEGE */}
               <ProfileInput
                 label="College"
                 value={form.college}
@@ -108,6 +200,7 @@ function ProfileSetupPage() {
                 onChange={(value) => update("college", value)}
               />
 
+              {/* YEAR */}
               <ProfileSelect
                 label="Year"
                 value={form.year}
@@ -121,76 +214,74 @@ function ProfileSetupPage() {
                 ]}
                 onChange={(value) => update("year", value)}
               />
-
-              <ProfileInput
-                label="Department"
-                value={form.department}
-                placeholder="e.g. Computer Science"
-                onChange={(value) => update("department", value)}
-              />
-
-              <TagInput
-                label="Interests"
-                tags={form.interests}
-                onChange={(value) =>
-                  setForm((prev) => ({ ...prev, interests: value }))
-                }
-                placeholder="Add an interest..."
-                suggestions={[
-                  "Coding",
-                  "Gaming",
-                  "Music",
-                  "Movies",
-                  "Fitness",
-                  "Reading",
-                ]}
-              />
-
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  About You
-                </label>
-
-                <textarea
-                  value={form.bio}
-                  onChange={(e) => update("bio", e.target.value)}
-                  placeholder="Tell us something about you..."
-                  maxLength={200}
-                  rows={4}
-                  className="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:ring-indigo-950"
-                />
-
-                <p className="mt-1 text-right text-xs text-slate-400">
-                  {form.bio.length}/200
-                </p>
-              </div>
             </div>
 
+            {/* ERROR */}
             {error && (
-              <div className="mt-5 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400">
+              <div
+                className="
+                  mt-5
+                  rounded-2xl
+                  border
+                  border-red-100
+                  bg-red-50
+                  px-4
+                  py-3
+                  text-sm
+                  text-red-600
+                  dark:border-red-900/60
+                  dark:bg-red-950/30
+                  dark:text-red-400
+                "
+              >
                 {error}
               </div>
             )}
 
+            {/* SUBMIT */}
             <button
               type="submit"
               disabled={loading}
-              className="mt-6 w-full rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 py-3.5 text-sm font-semibold text-white shadow-lg transition hover:from-indigo-700 hover:to-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="
+                mt-6
+                w-full
+                rounded-2xl
+                bg-violet-600
+                py-3.5
+                text-sm
+                font-semibold
+                text-white
+                shadow-[0_8px_20px_-8px_rgba(124,58,237,0.55)]
+                transition-all
+                duration-200
+                hover:-translate-y-0.5
+                hover:bg-violet-700
+                hover:shadow-[0_12px_24px_-10px_rgba(124,58,237,0.65)]
+                active:translate-y-0
+                disabled:cursor-not-allowed
+                disabled:opacity-60
+                disabled:hover:translate-y-0
+                dark:bg-violet-600
+                dark:hover:bg-violet-500
+              "
             >
               {loading ? "Setting up..." : "Continue to UniVibe →"}
             </button>
           </form>
 
-          <p className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">
-            Your profile helps UniVibe find people like you.
+          {/* FOOTER NOTE */}
+          <p
+            className="
+              py-6
+              text-center
+              text-xs
+              text-slate-400
+              dark:text-neutral-500
+            "
+          >
+            You can add more details to your profile anytime.
           </p>
         </div>
-        {/* <button
-          onClick={handleSignOut}
-          className="mt-6 w-full rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 py-3.5 text-sm font-semibold text-white shadow-lg transition hover:from-indigo-700 hover:to-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          Sign Out
-        </button> */}
       </main>
     </div>
   );

@@ -102,56 +102,97 @@ public class PostService {
             String clerkId,
             Long postId,
             CreatePostDto dto,
-            MultipartFile media,
             boolean removeMedia
     ) throws IOException {
+
         Users user = userRepository
                 .findByClerkId(clerkId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() ->
+                        new RuntimeException("User not found"));
+
         Post post = postRepository
                 .findById(postId)
-                .orElseThrow(() -> new RuntimeException("Post not found"));
+                .orElseThrow(() ->
+                        new RuntimeException("Post not found"));
+
         // Only owner can edit
         if (!post.getUser().getId().equals(user.getId())) {
             throw new RuntimeException("You cannot edit this post");
         }
+
         // Validate description
-        if (dto.description() == null || dto.description().isBlank()) {
-            throw new IllegalArgumentException("Post description cannot be empty");
+        if (dto.description() == null ||
+                dto.description().isBlank()) {
+
+            throw new IllegalArgumentException(
+                    "Post description cannot be empty"
+            );
         }
+
         // Validate category
         if (dto.category() == null) {
-            throw new IllegalArgumentException("Post category is required");
+            throw new IllegalArgumentException(
+                    "Post category is required"
+            );
         }
+
+        /*
+         * Update text/category.
+         */
         post.setDescription(dto.description().trim());
         post.setCategory(dto.category());
+
+        /*
+         * Existing media.
+         */
         String oldMediaUrl = post.getMediaUrl();
         MediaType oldMediaType = post.getMediaType();
+
         /*
-         * Case 1:
-         * User selected new media.
+         * ==========================================
+         * NEW MEDIA
+         * ==========================================
+         *
+         * Frontend already uploaded the new media
+         * directly to Cloudinary and gives us the URL.
          */
-        if (media != null && !media.isEmpty()) {
-            String contentType = media.getContentType();
-            if (contentType == null) {
-                throw new IllegalArgumentException("Unable to determine media type");
+        if (dto.mediaUrl() != null &&
+                !dto.mediaUrl().isBlank()) {
+
+            MediaType newMediaType = null;
+
+            if (dto.mediaType() != null &&
+                    !dto.mediaType().isBlank()) {
+
+                try {
+                    newMediaType = MediaType.valueOf(
+                            dto.mediaType().toUpperCase()
+                    );
+                } catch (IllegalArgumentException e) {
+                    throw new IllegalArgumentException(
+                            "Invalid media type. Use IMAGE or VIDEO"
+                    );
+                }
             }
-            String newMediaUrl;
-            MediaType newMediaType;
-            if (contentType.startsWith("image/")) {
-                newMediaUrl =
-                        cloudinaryService.uploadPostImage(media);
-                newMediaType = MediaType.IMAGE;
-            } else if (contentType.startsWith("video/")) {
-                newMediaUrl = cloudinaryService.uploadPostVideo(media);
-                newMediaType = MediaType.VIDEO;
-            } else {
-                throw new IllegalArgumentException("Only image and video files are allowed");
+
+            if (newMediaType == null) {
+                throw new IllegalArgumentException(
+                        "Media type is required when media URL is provided"
+                );
             }
-            post.setMediaUrl(newMediaUrl);
+
+            /*
+             * Replace media URL/type.
+             */
+            post.setMediaUrl(dto.mediaUrl());
             post.setMediaType(newMediaType);
-            // Delete old media from Cloudinary
-            if (oldMediaUrl != null && !oldMediaUrl.isBlank()) {
+
+            /*
+             * Delete old Cloudinary media.
+             */
+            if (oldMediaUrl != null &&
+                    !oldMediaUrl.isBlank()) {
+
                 cloudinaryService.deletePostMedia(
                         oldMediaUrl,
                         oldMediaType != null
@@ -160,14 +201,21 @@ public class PostService {
                 );
             }
         }
+
         /*
-         * Case 2:
-         * User clicked "Remove media".
+         * ==========================================
+         * REMOVE MEDIA
+         * ==========================================
          */
+
         else if (removeMedia) {
+
             post.setMediaUrl(null);
             post.setMediaType(null);
-            if (oldMediaUrl != null && !oldMediaUrl.isBlank()) {
+
+            if (oldMediaUrl != null &&
+                    !oldMediaUrl.isBlank()) {
+
                 cloudinaryService.deletePostMedia(
                         oldMediaUrl,
                         oldMediaType != null
@@ -176,7 +224,15 @@ public class PostService {
                 );
             }
         }
+
+        /*
+         * ==========================================
+         * UPDATED TIME
+         * ==========================================
+         */
+
         post.setUpdatedAt(Instant.now());
+
         Post savedPost = postRepository.save(post);
 
         return toDto(savedPost, user);

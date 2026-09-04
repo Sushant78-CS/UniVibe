@@ -1,28 +1,25 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { Eye, EyeOff } from "lucide-react";
 
-// import AuthDivider from "./AuthDivider";
 import AuthError from "./AuthError";
-// import GoogleButton from "./GoogleButton";
-
 import useClerkSignIn from "../../hooks/useClerkSignIn";
 
 const SignInForm = () => {
   const navigate = useNavigate();
-
   const { signInUser, loading } = useClerkSignIn();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loadingState, setLoadingState] = useState(false);
-  // const [googleLoading, setGoogleLoading] = useState(false);
-
   const [error, setError] = useState<string | null>(null);
+
+  const isSubmitting = loading || loadingState;
 
   // --------------------------------
   // EMAIL SIGN IN
   // --------------------------------
-
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -33,52 +30,23 @@ const SignInForm = () => {
 
     if (!result.success) {
       setError(result.error ?? "Unable to sign in.");
-
+      setLoadingState(false);
       return;
     }
 
-    // Clerk session is now active.
     navigate("/home", {
       replace: true,
     });
+
     setLoadingState(false);
   };
-
-  // --------------------------------
-  // GOOGLE
-  // --------------------------------
-
-  // const handleGoogle = async () => {
-  //   setError(null);
-  //   setGoogleLoading(true);
-
-  //   const result = await signInWithGoogle();
-
-  //   if (!result.success) {
-  //     setError(result.error ?? "Google sign in failed.");
-  //   }
-  //   setGoogleLoading(false);
-  // };
 
   return (
     <div className="w-full max-w-md">
       {/* Header */}
       <div className="mb-6">
-        <p
-          className="
-      text-xs
-      font-bold
-      tracking-[0.16em]
-      text-violet-600
-      dark:text-violet-400
-    "
-        >
-          CAMPUS CONNECTION
-        </p>
-
         <h1
           className="
-      mt-2
       text-3xl
       font-bold
       leading-tight
@@ -94,33 +62,31 @@ const SignInForm = () => {
           className="
       mt-2
       text-sm
+      leading-6
       text-slate-500
-      dark:text-slate-400
+      dark:text-neutral-400
     "
         >
-          Connect, Discover, Belong
+          Connect with your campus community.
         </p>
       </div>
 
       {/* Form Card */}
       <div
         className="
-          rounded-[26px]
+          rounded-[24px]
           border
           border-slate-200
           bg-white
           p-6
-          shadow-[0_20px_60px_-20px_rgba(15,23,42,0.15)]
-          transition-all
-
-          dark:border-slate-800
-          dark:bg-slate-900/70
-          dark:shadow-[0_20px_60px_-20px_rgba(0,0,0,0.45)]
-
+          shadow-[0_16px_45px_-20px_rgba(15,23,42,0.18)]
+          transition-colors
+          dark:border-neutral-800
+          dark:bg-[#171717]
+          dark:shadow-[0_16px_45px_-20px_rgba(0,0,0,0.5)]
           sm:p-7
         "
       >
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Email */}
           <div>
@@ -132,10 +98,10 @@ const SignInForm = () => {
                 text-sm
                 font-semibold
                 text-slate-800
-                dark:text-slate-200
+                dark:text-neutral-200
               "
             >
-              Email
+              Email address
             </label>
 
             <input
@@ -145,7 +111,8 @@ const SignInForm = () => {
               onChange={(event) => setEmail(event.target.value)}
               placeholder="you@example.com"
               autoComplete="email"
-              disabled={loading}
+              disabled={isSubmitting}
+              required
               className="
                 w-full
                 rounded-2xl
@@ -158,27 +125,22 @@ const SignInForm = () => {
                 text-slate-900
                 outline-none
                 transition-all
-
                 placeholder:text-slate-400
-
                 hover:border-slate-300
-
                 focus:border-violet-500
                 focus:bg-white
                 focus:ring-4
                 focus:ring-violet-500/10
-
                 disabled:cursor-not-allowed
                 disabled:opacity-60
 
-                dark:border-slate-700
-                dark:bg-slate-800
+                dark:border-neutral-700
+                dark:bg-[#0f0f0f]
                 dark:text-white
-                dark:placeholder:text-slate-500
-
-                dark:hover:border-slate-600
+                dark:placeholder:text-neutral-500
+                dark:hover:border-neutral-600
                 dark:focus:border-violet-500
-                dark:focus:bg-slate-800
+                dark:focus:bg-[#0f0f0f]
               "
             />
           </div>
@@ -192,73 +154,94 @@ const SignInForm = () => {
                   text-sm
                   font-semibold
                   text-slate-800
-                  dark:text-slate-200
+                  dark:text-neutral-200
                 "
               >
                 Password
               </label>
 
-              {/* <button
-                type="button"
+              <span
                 className="
-                  text-xs
-                  font-semibold
-                  text-violet-600
-                  transition-colors
-                  hover:text-violet-700
-                  hover:underline
-
-                  dark:text-violet-400
-                  dark:hover:text-violet-300
+                  text-[11px]
+                  font-medium
+                  text-slate-400
+                  dark:text-neutral-500
                 "
               >
-                Forgot password?
-              </button> */}
+                Secure sign in
+              </span>
             </div>
 
-            <input
-              id="signin-password"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Enter your password"
-              autoComplete="current-password"
-              disabled={loading}
-              className="
-                w-full
-                rounded-2xl
-                border
-                border-slate-200
-                bg-slate-50
-                px-4
-                py-3.5
-                text-sm
-                text-slate-900
-                outline-none
-                transition-all
+            <div className="relative">
+              <input
+                id="signin-password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Enter your password"
+                autoComplete="current-password"
+                disabled={isSubmitting}
+                required
+                className="
+                  w-full
+                  rounded-2xl
+                  border
+                  border-slate-200
+                  bg-slate-50
+                  px-4
+                  py-3.5
+                  pr-12
+                  text-sm
+                  text-slate-900
+                  outline-none
+                  transition-all
+                  placeholder:text-slate-400
+                  hover:border-slate-300
+                  focus:border-violet-500
+                  focus:bg-white
+                  focus:ring-4
+                  focus:ring-violet-500/10
+                  disabled:cursor-not-allowed
+                  disabled:opacity-60
 
-                placeholder:text-slate-400
+                  dark:border-neutral-700
+                  dark:bg-[#0f0f0f]
+                  dark:text-white
+                  dark:placeholder:text-neutral-500
+                  dark:hover:border-neutral-600
+                  dark:focus:border-violet-500
+                  dark:focus:bg-[#0f0f0f]
+                "
+              />
 
-                hover:border-slate-300
-
-                focus:border-violet-500
-                focus:bg-white
-                focus:ring-4
-                focus:ring-violet-500/10
-
-                disabled:cursor-not-allowed
-                disabled:opacity-60
-
-                dark:border-slate-700
-                dark:bg-slate-800
-                dark:text-white
-                dark:placeholder:text-slate-500
-
-                dark:hover:border-slate-600
-                dark:focus:border-violet-500
-                dark:focus:bg-slate-800
-              "
-            />
+              <button
+                type="button"
+                onClick={() => setShowPassword((previous) => !previous)}
+                disabled={isSubmitting}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="
+                  absolute
+                  right-3
+                  top-1/2
+                  -translate-y-1/2
+                  rounded-lg
+                  p-1.5
+                  text-slate-400
+                  transition-colors
+                  hover:text-slate-600
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
+                  dark:text-neutral-500
+                  dark:hover:text-neutral-300
+                "
+              >
+                {showPassword ? (
+                  <EyeOff size={18} strokeWidth={2} />
+                ) : (
+                  <Eye size={18} strokeWidth={2} />
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Error */}
@@ -267,62 +250,46 @@ const SignInForm = () => {
           {/* Submit */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={isSubmitting}
             className="
-              group
-              relative
               w-full
-              overflow-hidden
               rounded-2xl
-              bg-gradient-to-r
-              from-violet-600
-              via-purple-600
-              to-fuchsia-600
+              bg-violet-600
               px-4
               py-3.5
               text-sm
               font-bold
               text-white
-              shadow-lg
-              shadow-violet-500/20
+              shadow-[0_8px_20px_-8px_rgba(124,58,237,0.55)]
               transition-all
-              duration-300
-
+              duration-200
               hover:-translate-y-0.5
-              hover:shadow-xl
-
+              hover:bg-violet-700
+              hover:shadow-[0_12px_24px_-10px_rgba(124,58,237,0.65)]
               active:translate-y-0
-
               disabled:cursor-not-allowed
               disabled:opacity-60
+              disabled:hover:translate-y-0
+              dark:bg-violet-600
+              dark:hover:bg-violet-500
             "
           >
-            <span className="relative z-10">
-              {loadingState ? "Signing you in..." : "Sign In"}
-            </span>
-
-            <span
-              className="
-                absolute
-                inset-0
-                -translate-x-full
-                bg-gradient-to-r
-                from-transparent
-                via-white/20
-                to-transparent
-                transition-transform
-                duration-700
-                group-hover:translate-x-full
-              "
-            />
+            {isSubmitting ? "Signing you in..." : "Sign In"}
           </button>
+
+          {/* Security note */}
+          <p
+            className="
+              text-center
+              text-[11px]
+              leading-5
+              text-slate-400
+              dark:text-neutral-500
+            "
+          >
+            Your account is securely authenticated with Clerk.
+          </p>
         </form>
-
-        {/* Divider */}
-        {/* <AuthDivider /> */}
-
-        {/* Google */}
-        {/* <GoogleButton onClick={handleGoogle} loading={googleLoading} /> */}
       </div>
 
       {/* Signup */}
@@ -332,7 +299,7 @@ const SignInForm = () => {
           text-center
           text-sm
           text-slate-500
-          dark:text-slate-400
+          dark:text-neutral-400
         "
       >
         New to UniVibe?{" "}
@@ -344,7 +311,6 @@ const SignInForm = () => {
             transition-colors
             hover:text-violet-700
             hover:underline
-
             dark:text-violet-400
             dark:hover:text-violet-300
           "

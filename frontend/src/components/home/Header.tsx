@@ -1,10 +1,12 @@
 import { Bell } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
+
 import { useNotificationApi } from "../../api/notificationApi";
 
-function DashboardHeader() {
+function Header() {
   const navigate = useNavigate();
+
   const { getUnreadCount } = useNotificationApi();
 
   const [unreadCount, setUnreadCount] = useState(0);
@@ -38,53 +40,52 @@ function DashboardHeader() {
         top-0
         z-40
         border-b
-        border-slate-200/70
-        bg-slate-50/90
-        backdrop-blur-xl
-        dark:border-slate-800/70
-        dark:bg-slate-950/90
+        border-slate-200
+        bg-white
+        transition-colors
+        dark:border-neutral-900
+        dark:bg-black
       "
     >
       <div
         className="
           mx-auto
           flex
-          max-w-6xl
+          w-full
+          max-w-[680px]
           items-center
           justify-between
           px-4
-          py-2
-          sm:px-6
+          py-3
+          sm:px-0
         "
       >
-        {/* ================= UNIVIBE LOGO ================= */}
+        {/* =======================================
+            UNIVIBE LOGO
+            ======================================= */}
 
         <button
           type="button"
           onClick={() => navigate("/home")}
           aria-label="Go to home"
           className="
-            rounded-xl
+            rounded-lg
             text-left
-            transition
+            outline-none
+            transition-transform
             active:scale-[0.97]
+            focus-visible:ring-2
+            focus-visible:ring-violet-500/30
           "
         >
           <div
             className="
-              bg-gradient-to-r
-              from-violet-600
-              via-purple-600
-              to-fuchsia-500
-              bg-clip-text
-              text-[20px]
+              text-[21px]
               font-extrabold
               leading-none
-              tracking-[-0.04em]
-              text-transparent
-              dark:from-violet-400
-              dark:via-purple-400
-              dark:to-fuchsia-400
+              tracking-[-0.045em]
+              text-violet-600
+              dark:text-violet-400
             "
           >
             UniVibe
@@ -93,24 +94,30 @@ function DashboardHeader() {
           <div
             className="
               mt-1
-              text-[8px]
+              text-[7px]
               font-semibold
               uppercase
-              tracking-[0.16em]
+              tracking-[0.18em]
               text-slate-400
-              dark:text-slate-500
+              dark:text-neutral-600
             "
           >
             Campus Community
           </div>
         </button>
 
-        {/* ================= NOTIFICATIONS ================= */}
+        {/* =======================================
+            NOTIFICATIONS
+            ======================================= */}
 
         <button
           type="button"
           onClick={() => navigate("/notifications")}
-          aria-label="Notifications"
+          aria-label={
+            unreadCount > 0
+              ? `Notifications, ${unreadCount} unread`
+              : "Notifications"
+          }
           className="
             relative
             flex
@@ -118,45 +125,55 @@ function DashboardHeader() {
             w-9
             items-center
             justify-center
-            rounded-xl
+            rounded-full
             border
             border-slate-200
             bg-white
             text-slate-600
-            transition
-            hover:bg-slate-100
+            transition-all
+            hover:bg-slate-50
+            hover:text-slate-900
             active:scale-95
-            dark:border-slate-800
-            dark:bg-slate-900
-            dark:text-slate-300
-            dark:hover:bg-slate-800
+            focus:outline-none
+            focus-visible:ring-2
+            focus-visible:ring-violet-500/30
+
+            dark:border-neutral-800
+            dark:bg-[#171717]
+            dark:text-neutral-400
+            dark:hover:bg-neutral-900
+            dark:hover:text-white
           "
         >
           <Bell size={18} strokeWidth={2} />
 
-          {/* Unread Badge */}
+          {/* =====================================
+              UNREAD BADGE
+              ===================================== */}
 
           {unreadCount > 0 && (
             <span
               className="
                 absolute
-                -right-1
-                -top-1
+                -right-0.5
+                -top-0.5
                 flex
-                min-h-4
-                min-w-4
+                min-h-[17px]
+                min-w-[17px]
                 items-center
                 justify-center
                 rounded-full
-                bg-red-500
+                bg-violet-600
                 px-1
                 text-[9px]
                 font-bold
                 leading-none
                 text-white
                 ring-2
-                ring-slate-50
-                dark:ring-slate-950
+                ring-white
+
+                dark:bg-violet-500
+                dark:ring-black
               "
             >
               {unreadCount > 99 ? "99+" : unreadCount}
@@ -168,4 +185,4 @@ function DashboardHeader() {
   );
 }
 
-export default DashboardHeader;
+export default Header;

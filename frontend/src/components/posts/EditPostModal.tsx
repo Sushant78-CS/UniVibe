@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from "react";
 import { X, Save, ImagePlus, Video, Trash2, RotateCcw } from "lucide-react";
+
+import { useEffect, useRef, useState } from "react";
 
 import { usePostApi, type Post, type CreatePostData } from "../../api/postApi";
 
 import { compressImage } from "../../services/compressImage";
+
 import { compressVideo } from "../../services/compressVideo";
 
 import { useCloudinaryApi } from "../../api/cloudinary";
@@ -27,27 +29,26 @@ const EditPostModal = ({
 }: EditPostModalProps) => {
   const { updatePost } = usePostApi();
 
-  const { uploadPostImageToCloudinary, uploadPostVideoToCloudinary } =
-    useCloudinaryApi();
-
-  // =========================================================
-  // REFS
-  // =========================================================
+  const { uploadPostMediaToCloudinaryWithProgress } = useCloudinaryApi();
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // =========================================================
-  // FORM
-  // =========================================================
+  /*
+   * ==========================================
+   * FORM
+   * ==========================================
+   */
 
   const [description, setDescription] = useState("");
 
   const [category, setCategory] =
     useState<CreatePostData["category"]>("GENERAL");
 
-  // =========================================================
-  // MEDIA
-  // =========================================================
+  /*
+   * ==========================================
+   * MEDIA
+   * ==========================================
+   */
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -57,9 +58,13 @@ const EditPostModal = ({
 
   const [removeMedia, setRemoveMedia] = useState(false);
 
-  // =========================================================
-  // UI
-  // =========================================================
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  /*
+   * ==========================================
+   * UI STATE
+   * ==========================================
+   */
 
   const [saving, setSaving] = useState(false);
 
@@ -67,9 +72,11 @@ const EditPostModal = ({
 
   const [error, setError] = useState("");
 
-  // =========================================================
-  // LOAD POST
-  // =========================================================
+  /*
+   * ==========================================
+   * LOAD POST
+   * ==========================================
+   */
 
   useEffect(() => {
     if (!post) {
@@ -88,12 +95,16 @@ const EditPostModal = ({
 
     setMediaType(post.mediaType ?? null);
 
+    setUploadProgress(0);
+
     setError("");
   }, [post]);
 
-  // =========================================================
-  // CREATE PREVIEW FOR NEW FILE
-  // =========================================================
+  /*
+   * ==========================================
+   * CREATE LOCAL PREVIEW
+   * ==========================================
+   */
 
   useEffect(() => {
     if (!selectedFile) {
@@ -109,73 +120,72 @@ const EditPostModal = ({
     };
   }, [selectedFile]);
 
-  // =========================================================
-  // SELECT MEDIA
-  // =========================================================
+  /*
+   * ==========================================
+   * SELECT MEDIA
+   * ==========================================
+   */
 
   const handleMediaSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+
+    event.target.value = "";
 
     if (!file) {
       return;
     }
 
-    // IMAGE
+    /*
+     * IMAGE
+     */
+
     if (file.type.startsWith("image/")) {
       setError("");
-
       setSelectedFile(file);
-
       setMediaType("IMAGE");
-
       setRemoveMedia(false);
-
-      event.target.value = "";
-
+      setUploadProgress(0);
       return;
     }
 
-    // VIDEO
+    /*
+     * VIDEO
+     */
+
     if (file.type.startsWith("video/")) {
       if (file.size > MAX_VIDEO_SIZE) {
         setError("Video must be smaller than 100 MB.");
-
-        event.target.value = "";
-
         return;
       }
 
       setError("");
-
       setSelectedFile(file);
-
       setMediaType("VIDEO");
-
       setRemoveMedia(false);
-
-      event.target.value = "";
+      setUploadProgress(0);
 
       return;
     }
 
     setError("Please select an image or video.");
-
-    event.target.value = "";
   };
 
-  // =========================================================
-  // REMOVE MEDIA
-  // =========================================================
+  /*
+   * ==========================================
+   * REMOVE MEDIA
+   * ==========================================
+   */
 
   const handleRemoveMedia = () => {
+    if (saving) {
+      return;
+    }
+
     setSelectedFile(null);
-
     setMediaPreview(null);
-
     setMediaType(null);
-
     setRemoveMedia(true);
-
+    setUploadProgress(0);
     setError("");
 
     if (fileInputRef.current) {
@@ -183,17 +193,25 @@ const EditPostModal = ({
     }
   };
 
-  // =========================================================
-  // CHANGE MEDIA
-  // =========================================================
+  /*
+   * ==========================================
+   * CHANGE MEDIA
+   * ==========================================
+   */
 
   const handleChangeMedia = () => {
+    if (saving) {
+      return;
+    }
+
     fileInputRef.current?.click();
   };
 
-  // =========================================================
-  // SUBMIT
-  // =========================================================
+  /*
+   * ==========================================
+   * SUBMIT
+   * ==========================================
+   */
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -204,103 +222,103 @@ const EditPostModal = ({
 
     if (!description.trim()) {
       setError("Post description cannot be empty.");
+      return;
+    }
 
+    if (description.trim().length > 1000) {
+      setError("Description cannot exceed 1000 characters.");
+      return;
+    }
+
+    if (saving) {
       return;
     }
 
     try {
       setSaving(true);
-
       setError("");
+      setUploadProgress(0);
 
-      let uploadedMediaUrl: string | null | undefined = undefined;
+      let mediaUrl: string | null | undefined = undefined;
 
-      let uploadedMediaType: MediaType | null | undefined = undefined;
+      let finalMediaType: MediaType | null | undefined = undefined;
 
-      // =====================================================
-      // NEW MEDIA
-      // =====================================================
+      /*
+       * ========================================
+       * NEW MEDIA
+       * ========================================
+       */
 
       if (selectedFile && mediaType) {
         setProcessingMedia(true);
 
-        // ===================================================
-        // IMAGE
-        // ===================================================
+        let processedFile = selectedFile;
+
+        /*
+         * IMAGE
+         */
 
         if (mediaType === "IMAGE") {
-          console.log(
-            "Original image:",
-            (selectedFile.size / 1024 / 1024).toFixed(2),
-            "MB",
-          );
-
-          const compressedImage = await compressImage(selectedFile);
-
-          console.log(
-            "Compressed image:",
-            (compressedImage.size / 1024 / 1024).toFixed(2),
-            "MB",
-          );
-
-          const result = await uploadPostImageToCloudinary(compressedImage);
-
-          uploadedMediaUrl = result.secure_url;
-
-          uploadedMediaType = "IMAGE";
+          processedFile = await compressImage(selectedFile);
         }
 
-        // ===================================================
-        // VIDEO
-        // ===================================================
+        /*
+         * VIDEO
+         */
 
         if (mediaType === "VIDEO") {
-          console.log(
-            "Original video:",
-            (selectedFile.size / 1024 / 1024).toFixed(2),
-            "MB",
-          );
-
-          const compressedVideo = await compressVideo(selectedFile);
-
-          console.log(
-            "Compressed video:",
-            (compressedVideo.size / 1024 / 1024).toFixed(2),
-            "MB",
-          );
-
-          const result = await uploadPostVideoToCloudinary(compressedVideo);
-
-          uploadedMediaUrl = result.secure_url;
-
-          uploadedMediaType = "VIDEO";
+          processedFile = await compressVideo(selectedFile);
         }
 
         setProcessingMedia(false);
+
+        /*
+         * ======================================
+         * CLOUDINARY
+         * ======================================
+         */
+
+        const uploaded = await uploadPostMediaToCloudinaryWithProgress(
+          processedFile,
+          mediaType,
+          (progress) => {
+            setUploadProgress(progress);
+          },
+        );
+
+        mediaUrl = uploaded.secure_url;
+
+        finalMediaType = mediaType;
       }
 
-      // =====================================================
-      // UPDATE DATA
-      // =====================================================
+      /*
+       * ========================================
+       * UPDATE DATA
+       * ========================================
+       */
 
       const data: CreatePostData = {
         description: description.trim(),
-
         category,
-
-        mediaUrl: uploadedMediaUrl,
-
-        mediaType: uploadedMediaType,
+        mediaUrl,
+        mediaType: finalMediaType,
       };
 
-      // =====================================================
-      // UPDATE POST
-      // =====================================================
+      /*
+       * ========================================
+       * SAVE
+       * ========================================
+       */
 
       const updatedPost = await updatePost(post.id, data, removeMedia);
 
-      onUpdated(updatedPost);
+      /*
+       * ========================================
+       * SUCCESS
+       * ========================================
+       */
 
+      onUpdated(updatedPost);
       onClose();
     } catch (err) {
       console.error("Failed to update post:", err);
@@ -312,22 +330,25 @@ const EditPostModal = ({
       );
     } finally {
       setSaving(false);
-
       setProcessingMedia(false);
     }
   };
 
-  // =========================================================
-  // CLOSED
-  // =========================================================
+  /*
+   * ==========================================
+   * CLOSED
+   * ==========================================
+   */
 
   if (!open || !post) {
     return null;
   }
 
-  // =========================================================
-  // RENDER
-  // =========================================================
+  /*
+   * ==========================================
+   * RENDER
+   * ==========================================
+   */
 
   return (
     <div
@@ -338,7 +359,7 @@ const EditPostModal = ({
         flex
         items-center
         justify-center
-        bg-black/50
+        bg-black/60
         p-4
         backdrop-blur-sm
       "
@@ -361,13 +382,14 @@ const EditPostModal = ({
           border-slate-200
           bg-white
           shadow-2xl
+          transition-colors
           dark:border-slate-800
           dark:bg-slate-900
         "
       >
-        {/* ===================================================
+        {/* =====================================
             HEADER
-        =================================================== */}
+            ===================================== */}
 
         <div
           className="
@@ -378,7 +400,7 @@ const EditPostModal = ({
             items-center
             justify-between
             border-b
-            border-slate-100
+            border-slate-200
             bg-white
             px-4
             py-3
@@ -422,23 +444,27 @@ const EditPostModal = ({
               justify-center
               rounded-lg
               text-slate-400
+              transition
               hover:bg-slate-100
+              hover:text-slate-700
               dark:hover:bg-slate-800
+              dark:hover:text-slate-200
               disabled:opacity-50
             "
+            aria-label="Close"
           >
             <X size={17} />
           </button>
         </div>
 
-        {/* ===================================================
+        {/* =====================================
             FORM
-        =================================================== */}
+            ===================================== */}
 
-        <form onSubmit={handleSubmit} className="space-y-4 p-4">
-          {/* =================================================
+        <form onSubmit={handleSubmit} className="space-y-5 p-4">
+          {/* ===================================
               DESCRIPTION
-          ================================================= */}
+              =================================== */}
 
           <div>
             <label
@@ -471,11 +497,17 @@ const EditPostModal = ({
                 py-2.5
                 text-xs
                 leading-5
+                text-slate-900
                 outline-none
+                transition
+                placeholder:text-slate-400
                 focus:border-violet-500
+                focus:ring-2
+                focus:ring-violet-500/20
                 dark:border-slate-700
                 dark:bg-slate-950
                 dark:text-white
+                dark:placeholder:text-slate-500
                 disabled:opacity-60
               "
               placeholder="What's happening around campus?"
@@ -486,6 +518,7 @@ const EditPostModal = ({
                 className="
                   text-[10px]
                   text-slate-400
+                  dark:text-slate-500
                 "
               >
                 {description.length}/1000
@@ -493,9 +526,9 @@ const EditPostModal = ({
             </div>
           </div>
 
-          {/* =================================================
+          {/* ===================================
               CATEGORY
-          ================================================= */}
+              =================================== */}
 
           <div>
             <label
@@ -526,8 +559,12 @@ const EditPostModal = ({
                 px-3
                 py-2.5
                 text-xs
+                text-slate-900
                 outline-none
+                transition
                 focus:border-violet-500
+                focus:ring-2
+                focus:ring-violet-500/20
                 dark:border-slate-700
                 dark:bg-slate-950
                 dark:text-white
@@ -545,9 +582,9 @@ const EditPostModal = ({
             </select>
           </div>
 
-          {/* =================================================
+          {/* ===================================
               MEDIA
-          ================================================= */}
+              =================================== */}
 
           <div>
             <label
@@ -563,9 +600,19 @@ const EditPostModal = ({
               Post Media
             </label>
 
-            {/* ===============================================
-                MEDIA PREVIEW
-            =============================================== */}
+            {/* FILE INPUT */}
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,video/*"
+              onChange={handleMediaSelect}
+              className="hidden"
+            />
+
+            {/* =================================
+                PREVIEW
+                ================================= */}
 
             {mediaPreview && mediaType && (
               <div
@@ -579,9 +626,7 @@ const EditPostModal = ({
                     dark:border-slate-700
                   "
               >
-                {/* IMAGE */}
-
-                {mediaType === "IMAGE" && (
+                {mediaType === "IMAGE" ? (
                   <img
                     src={mediaPreview}
                     alt="Post preview"
@@ -591,11 +636,7 @@ const EditPostModal = ({
                         object-contain
                       "
                   />
-                )}
-
-                {/* VIDEO */}
-
-                {mediaType === "VIDEO" && (
+                ) : (
                   <video
                     src={mediaPreview}
                     controls
@@ -609,8 +650,6 @@ const EditPostModal = ({
                       "
                   />
                 )}
-
-                {/* REMOVE */}
 
                 <button
                   type="button"
@@ -639,9 +678,9 @@ const EditPostModal = ({
               </div>
             )}
 
-            {/* ===============================================
+            {/* =================================
                 EMPTY MEDIA
-            =============================================== */}
+                ================================= */}
 
             {!mediaPreview && (
               <button
@@ -664,12 +703,12 @@ const EditPostModal = ({
                   transition
                   hover:border-violet-400
                   hover:bg-violet-50
-                  disabled:cursor-not-allowed
-                  disabled:opacity-50
                   dark:border-slate-700
                   dark:bg-slate-950
                   dark:text-slate-400
                   dark:hover:bg-violet-500/5
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
                 "
               >
                 <ImagePlus size={24} />
@@ -679,6 +718,8 @@ const EditPostModal = ({
                     mt-2
                     text-xs
                     font-semibold
+                    text-slate-700
+                    dark:text-slate-200
                   "
                 >
                   Add photo or video
@@ -688,6 +729,8 @@ const EditPostModal = ({
                   className="
                     mt-1
                     text-[10px]
+                    text-slate-400
+                    dark:text-slate-500
                   "
                 >
                   Images or videos up to 100MB
@@ -695,21 +738,9 @@ const EditPostModal = ({
               </button>
             )}
 
-            {/* ===============================================
-                FILE INPUT
-            =============================================== */}
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*,video/*"
-              onChange={handleMediaSelect}
-              className="hidden"
-            />
-
-            {/* ===============================================
+            {/* =================================
                 CHANGE MEDIA
-            =============================================== */}
+                ================================= */}
 
             {mediaPreview && (
               <button
@@ -724,9 +755,11 @@ const EditPostModal = ({
                   text-xs
                   font-medium
                   text-violet-600
+                  transition
                   hover:text-violet-700
-                  disabled:opacity-50
                   dark:text-violet-400
+                  dark:hover:text-violet-300
+                  disabled:opacity-50
                 "
               >
                 {mediaType === "IMAGE" ? (
@@ -738,16 +771,18 @@ const EditPostModal = ({
               </button>
             )}
 
-            {/* ===============================================
+            {/* =================================
                 REMOVE MESSAGE
-            =============================================== */}
+                ================================= */}
 
             {removeMedia && (
               <p
                 className="
                   mt-2
                   text-[10px]
+                  font-medium
                   text-red-500
+                  dark:text-red-400
                 "
               >
                 Media will be removed when you save the post.
@@ -755,38 +790,99 @@ const EditPostModal = ({
             )}
           </div>
 
-          {/* =================================================
+          {/* ===================================
               PROCESSING
-          ================================================= */}
+              =================================== */}
 
           {processingMedia && (
             <div
               className="
-                flex
-                items-center
-                gap-2
                 rounded-xl
                 bg-violet-50
                 px-3
                 py-2.5
-                text-xs
-                font-medium
-                text-violet-700
                 dark:bg-violet-500/10
-                dark:text-violet-300
               "
             >
-              <RotateCcw size={15} className="animate-spin" />
+              <div
+                className="
+                  flex
+                  items-center
+                  gap-2
+                  text-xs
+                  font-medium
+                  text-violet-700
+                  dark:text-violet-300
+                "
+              >
+                <RotateCcw size={15} className="animate-spin" />
 
-              {mediaType === "VIDEO"
-                ? "Compressing video..."
-                : "Compressing image..."}
+                {mediaType === "VIDEO"
+                  ? "Compressing video..."
+                  : "Compressing image..."}
+              </div>
             </div>
           )}
 
-          {/* =================================================
+          {/* ===================================
+              UPLOAD
+              =================================== */}
+
+          {saving && !processingMedia && selectedFile && (
+            <div
+              className="
+                  rounded-xl
+                  bg-slate-100
+                  p-3
+                  dark:bg-slate-800
+                "
+            >
+              <div
+                className="
+                    mb-1.5
+                    flex
+                    items-center
+                    justify-between
+                    text-[10px]
+                    font-medium
+                    text-slate-600
+                    dark:text-slate-300
+                  "
+              >
+                <span>Uploading media...</span>
+
+                <span>{Math.round(uploadProgress)}%</span>
+              </div>
+
+              <div
+                className="
+                    h-1.5
+                    overflow-hidden
+                    rounded-full
+                    bg-slate-200
+                    dark:bg-slate-700
+                  "
+              >
+                <div
+                  className="
+                      h-full
+                      rounded-full
+                      bg-violet-600
+                      transition-[width]
+                      duration-150
+                      dark:bg-violet-500
+                    "
+                  style={{
+                    width: `${uploadProgress}%`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* ===================================
               ERROR
-          ================================================= */}
+              =================================== */}
 
           {error && (
             <div
@@ -808,11 +904,17 @@ const EditPostModal = ({
             </div>
           )}
 
-          {/* =================================================
+          {/* ===================================
               ACTIONS
-          ================================================= */}
+              =================================== */}
 
-          <div className="flex gap-2 pt-1">
+          <div
+            className="
+              flex
+              gap-2
+              pt-1
+            "
+          >
             <button
               type="button"
               onClick={onClose}
@@ -827,6 +929,7 @@ const EditPostModal = ({
                 text-xs
                 font-semibold
                 text-slate-600
+                transition
                 hover:bg-slate-100
                 disabled:opacity-50
                 dark:border-slate-700
@@ -853,9 +956,13 @@ const EditPostModal = ({
                 text-xs
                 font-semibold
                 text-white
+                transition
                 hover:bg-violet-700
+                active:scale-[0.98]
                 disabled:cursor-not-allowed
                 disabled:opacity-60
+                dark:bg-violet-500
+                dark:hover:bg-violet-600
               "
             >
               <Save size={14} />

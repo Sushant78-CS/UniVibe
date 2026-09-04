@@ -12,13 +12,14 @@ const SignInPage = () => {
         text-slate-900
         transition-colors
         duration-300
-
-        dark:bg-slate-950
+        dark:bg-black
         dark:text-white
       "
     >
       {/* Mobile Header */}
-      <AuthHeader />
+      <div className="border-b border-slate-200 bg-white dark:border-neutral-800 dark:bg-black lg:hidden">
+        <AuthHeader />
+      </div>
 
       {/* Main Layout */}
       <div
@@ -27,8 +28,7 @@ const SignInPage = () => {
           flex
           min-h-[calc(100vh-80px)]
           w-full
-          max-w-[1600px]
-
+          max-w-[1400px]
           lg:min-h-screen
         "
       >
@@ -40,24 +40,19 @@ const SignInPage = () => {
           className="
             relative
             flex
+            min-h-full
             w-full
             items-center
             justify-center
-
             bg-slate-50
-
             px-5
             py-8
-
             sm:px-8
-
-            dark:bg-slate-950
-
+            dark:bg-black
             lg:w-1/2
             lg:px-12
             lg:py-12
-
-            xl:px-20
+            xl:px-16
           "
         >
           {/* Desktop Theme Toggle */}
@@ -68,7 +63,6 @@ const SignInPage = () => {
               top-6
               z-20
               hidden
-
               lg:block
             "
           >
@@ -76,7 +70,19 @@ const SignInPage = () => {
           </div>
 
           {/* Sign In */}
-          <SignInForm />
+          <div
+            className="
+              flex
+              w-full
+              max-w-[440px]
+              items-center
+              justify-center
+              -translate-y-10
+              lg:-translate-y-6
+            "
+          >
+            <SignInForm />
+          </div>
         </main>
       </div>
     </div>

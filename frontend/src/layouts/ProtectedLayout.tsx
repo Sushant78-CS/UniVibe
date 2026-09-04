@@ -1,136 +1,284 @@
 import { Navigate, Outlet, useLocation } from "react-router";
+
 import { useAuth } from "@clerk/react";
-import { useEffect, useState } from "react";
+
+import { useQuery } from "@tanstack/react-query";
+
 import { isAxiosError } from "axios";
 
 import { useProfileApi } from "../api/profileApi";
 import LandingLoader from "../components/common/LandingLoader";
 
+interface Profile {
+  id: number;
+  fullName: string;
+  username: string;
+  bio?: string;
+  profileImage?: string;
+  college: string;
+  department?: string;
+  year: string;
+  interests?: string;
+  profileCompleted: boolean;
+}
+
 function ProtectedLayout() {
   const location = useLocation();
 
-  // Only use stable auth values here.
   const { isLoaded, isSignedIn, userId } = useAuth();
 
   const { getProfile } = useProfileApi();
 
-  const [profileLoading, setProfileLoading] = useState(true);
-  const [profileExists, setProfileExists] = useState<boolean | null>(null);
+  /*
+   * ==================================================
+   * PROFILE QUERY
+   * ==================================================
+   *
+   * IMPORTANT:
+   * This hook is ALWAYS called.
+   *
+   * We use "enabled" instead of putting the hook
+   * below conditional returns.
+   */
 
-  useEffect(() => {
-    // Clerk is still loading
-    if (!isLoaded) {
-      return;
-    }
+  const {
+    data: profile,
+    isPending: profileLoading,
+    isError,
+    error,
+  } = useQuery<Profile>({
+    queryKey: ["profile", "me"],
 
-    // User is not signed in
-    if (!isSignedIn || !userId) {
-      setProfileLoading(false);
-      setProfileExists(null);
-      return;
-    }
+    queryFn: async () => {
+      const result = await getProfile();
 
-    let cancelled = false;
+      return result as Profile;
+    },
 
-    const loadProfile = async () => {
-      try {
-        setProfileLoading(true);
+    enabled: isLoaded && !!isSignedIn && !!userId,
 
-        const profile = await getProfile();
+    staleTime: 1000 * 60 * 5,
 
-        if (cancelled) return;
+    gcTime: 1000 * 60 * 30,
 
-        console.log("Profile loaded:", profile);
+    refetchOnWindowFocus: false,
 
-        setProfileExists(true);
-      } catch (error) {
-        if (cancelled) return;
+    retry: (failureCount, queryError) => {
+      /*
+       * Profile does not exist.
+       * Don't retry a 404.
+       */
 
-        /*
-         * IMPORTANT:
-         * Only treat 404 as "profile doesn't exist".
-         *
-         * CORS, 401, 403, 500, network errors, etc.
-         * should NOT redirect the user to profile setup.
-         */
-
-        if (isAxiosError(error)) {
-          const status = error.response?.status;
-
-          console.error(
-            "Profile request failed:",
-            status,
-            error.response?.data,
-          );
-
-          if (status === 404) {
-            console.log("Profile does not exist.");
-            setProfileExists(false);
-          } else {
-            // API/server/CORS/network problem
-            setProfileExists(null);
-          }
-        } else {
-          console.error("Unexpected profile error:", error);
-
-          setProfileExists(null);
-        }
-      } finally {
-        if (!cancelled) {
-          setProfileLoading(false);
-        }
+      if (isAxiosError(queryError) && queryError.response?.status === 404) {
+        return false;
       }
-    };
 
-    loadProfile();
+      /*
+       * Only one retry for server/network
+       * failures.
+       */
 
-    return () => {
-      cancelled = true;
-    };
-  }, [isLoaded, isSignedIn, userId]);
+      return failureCount < 1;
+    },
+  });
 
   /*
-   * Clerk loading
+   * ==================================================
+   * CLERK LOADING
+   * ==================================================
    */
+
   if (!isLoaded) {
-    // return <LoadingScreen message="Loading UniVibe..." />;
     return <LandingLoader />;
   }
 
   /*
-   * Not authenticated
+   * ==================================================
+   * NOT AUTHENTICATED
+   * ==================================================
    */
+
   if (!isSignedIn || !userId) {
     return <Navigate to="/signup" replace state={{ from: location }} />;
   }
 
   /*
-   * Profile API is loading
+   * ==================================================
+   * PROFILE LOADING
+   * ==================================================
    */
-  if (profileLoading || profileExists === null) {
-    // return <LoadingScreen message="Loading UniVibe..." />;
+
+  if (profileLoading) {
     return <LandingLoader />;
   }
 
   /*
-   * User is authenticated but doesn't have
-   * a profile yet.
+   * ==================================================
+   * PROFILE ERROR
+   * ==================================================
    */
-  if (profileExists === false && location.pathname !== "/profile/setup") {
-    return <Navigate to="/profile/setup" replace />;
+
+  if (isError) {
+    /*
+     * Only a 404 means that the authenticated
+     * user doesn't have a profile yet.
+     */
+
+    if (isAxiosError(error) && error.response?.status === 404) {
+      if (location.pathname !== "/profile/setup") {
+        return <Navigate to="/profile/setup" replace />;
+      }
+    }
+
+    /*
+     * For 401 / 403 / 500 / network errors,
+     * don't send the user to profile setup.
+     *
+     * Show a simple error instead.
+     */
+
+    return (
+      <div
+        className="
+          flex
+          min-h-screen
+          items-center
+          justify-center
+          bg-slate-50
+          px-5
+
+          dark:bg-black
+        "
+      >
+        <div
+          className="
+            w-full
+            max-w-sm
+            rounded-2xl
+            border
+            border-slate-200
+            bg-white
+            p-6
+            text-center
+            shadow-sm
+
+            dark:border-neutral-800
+            dark:bg-[#171717]
+            dark:shadow-none
+          "
+        >
+          <div
+            className="
+              mx-auto
+              flex
+              h-11
+              w-11
+              items-center
+              justify-center
+              rounded-full
+              bg-red-50
+              text-sm
+              font-bold
+              text-red-600
+
+              dark:bg-red-500/10
+              dark:text-red-400
+            "
+          >
+            !
+          </div>
+
+          <h2
+            className="
+              mt-4
+              text-base
+              font-semibold
+              text-slate-900
+
+              dark:text-white
+            "
+          >
+            Unable to load UniVibe
+          </h2>
+
+          <p
+            className="
+              mt-2
+              text-sm
+              leading-6
+              text-slate-500
+
+              dark:text-neutral-500
+            "
+          >
+            We couldn't verify your profile. Please try again.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => {
+              window.location.reload();
+            }}
+            className="
+              mt-5
+              w-full
+              rounded-xl
+              bg-violet-600
+              px-4
+              py-2.5
+              text-xs
+              font-semibold
+              text-white
+              transition
+              hover:bg-violet-700
+
+              dark:hover:bg-violet-500
+            "
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
   }
 
   /*
-   * Profile exists, so don't allow the user
-   * to go back to profile setup.
+   * ==================================================
+   * PROFILE DOESN'T EXIST
+   * ==================================================
+   *
+   * In case the query somehow has no data without
+   * being an error, treat it safely as missing.
    */
-  if (profileExists === true && location.pathname === "/profile/setup") {
+
+  if (!profile) {
+    if (location.pathname !== "/profile/setup") {
+      return <Navigate to="/profile/setup" replace />;
+    }
+
+    return <Outlet context={{ profile }} />;
+  }
+
+  /*
+   * ==================================================
+   * PROFILE EXISTS
+   * ==================================================
+   *
+   * Don't allow a completed user to remain
+   * on profile setup.
+   */
+
+  if (location.pathname === "/profile/setup") {
     return <Navigate to="/home" replace />;
   }
 
   /*
-   * Everything is good.
+   * ==================================================
+   * EVERYTHING IS READY
+   * ==================================================
    */
-  return <Outlet />;
+
+  return <Outlet context={{ profile }} />;
 }
+
 export default ProtectedLayout;

@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState } from "react";
 import { Plus, RefreshCw, Newspaper } from "lucide-react";
+
+import { useEffect, useRef, useState } from "react";
+
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 
 import { usePostApi, type Post } from "../../api/postApi";
+
 import PostCard from "../../components/posts/PostCard";
 import FloatingTabs from "../../components/home/FloatingTabs";
 import CreatePostModal from "../../components/posts/CreatePostModal";
@@ -11,30 +14,26 @@ import ConfirmModal from "../../components/common/ConfirmModal";
 import { usePublishingStore } from "../../store/publishingStore";
 
 const Posts = () => {
-  /*
-   * ================================
-   * API / QUERY
-   * ================================
-   */
-  const publishingCompletedAt = usePublishingStore(
-    (state) => state.completedAt,
-  );
   const queryClient = useQueryClient();
 
   const { getPosts, getMyPosts, deletePost } = usePostApi();
 
+  const publishingCompletedAt = usePublishingStore(
+    (state) => state.completedAt,
+  );
+
   /*
-   * ================================
+   * ============================================
    * REFS
-   * ================================
+   * ============================================
    */
 
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   /*
-   * ================================
+   * ============================================
    * STATE
-   * ================================
+   * ============================================
    */
 
   const [view, setView] = useState<"all" | "my">("all");
@@ -50,9 +49,9 @@ const Posts = () => {
   const [error, setError] = useState("");
 
   /*
-   * ================================
+   * ============================================
    * POSTS QUERY
-   * ================================
+   * ============================================
    */
 
   const {
@@ -65,31 +64,18 @@ const Posts = () => {
     refetch,
     isError,
   } = useInfiniteQuery({
-    /*
-     * Different cache for:
-     *
-     * ["posts", "all"]
-     * ["posts", "my"]
-     */
     queryKey: ["posts", view],
 
-    /*
-     * Fetch the requested page
-     */
     queryFn: async ({ pageParam }) => {
-      return view === "all"
-        ? getPosts(pageParam, 10)
-        : getMyPosts(pageParam, 10);
+      if (view === "all") {
+        return getPosts(pageParam, 10);
+      }
+
+      return getMyPosts(pageParam, 10);
     },
 
-    /*
-     * First page
-     */
     initialPageParam: 0,
 
-    /*
-     * Determine whether another page exists
-     */
     getNextPageParam: (lastPage, allPages) => {
       const nextPage = allPages.length;
 
@@ -100,54 +86,27 @@ const Posts = () => {
       return undefined;
     },
 
-    /*
-     * Data is considered fresh for 2 minutes.
-     *
-     * If the user leaves Posts and comes back
-     * within 2 minutes, React Query uses the
-     * cached data instead of requesting it again.
-     */
     staleTime: 1000 * 60 * 2,
 
-    /*
-     * Keep unused post cache for 30 minutes.
-     */
     gcTime: 1000 * 60 * 30,
 
-    /*
-     * Don't automatically refetch simply because
-     * the browser window gets focus.
-     */
     refetchOnWindowFocus: false,
 
-    /*
-     * Retry failed requests once.
-     */
     retry: 1,
   });
 
   /*
-   * ================================
+   * ============================================
    * FLATTEN POSTS
-   * ================================
-   *
-   * React Query stores:
-   *
-   * pages = [
-   *   page 0,
-   *   page 1,
-   *   page 2
-   * ]
-   *
-   * We turn them into one array for PostCard.
+   * ============================================
    */
 
   const posts: Post[] = data?.pages.flatMap((page) => page.content) ?? [];
 
   /*
-   * ================================
+   * ============================================
    * ERROR
-   * ================================
+   * ============================================
    */
 
   useEffect(() => {
@@ -157,6 +116,12 @@ const Posts = () => {
       setError("");
     }
   }, [isError]);
+
+  /*
+   * ============================================
+   * NEW POST / PUBLISH COMPLETE
+   * ============================================
+   */
 
   useEffect(() => {
     if (!publishingCompletedAt) {
@@ -169,9 +134,9 @@ const Posts = () => {
   }, [publishingCompletedAt, queryClient]);
 
   /*
-   * ================================
+   * ============================================
    * INFINITE SCROLL
-   * ================================
+   * ============================================
    */
 
   useEffect(() => {
@@ -190,22 +155,22 @@ const Posts = () => {
         }
       },
       {
-        rootMargin: "300px",
+        rootMargin: "400px 0px",
+        threshold: 0,
       },
     );
 
     observer.observe(element);
 
     return () => {
-      observer.unobserve(element);
       observer.disconnect();
     };
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   /*
-   * ================================
+   * ============================================
    * EDIT
-   * ================================
+   * ============================================
    */
 
   const handleEdit = (post: Post) => {
@@ -215,21 +180,15 @@ const Posts = () => {
   const handlePostUpdated = async (_updatedPost: Post) => {
     setEditingPost(null);
 
-    /*
-     * The server has the latest version.
-     *
-     * Mark cached posts as stale and fetch
-     * the updated data.
-     */
     await queryClient.invalidateQueries({
       queryKey: ["posts"],
     });
   };
 
   /*
-   * ================================
+   * ============================================
    * DELETE
-   * ================================
+   * ============================================
    */
 
   const handleDelete = (post: Post) => {
@@ -247,16 +206,6 @@ const Posts = () => {
 
       await deletePost(deletePostTarget.id);
 
-      /*
-       * Refresh all post caches.
-       *
-       * This keeps:
-       *
-       * All Posts
-       * My Posts
-       *
-       * synchronized after deletion.
-       */
       await queryClient.invalidateQueries({
         queryKey: ["posts"],
       });
@@ -272,33 +221,23 @@ const Posts = () => {
   };
 
   /*
-   * ================================
-   * CREATE POST
-   * ================================
+   * ============================================
+   * CREATE
+   * ============================================
    */
 
   const handlePostCreated = async () => {
     setShowCreatePostModal(false);
 
-    /*
-     * A new post has been created.
-     *
-     * Invalidate both:
-     *
-     * ["posts", "all"]
-     * ["posts", "my"]
-     *
-     * so the feed gets the newest data.
-     */
     await queryClient.invalidateQueries({
       queryKey: ["posts"],
     });
   };
 
   /*
-   * ================================
+   * ============================================
    * REFRESH
-   * ================================
+   * ============================================
    */
 
   const handleRefresh = async () => {
@@ -314,9 +253,9 @@ const Posts = () => {
   };
 
   /*
-   * ================================
+   * ============================================
    * RENDER
-   * ================================
+   * ============================================
    */
 
   return (
@@ -326,7 +265,10 @@ const Posts = () => {
         bg-slate-50
         pb-32
         text-slate-900
-        dark:bg-slate-950
+        transition-colors
+        duration-200
+
+        dark:bg-black
         dark:text-white
       "
     >
@@ -334,24 +276,45 @@ const Posts = () => {
         className="
           mx-auto
           w-full
-          max-w-2xl
-          px-4
-          py-6
-          sm:px-6
+          max-w-[680px]
+          px-0
+          pb-8
+          sm:px-4
+          sm:pt-5
         "
       >
-        {/* ================= HEADER ================= */}
+        {/* ======================================
+            PAGE HEADER
+            ====================================== */}
 
-        <div className="mb-3">
-          <div className="flex items-center justify-between">
+        <div
+          className="
+            border-b
+            border-slate-200
+            bg-white
+            px-4
+            py-4
+
+            dark:border-neutral-800
+            dark:bg-black
+
+            sm:border
+            sm:rounded-2xl
+            sm:px-5
+            sm:py-4
+            sm:shadow-sm
+            dark:sm:bg-[#111111]
+            dark:sm:shadow-none
+          "
+        >
+          <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
               <h1
                 className="
-                  mt-0.5
                   text-xl
                   font-bold
                   tracking-tight
-                  text-slate-900
+                  text-slate-950
                   dark:text-white
                 "
               >
@@ -360,17 +323,18 @@ const Posts = () => {
 
               <p
                 className="
-                  mt-0.5
+                  mt-1
                   text-xs
+                  leading-5
                   text-slate-500
-                  dark:text-slate-400
+                  dark:text-neutral-500
                 "
               >
-                Discover what's happening around campus.
+                Discover what&apos;s happening around your campus.
               </p>
             </div>
 
-            {/* REFRESH */}
+            {/* Refresh */}
 
             <button
               type="button"
@@ -378,245 +342,403 @@ const Posts = () => {
               disabled={isFetching}
               aria-label="Refresh posts"
               className="
-                ml-3
                 flex
-                h-8
-                w-8
+                h-9
+                w-9
                 shrink-0
                 items-center
                 justify-center
-                rounded-lg
+                rounded-full
                 border
                 border-slate-200
                 bg-white
                 text-slate-500
-                transition
-                hover:bg-slate-100
+                transition-all
+                hover:bg-slate-50
+                hover:text-slate-800
                 active:scale-95
                 disabled:cursor-not-allowed
-                dark:border-slate-800
-                dark:bg-slate-900
-                dark:text-slate-400
+                disabled:opacity-50
+
+                dark:border-neutral-800
+                dark:bg-[#171717]
+                dark:text-neutral-400
+                dark:hover:bg-neutral-800
+                dark:hover:text-neutral-200
               "
             >
               <RefreshCw
-                size={14}
+                size={16}
                 className={isFetching ? "animate-spin" : ""}
               />
             </button>
           </div>
+
+          {/* ====================================
+              FILTER TABS
+              ==================================== */}
+
+          <div
+            className="
+              mt-4
+              flex
+              w-full
+              rounded-xl
+              bg-slate-100
+              p-1
+
+              dark:bg-neutral-900
+            "
+          >
+            {/* All */}
+
+            <button
+              type="button"
+              onClick={() => setView("all")}
+              className={`
+                flex
+                flex-1
+                items-center
+                justify-center
+                rounded-lg
+                px-3
+                py-2
+                text-xs
+                font-semibold
+                transition-all
+
+                ${
+                  view === "all"
+                    ? `
+                      bg-white
+                      text-slate-900
+                      shadow-sm
+                      dark:bg-[#242424]
+                      dark:text-white
+                    `
+                    : `
+                      text-slate-500
+                      hover:text-slate-800
+                      dark:text-neutral-500
+                      dark:hover:text-neutral-200
+                    `
+                }
+              `}
+            >
+              All posts
+            </button>
+
+            {/* My Posts */}
+
+            <button
+              type="button"
+              onClick={() => setView("my")}
+              className={`
+                flex
+                flex-1
+                items-center
+                justify-center
+                rounded-lg
+                px-3
+                py-2
+                text-xs
+                font-semibold
+                transition-all
+
+                ${
+                  view === "my"
+                    ? `
+                      bg-white
+                      text-slate-900
+                      shadow-sm
+                      dark:bg-[#242424]
+                      dark:text-white
+                    `
+                    : `
+                      text-slate-500
+                      hover:text-slate-800
+                      dark:text-neutral-500
+                      dark:hover:text-neutral-200
+                    `
+                }
+              `}
+            >
+              My posts
+            </button>
+          </div>
         </div>
 
-        {/* ================= POST FILTER ================= */}
-
-        <div
-          className="
-            mb-3
-            flex
-            w-full
-            rounded-lg
-            bg-slate-100
-            p-0.5
-            dark:bg-slate-800
-          "
-        >
-          {/* ALL POSTS */}
-
-          <button
-            type="button"
-            onClick={() => setView("all")}
-            className={`
-              flex-1
-              rounded-md
-              px-3
-              py-1.5
-              text-[11px]
-              font-semibold
-              transition-all
-
-              ${
-                view === "all"
-                  ? `
-                    bg-white
-                    text-violet-600
-                    shadow-sm
-                    dark:bg-slate-900
-                    dark:text-violet-400
-                  `
-                  : `
-                    text-slate-500
-                    hover:text-slate-700
-                    dark:text-slate-400
-                    dark:hover:text-slate-200
-                  `
-              }
-            `}
-          >
-            All Posts
-          </button>
-
-          {/* MY POSTS */}
-
-          <button
-            type="button"
-            onClick={() => setView("my")}
-            className={`
-              flex-1
-              rounded-md
-              px-3
-              py-1.5
-              text-[11px]
-              font-semibold
-              transition-all
-
-              ${
-                view === "my"
-                  ? `
-                    bg-white
-                    text-violet-600
-                    shadow-sm
-                    dark:bg-slate-900
-                    dark:text-violet-400
-                  `
-                  : `
-                    text-slate-500
-                    hover:text-slate-700
-                    dark:text-slate-400
-                    dark:hover:text-slate-200
-                  `
-              }
-            `}
-          >
-            My Posts
-          </button>
-        </div>
-
-        {/* ================= ERROR ================= */}
+        {/* ======================================
+            ERROR
+            ====================================== */}
 
         {error && (
           <div
             className="
-              mb-5
+              mx-3
+              mt-4
               rounded-2xl
               border
               border-red-200
               bg-red-50
-              p-4
+              px-4
+              py-3
               text-sm
               text-red-600
+
               dark:border-red-900/50
-              dark:bg-red-500/10
+              dark:bg-red-950/30
               dark:text-red-400
+
+              sm:mx-0
             "
           >
             {error}
           </div>
         )}
 
-        {/* ================= INITIAL LOADING ================= */}
+        {/* ======================================
+            INITIAL LOADING
+            ====================================== */}
 
         {isLoading && (
-          <div className="space-y-4">
+          <div className="mt-4 space-y-3">
             {[1, 2, 3].map((item) => (
               <div
                 key={item}
                 className="
-                  h-56
-                  animate-pulse
-                  rounded-3xl
-                  bg-slate-200
-                  dark:bg-slate-800
-                "
-              />
+                    overflow-hidden
+                    border-y
+                    border-slate-200
+                    bg-white
+                    sm:rounded-2xl
+                    sm:border
+
+                    dark:border-neutral-800
+                    dark:bg-[#171717]
+                  "
+              >
+                {/* Skeleton header */}
+
+                <div className="flex items-center gap-3 px-4 py-4">
+                  <div
+                    className="
+                        h-11
+                        w-11
+                        shrink-0
+                        animate-pulse
+                        rounded-full
+                        bg-slate-200
+                        dark:bg-neutral-800
+                      "
+                  />
+
+                  <div className="flex-1">
+                    <div
+                      className="
+                          h-3.5
+                          w-28
+                          animate-pulse
+                          rounded
+                          bg-slate-200
+                          dark:bg-neutral-800
+                        "
+                    />
+
+                    <div
+                      className="
+                          mt-2
+                          h-2.5
+                          w-40
+                          animate-pulse
+                          rounded
+                          bg-slate-100
+                          dark:bg-neutral-900
+                        "
+                    />
+                  </div>
+                </div>
+
+                {/* Skeleton text */}
+
+                <div className="space-y-2 px-4 pb-4">
+                  <div
+                    className="
+                        h-3
+                        w-[85%]
+                        animate-pulse
+                        rounded
+                        bg-slate-200
+                        dark:bg-neutral-800
+                      "
+                  />
+
+                  <div
+                    className="
+                        h-3
+                        w-[65%]
+                        animate-pulse
+                        rounded
+                        bg-slate-200
+                        dark:bg-neutral-800
+                      "
+                  />
+                </div>
+
+                {/* Skeleton media */}
+
+                <div
+                  className="
+                      h-64
+                      animate-pulse
+                      bg-slate-100
+                      dark:bg-neutral-900
+                    "
+                />
+
+                {/* Skeleton actions */}
+
+                <div className="flex gap-3 px-4 py-3">
+                  <div
+                    className="
+                        h-9
+                        w-16
+                        animate-pulse
+                        rounded-xl
+                        bg-slate-100
+                        dark:bg-neutral-900
+                      "
+                  />
+
+                  <div
+                    className="
+                        h-9
+                        w-16
+                        animate-pulse
+                        rounded-xl
+                        bg-slate-100
+                        dark:bg-neutral-900
+                      "
+                  />
+                </div>
+              </div>
             ))}
           </div>
         )}
 
-        {/* ================= EMPTY ================= */}
+        {/* ======================================
+            EMPTY STATE
+            ====================================== */}
 
         {!isLoading && posts.length === 0 && (
           <div
             className="
-              rounded-3xl
-              border
-              border-dashed
-              border-slate-300
-              bg-white
-              px-6
-              py-14
-              text-center
-              dark:border-slate-700
-              dark:bg-slate-900
-            "
+                mx-3
+                mt-5
+                rounded-2xl
+                border
+                border-slate-200
+                bg-white
+                px-6
+                py-14
+                text-center
+                shadow-sm
+
+                dark:border-neutral-800
+                dark:bg-[#171717]
+                dark:shadow-none
+
+                sm:mx-0
+              "
           >
             <div
               className="
-                mx-auto
-                flex
-                h-14
-                w-14
-                items-center
-                justify-center
-                rounded-2xl
-                bg-violet-100
-                text-violet-600
-                dark:bg-violet-500/10
-                dark:text-violet-400
-              "
+                  mx-auto
+                  flex
+                  h-14
+                  w-14
+                  items-center
+                  justify-center
+                  rounded-2xl
+                  bg-slate-100
+                  text-slate-500
+
+                  dark:bg-neutral-900
+                  dark:text-neutral-400
+                "
             >
-              <Newspaper size={26} />
+              <Newspaper size={25} />
             </div>
 
             <h2
               className="
-                mt-5
-                text-base
-                font-semibold
-                text-slate-900
-                dark:text-white
-              "
+                  mt-5
+                  text-base
+                  font-semibold
+                  text-slate-900
+                  dark:text-white
+                "
             >
               No posts yet
             </h2>
 
             <p
               className="
-                mx-auto
-                mt-2
-                max-w-sm
-                text-sm
-                leading-6
-                text-slate-500
-                dark:text-slate-400
-              "
+                  mx-auto
+                  mt-2
+                  max-w-sm
+                  text-sm
+                  leading-6
+                  text-slate-500
+                  dark:text-neutral-500
+                "
             >
-              Nothing has been shared with the community yet. Be the first to
-              share what's happening on campus.
+              Nothing has been shared with the campus community yet. Start the
+              conversation with your first post.
             </p>
 
-            <div
+            <button
+              type="button"
+              onClick={() => setShowCreatePostModal(true)}
               className="
-                mt-5
-                inline-flex
-                items-center
-                gap-1.5
-                text-xs
-                font-medium
-                text-violet-600
-                dark:text-violet-400
-              "
+                  mt-5
+                  inline-flex
+                  items-center
+                  gap-2
+                  rounded-xl
+                  bg-violet-600
+                  px-4
+                  py-2.5
+                  text-xs
+                  font-semibold
+                  text-white
+                  shadow-sm
+                  transition-all
+                  hover:bg-violet-700
+                  active:scale-95
+                  dark:bg-violet-600
+                  dark:hover:bg-violet-500
+                "
             >
               <Plus size={14} />
-              Use the + button below to post
-            </div>
+              Create a post
+            </button>
           </div>
         )}
 
-        {/* ================= FEED ================= */}
+        {/* ======================================
+            FEED
+            ====================================== */}
 
         {!isLoading && posts.length > 0 && (
           <>
-            <div className="space-y-4">
+            <div
+              className="
+                  mt-4
+                  space-y-3
+                  sm:space-y-4
+                "
+            >
               {posts.map((post) => (
                 <PostCard
                   key={post.id}
@@ -628,56 +750,90 @@ const Posts = () => {
               ))}
             </div>
 
-            {/* ================= INFINITE SCROLL ================= */}
+            {/* ==================================
+                  INFINITE SCROLL
+                  ================================== */}
 
             <div
               ref={loadMoreRef}
               className="
-                flex
-                min-h-16
-                items-center
-                justify-center
-              "
+                  flex
+                  min-h-20
+                  items-center
+                  justify-center
+                "
             >
               {isFetchingNextPage && (
                 <div
                   className="
-                    flex
-                    items-center
-                    gap-2
-                    text-xs
-                    text-slate-500
-                    dark:text-slate-400
-                  "
+                      flex
+                      items-center
+                      gap-2
+                      rounded-full
+                      border
+                      border-slate-200
+                      bg-white
+                      px-4
+                      py-2
+                      text-xs
+                      font-medium
+                      text-slate-500
+
+                      dark:border-neutral-800
+                      dark:bg-[#171717]
+                      dark:text-neutral-400
+                    "
                 >
-                  <RefreshCw size={14} className="animate-spin" />
-                  Loading more posts...
+                  <RefreshCw size={13} className="animate-spin" />
+                  Loading more
                 </div>
               )}
 
               {!hasNextPage && !isFetchingNextPage && posts.length > 0 && (
-                <p
+                <div
                   className="
-                      py-4
-                      text-xs
-                      text-slate-400
-                    "
+                        flex
+                        items-center
+                        gap-2
+                        py-5
+                        text-[11px]
+                        text-slate-400
+                        dark:text-neutral-600
+                      "
                 >
-                  You're all caught up.
-                </p>
+                  <span
+                    className="
+                          h-px
+                          w-8
+                          bg-slate-200
+                          dark:bg-neutral-800
+                        "
+                  />
+                  You&apos;re all caught up
+                  <span
+                    className="
+                          h-px
+                          w-8
+                          bg-slate-200
+                          dark:bg-neutral-800
+                        "
+                  />
+                </div>
               )}
             </div>
           </>
         )}
       </main>
 
-      {/* ================= CREATE POST BUTTON ================= */}
-
-      {/* ================= BOTTOM NAV ================= */}
+      {/* ========================================
+          BOTTOM NAVIGATION
+          ======================================== */}
 
       <FloatingTabs />
 
-      {/* ================= CREATE POST MODAL ================= */}
+      {/* ========================================
+          CREATE POST MODAL
+          ======================================== */}
 
       <CreatePostModal
         open={showCreatePostModal}
@@ -685,7 +841,9 @@ const Posts = () => {
         onCreated={handlePostCreated}
       />
 
-      {/* ================= EDIT POST MODAL ================= */}
+      {/* ========================================
+          EDIT POST MODAL
+          ======================================== */}
 
       <EditPostModal
         open={editingPost !== null}
@@ -694,11 +852,13 @@ const Posts = () => {
         onUpdated={handlePostUpdated}
       />
 
-      {/* ================= DELETE CONFIRMATION ================= */}
+      {/* ========================================
+          DELETE CONFIRMATION
+          ======================================== */}
 
       <ConfirmModal
         open={deletePostTarget !== null}
-        title="Delete Post?"
+        title="Delete post?"
         message={
           deletePostTarget
             ? "Are you sure you want to delete this post? This action cannot be undone."

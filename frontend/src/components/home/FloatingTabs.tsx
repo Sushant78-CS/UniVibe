@@ -1,8 +1,8 @@
 import { Home, Search, User, Newspaper, Plus } from "lucide-react";
 
-import { useLocation, useNavigate } from "react-router";
-
 import { useEffect, useRef, useState } from "react";
+
+import { useLocation, useNavigate } from "react-router";
 
 const FloatingTabs = () => {
   const navigate = useNavigate();
@@ -11,6 +11,12 @@ const FloatingTabs = () => {
   const [visible, setVisible] = useState(true);
 
   const lastScrollY = useRef(0);
+
+  /*
+   * ============================================
+   * NAVIGATION TABS
+   * ============================================
+   */
 
   const tabs = [
     {
@@ -35,27 +41,33 @@ const FloatingTabs = () => {
     },
   ];
 
+  /*
+   * ============================================
+   * HIDE NAVIGATION WHILE SCROLLING DOWN
+   * ============================================
+   */
+
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
 
       /*
-       * Always show navigation near the top.
+       * Always show near the top.
        */
-      if (currentScrollY < 20) {
+      if (currentScrollY <= 20) {
         setVisible(true);
         lastScrollY.current = currentScrollY;
         return;
       }
 
       /*
-       * Scrolling down → hide.
+       * Scrolling down.
        */
-      if (currentScrollY > lastScrollY.current + 5) {
+      if (currentScrollY > lastScrollY.current + 8) {
         setVisible(false);
-      } else if (currentScrollY < lastScrollY.current - 5) {
+      } else if (currentScrollY < lastScrollY.current - 8) {
         /*
-         * Scrolling up → show.
+         * Scrolling up.
          */
         setVisible(true);
       }
@@ -70,182 +82,185 @@ const FloatingTabs = () => {
     };
   }, []);
 
+  /*
+   * ============================================
+   * ACTIVE TAB
+   * ============================================
+   */
+
+  const isActive = (path: string) => {
+    if (path === "/posts") {
+      return location.pathname.startsWith("/posts");
+    }
+
+    return location.pathname === path;
+  };
+
+  /*
+   * ============================================
+   * TAB BUTTON
+   * ============================================
+   */
+
+  const renderTab = (tab: (typeof tabs)[number]) => {
+    const Icon = tab.icon;
+    const active = isActive(tab.path);
+
+    return (
+      <button
+        key={tab.path}
+        type="button"
+        onClick={() => navigate(tab.path)}
+        aria-current={active ? "page" : undefined}
+        className="
+          flex
+          min-w-[52px]
+          flex-1
+          flex-col
+          items-center
+          justify-center
+          gap-1
+          py-2
+          outline-none
+          transition-transform
+          duration-150
+          active:scale-90
+        "
+      >
+        <Icon
+          size={22}
+          strokeWidth={active ? 2.4 : 1.9}
+          className={
+            active
+              ? "text-violet-600 dark:text-violet-400"
+              : "text-slate-500 dark:text-neutral-500"
+          }
+          fill="none"
+        />
+
+        <span
+          className={`
+            text-[9px]
+            leading-none
+            ${
+              active
+                ? "font-semibold text-violet-600 dark:text-violet-400"
+                : "font-medium text-slate-400 dark:text-neutral-600"
+            }
+          `}
+        >
+          {tab.label}
+        </span>
+      </button>
+    );
+  };
+
   return (
     <nav
+      aria-label="Main navigation"
       className={`
         fixed
-        bottom-5
-        left-1/2
+        inset-x-0
+        bottom-0
         z-50
-        w-[calc(100%-24px)]
-        max-w-sm
-        -translate-x-1/2
-        transition-all
+        transition-transform
         duration-300
         ease-out
 
-        ${
-          visible
-            ? "translate-y-0 opacity-100"
-            : "translate-y-[130px] opacity-0 pointer-events-none"
-        }
+        ${visible ? "translate-y-0" : "translate-y-full"}
       `}
     >
       <div
         className="
           relative
-          flex
-          h-[66px]
-          items-center
-          rounded-[24px]
-          border
-          border-slate-200/80
-          bg-white/95
-          px-2
-          shadow-[0_10px_35px_rgba(15,23,42,0.16)]
-          backdrop-blur-xl
+          border-t
+          border-slate-200
+          bg-white
+          pb-[env(safe-area-inset-bottom)]
 
-          dark:border-slate-700/80
-          dark:bg-slate-900/95
-          dark:shadow-[0_10px_35px_rgba(0,0,0,0.45)]
+          dark:border-neutral-800
+          dark:bg-black
         "
       >
-        {/* LEFT */}
-        <div className="flex flex-1 items-center justify-around">
-          {tabs.slice(0, 2).map((tab) => {
-            const Icon = tab.icon;
-
-            const active = location.pathname === tab.path;
-
-            return (
-              <button
-                key={tab.path}
-                type="button"
-                onClick={() => navigate(tab.path)}
-                className={`
-                  flex
-                  min-w-[54px]
-                  flex-col
-                  items-center
-                  justify-center
-                  gap-1
-                  rounded-[16px]
-                  px-2
-                  py-2
-                  text-[10px]
-                  font-medium
-                  transition-all
-                  duration-200
-
-                  ${
-                    active
-                      ? "bg-violet-100 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400"
-                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
-                  }
-                `}
-              >
-                <Icon size={18} strokeWidth={2} />
-
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* CENTER CREATE POST */}
         <div
           className="
-            relative
+            mx-auto
             flex
-            w-[70px]
-            shrink-0
-            justify-center
+            h-[64px]
+            w-full
+            max-w-[680px]
+            items-center
+            px-3
+            sm:px-4
           "
         >
-          <button
-            type="button"
-            onClick={() => navigate("/posts/create")}
-            aria-label="Create post"
-            className="
-              absolute
-              -top-[38px]
+          {/* ==================================
+              LEFT
+              ================================== */}
 
+          <div className="flex flex-1 items-center">
+            {renderTab(tabs[0])}
+            {renderTab(tabs[1])}
+          </div>
+
+          {/* ==================================
+              CREATE
+              ================================== */}
+
+          <div
+            className="
               flex
-              h-[58px]
-              w-[58px]
+              w-[72px]
+              shrink-0
               items-center
               justify-center
-
-              rounded-full
-
-              bg-violet-600
-              text-white
-
-              shadow-[0_8px_25px_rgba(124,58,237,0.40)]
-
-              ring-[5px]
-              ring-white
-
-              transition-all
-              duration-200
-
-              hover:scale-105
-              hover:bg-violet-700
-
-              active:scale-95
-
-              dark:bg-violet-500
-              dark:ring-slate-900
-              dark:shadow-[0_8px_25px_rgba(139,92,246,0.35)]
-              dark:hover:bg-violet-600
             "
           >
-            <Plus size={29} strokeWidth={2.5} />
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => navigate("/posts/create")}
+              aria-label="Create post"
+              className="
+                flex
+                h-[48px]
+                w-[48px]
+                items-center
+                justify-center
+                rounded-full
+                border
+                border-slate-300
+                bg-white
+                text-slate-900
+                shadow-[0_4px_12px_rgba(15,23,42,0.08)]
+                outline-none
+                transition-all
+                duration-150
+                hover:border-violet-500
+                hover:text-violet-600
+                active:scale-90
+                focus-visible:ring-2
+                focus-visible:ring-violet-500/30
 
-        {/* RIGHT */}
-        <div className="flex flex-1 items-center justify-around">
-          {tabs.slice(2).map((tab) => {
-            const Icon = tab.icon;
+                dark:border-neutral-700
+                dark:bg-[#171717]
+                dark:text-white
+                dark:shadow-none
+                dark:hover:border-violet-500
+                dark:hover:text-violet-400
+              "
+            >
+              <Plus size={25} strokeWidth={2} />
+            </button>
+          </div>
 
-            const active =
-              location.pathname === tab.path ||
-              (tab.path === "/posts" && location.pathname.startsWith("/posts"));
+          {/* ==================================
+              RIGHT
+              ================================== */}
 
-            return (
-              <button
-                key={tab.path}
-                type="button"
-                onClick={() => navigate(tab.path)}
-                className={`
-                  flex
-                  min-w-[54px]
-                  flex-col
-                  items-center
-                  justify-center
-                  gap-1
-                  rounded-[16px]
-                  px-2
-                  py-2
-                  text-[10px]
-                  font-medium
-                  transition-all
-                  duration-200
-
-                  ${
-                    active
-                      ? "bg-violet-100 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400"
-                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
-                  }
-                `}
-              >
-                <Icon size={18} strokeWidth={2} />
-
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
+          <div className="flex flex-1 items-center">
+            {renderTab(tabs[2])}
+            {renderTab(tabs[3])}
+          </div>
         </div>
       </div>
     </nav>

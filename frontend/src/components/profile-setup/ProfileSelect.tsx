@@ -24,9 +24,8 @@ function ProfileSelect({
           block
           text-sm
           font-semibold
-          text-slate-700
-
-          dark:text-slate-200
+          text-slate-800
+          dark:text-neutral-200
         "
       >
         {label}
@@ -41,55 +40,61 @@ function ProfileSelect({
             w-full
             appearance-none
             rounded-2xl
-
             border
             border-slate-200
-
             bg-slate-50
-
             px-4
             py-3.5
             pr-11
-
             text-sm
             text-slate-900
-
             outline-none
-
             transition-all
             duration-200
 
             hover:border-slate-300
 
-            focus:border-indigo-500
+            focus:border-violet-500
             focus:bg-white
             focus:ring-4
-            focus:ring-indigo-100
+            focus:ring-violet-500/10
 
-            dark:border-slate-700
-            dark:bg-slate-800
+            dark:border-neutral-700
+            dark:bg-[#0f0f0f]
             dark:text-white
 
-            dark:hover:border-slate-600
+            dark:hover:border-neutral-600
 
-            dark:focus:border-indigo-500
-            dark:focus:bg-slate-800
-            dark:focus:ring-indigo-950
+            dark:focus:border-violet-500
+            dark:focus:bg-[#0f0f0f]
+            dark:focus:ring-violet-500/10
           "
         >
+          {/* Placeholder */}
           <option
             value=""
             disabled
-            className="text-slate-400 dark:bg-slate-800 dark:text-slate-500"
+            className="
+              bg-white
+              text-slate-400
+              dark:bg-[#0f0f0f]
+              dark:text-neutral-500
+            "
           >
             {placeholder}
           </option>
 
+          {/* Options */}
           {options.map((option) => (
             <option
               key={option}
               value={option}
-              className="bg-white text-slate-900 dark:bg-slate-800 dark:text-white"
+              className="
+                bg-white
+                text-slate-900
+                dark:bg-[#171717]
+                dark:text-white
+              "
             >
               {option}
             </option>
@@ -107,10 +112,8 @@ function ProfileSelect({
             -translate-y-1/2
             items-center
             justify-center
-
             text-slate-400
-
-            dark:text-slate-500
+            dark:text-neutral-500
           "
         >
           <ChevronDown size={18} strokeWidth={2} />

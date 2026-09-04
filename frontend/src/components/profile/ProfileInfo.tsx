@@ -28,8 +28,8 @@ function ProfileInfo({ college, department, year }: ProfileInfoProps) {
           border-slate-200
           bg-white
           p-3.5
-          dark:border-slate-800
-          dark:bg-slate-900
+          dark:border-neutral-800
+          dark:bg-[#171717]
         "
       >
         <div className="space-y-3.5">
@@ -74,17 +74,28 @@ function InfoRow({ icon, label, value }: InfoRowProps) {
           items-center
           justify-center
           rounded-lg
-          bg-indigo-50
-          text-indigo-600
-          dark:bg-indigo-950
-          dark:text-indigo-400
+          border
+          border-violet-200
+          bg-violet-50
+          text-violet-600
+          dark:border-violet-500/20
+          dark:bg-violet-500/10
+          dark:text-violet-400
         "
       >
         {icon}
       </div>
 
       <div className="min-w-0">
-        <p className="text-[10px] text-slate-400">{label}</p>
+        <p
+          className="
+            text-[10px]
+            text-slate-400
+            dark:text-neutral-500
+          "
+        >
+          {label}
+        </p>
 
         <p
           className="
@@ -93,7 +104,7 @@ function InfoRow({ icon, label, value }: InfoRowProps) {
             text-xs
             font-semibold
             text-slate-800
-            dark:text-slate-200
+            dark:text-neutral-200
           "
         >
           {value}
