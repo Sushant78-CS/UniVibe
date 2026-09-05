@@ -1,4 +1,4 @@
-import { ArrowLeft, MoreHorizontal } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 interface PersonProfileHeaderProps {
   fullName: string;
@@ -30,10 +30,10 @@ const PersonProfileHeader = ({
           w-full
           max-w-2xl
           items-center
-          justify-between
           px-4
         "
       >
+        {/* Back button */}
         <button
           type="button"
           onClick={onBack}
@@ -42,6 +42,7 @@ const PersonProfileHeader = ({
             flex
             h-9
             w-9
+            shrink-0
             items-center
             justify-center
             rounded-full
@@ -55,6 +56,7 @@ const PersonProfileHeader = ({
           <ArrowLeft size={20} />
         </button>
 
+        {/* Profile name */}
         <div className="min-w-0 flex-1 px-3 text-center">
           <h1
             className="
@@ -69,25 +71,8 @@ const PersonProfileHeader = ({
           </h1>
         </div>
 
-        <button
-          type="button"
-          aria-label="Profile options"
-          className="
-            flex
-            h-9
-            w-9
-            items-center
-            justify-center
-            rounded-full
-            text-neutral-700
-            transition
-            hover:bg-neutral-100
-            dark:text-neutral-300
-            dark:hover:bg-neutral-900
-          "
-        >
-          <MoreHorizontal size={20} />
-        </button>
+        {/* Empty space to keep the name perfectly centered */}
+        <div className="h-9 w-9 shrink-0" />
       </div>
     </header>
   );
