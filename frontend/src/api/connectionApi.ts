@@ -35,17 +35,36 @@ export const useConnectionApi = () => {
   const sendConnection = async (receiverId: number) => {
     const token = await getToken();
 
-    const response = await api.post(
-      "/user/connections",
-      { receiverId },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-    );
+    if (!token) {
+      throw new Error("Authentication token not available");
+    }
 
-    return response.data;
+    try {
+      const response = await api.post(
+        "/user/connections",
+        {
+          receiverId,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      return response.data;
+    } catch (error: any) {
+      console.error("SEND CONNECTION ERROR:", error.response?.data ?? error);
+
+      console.error("SEND CONNECTION STATUS:", error.response?.status);
+
+      console.error("SEND CONNECTION REQUEST:", {
+        receiverId,
+      });
+
+      throw error;
+    }
   };
 
   const updateConnection = async (id: number, action: "ACCEPT" | "REJECT") => {

@@ -67,4 +67,18 @@ public interface ConnectionRepository extends JpaRepository<Connection, Long> {
             @Param("userId") Long userId,
             @Param("status") ConnectionStatus status
     );
+
+    @Query("""
+            SELECT COUNT(c)
+            FROM Connection c
+            WHERE c.status = :status
+            AND (
+                c.sender.id = :userId
+                OR c.receiver.id = :userId
+            )
+            """)
+    long countConnectionsByStatus(
+            @Param("userId") Long userId,
+            @Param("status") ConnectionStatus status
+    );
 }

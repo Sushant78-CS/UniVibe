@@ -1,12 +1,14 @@
 import { UserRound } from "lucide-react";
 
 interface PersonProfileInfoProps {
-  profileImage?: string;
+  profileImage?: string | null;
   fullName: string;
   username: string;
+
   posts: number;
   connections: number;
   clubs: number;
+
   onImageClick: () => void;
 }
 
@@ -21,8 +23,12 @@ const PersonProfileInfo = ({
 }: PersonProfileInfoProps) => {
   return (
     <section className="px-4 pt-5">
-      <div className="flex items-center gap-5">
-        {/* PROFILE PHOTO */}
+      {/* ======================================
+          PHOTO + STATS
+      ====================================== */}
+
+      <div className="flex items-center gap-6">
+        {/* PROFILE IMAGE */}
 
         <button
           type="button"
@@ -64,11 +70,8 @@ const PersonProfileInfo = ({
                 rounded-full
                 bg-neutral-100
                 text-neutral-500
-                ring-1
-                ring-neutral-200
                 dark:bg-neutral-900
                 dark:text-neutral-400
-                dark:ring-neutral-800
               "
             >
               <UserRound size={28} />
@@ -79,81 +82,17 @@ const PersonProfileInfo = ({
         {/* STATS */}
 
         <div className="grid flex-1 grid-cols-3">
-          <div className="text-center">
-            <p
-              className="
-                text-base
-                font-semibold
-                text-neutral-900
-                dark:text-white
-              "
-            >
-              {posts}
-            </p>
+          <Stat value={posts} label="Posts" />
 
-            <p
-              className="
-                mt-0.5
-                text-[11px]
-                text-neutral-500
-                dark:text-neutral-500
-              "
-            >
-              Posts
-            </p>
-          </div>
+          <Stat value={connections} label="Connections" />
 
-          <div className="text-center">
-            <p
-              className="
-                text-base
-                font-semibold
-                text-neutral-900
-                dark:text-white
-              "
-            >
-              {connections}
-            </p>
-
-            <p
-              className="
-                mt-0.5
-                text-[11px]
-                text-neutral-500
-                dark:text-neutral-500
-              "
-            >
-              Connections
-            </p>
-          </div>
-
-          <div className="text-center">
-            <p
-              className="
-                text-base
-                font-semibold
-                text-neutral-900
-                dark:text-white
-              "
-            >
-              {clubs}
-            </p>
-
-            <p
-              className="
-                mt-0.5
-                text-[11px]
-                text-neutral-500
-                dark:text-neutral-500
-              "
-            >
-              Clubs
-            </p>
-          </div>
+          <Stat value={clubs} label="Clubs" />
         </div>
       </div>
 
-      {/* NAME / USERNAME */}
+      {/* ======================================
+          NAME
+      ====================================== */}
 
       <div className="mt-4">
         <h2
@@ -179,6 +118,39 @@ const PersonProfileInfo = ({
         </p>
       </div>
     </section>
+  );
+};
+
+interface StatProps {
+  value: number;
+  label: string;
+}
+
+const Stat = ({ value, label }: StatProps) => {
+  return (
+    <div className="text-center">
+      <p
+        className="
+          text-base
+          font-semibold
+          text-neutral-900
+          dark:text-white
+        "
+      >
+        {value}
+      </p>
+
+      <p
+        className="
+          mt-0.5
+          text-[11px]
+          text-neutral-500
+          dark:text-neutral-500
+        "
+      >
+        {label}
+      </p>
+    </div>
   );
 };
 

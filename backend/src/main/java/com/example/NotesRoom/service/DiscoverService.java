@@ -22,6 +22,10 @@ public class DiscoverService {
     private final UserRepository userRepository;
     private final ConnectionRepository connectionRepository;
 
+    /* =========================================================
+       DISCOVER PEOPLE
+       ========================================================= */
+
     public List<DiscoverProfileDto> discoverPeople(
             String clerkId,
             String query,
@@ -30,8 +34,10 @@ public class DiscoverService {
             String year
     ) {
 
-        Users currentUser = userRepository.findByClerkId(clerkId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        Users currentUser = userRepository
+                .findByClerkId(clerkId)
+                .orElseThrow(() ->
+                        new RuntimeException("User not found"));
 
         List<Profile> profiles = profileRepository.discoverPeople(
                 clerkId,
@@ -42,68 +48,28 @@ public class DiscoverService {
         );
 
         return profiles.stream()
-                .map(profile -> toDto(profile, currentUser.getId()))
+                .map(profile ->
+                        toDiscoverDto(
+                                profile,
+                                currentUser.getId()
+                        )
+                )
                 .toList();
     }
 
-    private DiscoverProfileDto toDto(
+    /* =========================================================
+       DISCOVER DTO
+       ========================================================= */
+
+    private DiscoverProfileDto toDiscoverDto(
             Profile profile,
             Long currentUserId
     ) {
 
-        String connectionStatus = connectionRepository
-                .findConnectionBetweenUsers(
-                        currentUserId,
-                        profile.getUser().getId()
-                )
-                .map(connection -> {
-
-                    if (connection.getStatus() == ConnectionStatus.ACCEPTED) {
-                        return "ACCEPTED";
-                    }
-
-                    if (connection.getStatus() == ConnectionStatus.PENDING) {
-
-                        if (connection.getSender().getId()
-                                .equals(currentUserId)) {
-                            return "PENDING_SENT";
-                        }
-
-                        return "PENDING_RECEIVED";
-                    }
-
-                    return "NONE";
-                })
-                .orElse("NONE");
-
-        return new DiscoverProfileDto(
-                profile.getId(),
-                profile.getUser().getId(),
-                profile.getFullName(),
-                profile.getUsername(),
-                profile.getProfileImage(),
-                profile.getCollege(),
-                profile.getDepartment(),
-                profile.getYear(),
-                profile.getInterests(),
-                profile.getBio(),
-                connectionStatus
-        );
-    }
-
-    private String clean(String value) {
-        return value == null ? "" : value.trim();
-    }
-
-    private DiscoverProfileDto toDto(
-            Profile profile,
-            Users currentUser
-    ) {
-
         String connectionStatus =
                 getConnectionStatus(
-                        currentUser,
-                        profile.getUser()
+                        currentUserId,
+                        profile.getUser().getId()
                 );
 
         return new DiscoverProfileDto(
@@ -121,15 +87,19 @@ public class DiscoverService {
         );
     }
 
+    /* =========================================================
+       CONNECTION STATUS
+       ========================================================= */
+
     private String getConnectionStatus(
-            Users currentUser,
-            Users otherUser
+            Long currentUserId,
+            Long otherUserId
     ) {
 
         return connectionRepository
                 .findConnectionBetweenUsers(
-                        currentUser.getId(),
-                        otherUser.getId()
+                        currentUserId,
+                        otherUserId
                 )
                 .map(connection -> {
 
@@ -144,7 +114,7 @@ public class DiscoverService {
 
                         if (connection.getSender()
                                 .getId()
-                                .equals(currentUser.getId())) {
+                                .equals(currentUserId)) {
 
                             return "PENDING_SENT";
                         }
@@ -157,6 +127,10 @@ public class DiscoverService {
                 .orElse("NONE");
     }
 
+    /* =========================================================
+       PERSON PROFILE
+       ========================================================= */
+
     public PersonProfileDto getPerson(
             Long id,
             String clerkId
@@ -165,8 +139,16 @@ public class DiscoverService {
         Profile profile = profileRepository
                 .findByIdAndProfileCompletedTrue(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Profile not found")
+                        new RuntimeException(
+                                "Profile not found"
+                        )
                 );
+
+        /* -----------------------------------------------------
+           Prevent viewing own profile through this endpoint.
+           Keep this if your controller has a separate
+           /profile endpoint for the user's own profile.
+           ----------------------------------------------------- */
 
         if (profile.getUser()
                 .getClerkId()
@@ -176,6 +158,21 @@ public class DiscoverService {
                     "Cannot view your own profile"
             );
         }
+
+        /* -----------------------------------------------------
+           COUNT ACCEPTED CONNECTIONS
+           ----------------------------------------------------- */
+
+        long connectionsCount =
+                connectionRepository
+                        .countConnectionsByStatus(
+                                profile.getUser().getId(),
+                                ConnectionStatus.ACCEPTED
+                        );
+
+        /* -----------------------------------------------------
+           RETURN PERSON PROFILE
+           ----------------------------------------------------- */
 
         return new PersonProfileDto(
                 profile.getId(),
@@ -187,7 +184,18 @@ public class DiscoverService {
                 profile.getCollege(),
                 profile.getDepartment(),
                 profile.getYear(),
-                profile.getInterests()
+                profile.getInterests(),
+                connectionsCount
         );
+    }
+
+    /* =========================================================
+       CLEAN INPUT
+       ========================================================= */
+
+    private String clean(String value) {
+        return value == null
+                ? ""
+                : value.trim();
     }
 }

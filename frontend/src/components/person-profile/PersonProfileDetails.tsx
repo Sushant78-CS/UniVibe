@@ -16,11 +16,13 @@ const PersonProfileDetails = ({
   interests,
 }: PersonProfileDetailsProps) => {
   return (
-    <div className="px-4">
-      {/* BIO */}
+    <section className="px-4">
+      {/* ======================================
+          BIO
+      ====================================== */}
 
       {bio && (
-        <section className="mt-5">
+        <div className="mt-5">
           <p
             className="
               whitespace-pre-wrap
@@ -32,102 +34,105 @@ const PersonProfileDetails = ({
           >
             {bio}
           </p>
-        </section>
+        </div>
       )}
 
-      {/* EDUCATION */}
+      {/* ======================================
+          INFO
+      ====================================== */}
 
-      <section className="mt-5">
-        <div className="flex items-center gap-2">
-          <GraduationCap
-            size={16}
-            className="
-              text-neutral-500
-              dark:text-neutral-400
-            "
-          />
+      <div
+        className="
+          mt-6
+          divide-y
+          divide-neutral-200
+          border-y
+          border-neutral-200
+          dark:divide-neutral-800
+          dark:border-neutral-800
+        "
+      >
+        {/* EDUCATION */}
 
-          <span
-            className="
-              text-xs
-              font-medium
-              text-neutral-500
-              dark:text-neutral-400
-            "
-          >
-            Education
-          </span>
-        </div>
+        <div className="flex items-center gap-3 py-4">
+          <GraduationCap size={17} className="text-neutral-500" />
 
-        <div className="mt-2">
-          <p
-            className="
-              text-sm
-              font-semibold
-              text-neutral-900
-              dark:text-white
-            "
-          >
-            {department || "Student"}
-          </p>
-
-          {year && (
+          <div className="min-w-0">
             <p
               className="
-                mt-0.5
                 text-xs
                 text-neutral-500
                 dark:text-neutral-500
               "
             >
-              {year}
+              Education
             </p>
-          )}
-        </div>
-      </section>
 
-      {/* COLLEGE */}
-
-      {college && (
-        <section className="mt-5">
-          <div className="flex items-center gap-2">
-            <MapPin
-              size={16}
+            <p
               className="
-                text-neutral-500
-                dark:text-neutral-400
-              "
-            />
-
-            <span
-              className="
-                text-xs
+                mt-0.5
+                truncate
+                text-sm
                 font-medium
-                text-neutral-500
-                dark:text-neutral-400
+                text-neutral-900
+                dark:text-white
               "
             >
-              College
-            </span>
+              {department || "Student"}
+            </p>
+
+            {year && (
+              <p
+                className="
+                  mt-0.5
+                  text-xs
+                  text-neutral-500
+                "
+              >
+                {year}
+              </p>
+            )}
           </div>
+        </div>
 
-          <p
-            className="
-              mt-2
-              text-sm
-              font-semibold
-              text-neutral-900
-              dark:text-white
-            "
-          >
-            {college}
-          </p>
-        </section>
-      )}
+        {/* COLLEGE */}
 
-      {/* INTERESTS */}
+        {college && (
+          <div className="flex items-center gap-3 py-4">
+            <MapPin size={17} className="text-neutral-500" />
 
-      <section className="mt-5">
+            <div className="min-w-0">
+              <p
+                className="
+                  text-xs
+                  text-neutral-500
+                "
+              >
+                College
+              </p>
+
+              <p
+                className="
+                  mt-0.5
+                  truncate
+                  text-sm
+                  font-medium
+                  text-neutral-900
+                  dark:text-white
+                "
+              >
+                {college}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ======================================
+          INTERESTS
+      ====================================== */}
+
+      <div className="mt-6">
         <h3
           className="
             text-sm
@@ -140,7 +145,7 @@ const PersonProfileDetails = ({
         </h3>
 
         {interests.length > 0 ? (
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             {interests.map((interest) => (
               <span
                 key={interest}
@@ -148,14 +153,12 @@ const PersonProfileDetails = ({
                     rounded-full
                     border
                     border-violet-200
-                    bg-violet-50
                     px-3
                     py-1.5
                     text-[11px]
                     font-medium
                     text-violet-700
-                    dark:border-violet-500/20
-                    dark:bg-violet-500/10
+                    dark:border-violet-500/25
                     dark:text-violet-300
                   "
               >
@@ -169,14 +172,13 @@ const PersonProfileDetails = ({
               mt-2
               text-xs
               text-neutral-500
-              dark:text-neutral-500
             "
           >
             No interests added yet.
           </p>
         )}
-      </section>
-    </div>
+      </div>
+    </section>
   );
 };
 

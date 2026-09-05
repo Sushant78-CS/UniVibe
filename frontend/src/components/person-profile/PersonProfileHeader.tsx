@@ -55,7 +55,7 @@ const PersonProfileHeader = ({
           <ArrowLeft size={20} />
         </button>
 
-        <div className="min-w-0 px-4 text-center">
+        <div className="min-w-0 flex-1 px-3 text-center">
           <h1
             className="
               truncate
@@ -67,16 +67,6 @@ const PersonProfileHeader = ({
           >
             {fullName}
           </h1>
-
-          <p
-            className="
-              text-[10px]
-              text-neutral-500
-              dark:text-neutral-500
-            "
-          >
-            UniVibe
-          </p>
         </div>
 
         <button

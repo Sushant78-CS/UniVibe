@@ -10,6 +10,7 @@ public record PersonProfileDto(
         String college,
         String department,
         String year,
-        String interests
+        String interests,
+        Long connectionsCount
 ) {
 }
