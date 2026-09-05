@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate, useOutletContext } from "react-router";
 import { useAuth } from "@clerk/react";
+import { FileText, ChevronRight } from "lucide-react";
 
 import ProfileTopBar from "../../components/profile/ProfileTopBar";
 import ProfileHero from "../../components/profile/ProfileHero";
-import ProfileInfo from "../../components/profile/ProfileInfo";
+// import ProfileInfo from "../../components/profile/ProfileInfo";
 import ProfileActions from "../../components/profile/ProfileActions";
 import FloatingTabs from "../../components/home/FloatingTabs";
 import ConfirmModal from "../../components/common/ConfirmModal";
@@ -29,13 +30,14 @@ interface ProtectedLayoutContext {
 
 const ProfilePage = () => {
   const navigate = useNavigate();
-
   const { signOut } = useAuth();
 
   const { profile } = useOutletContext<ProtectedLayoutContext>();
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+
   const [showImageModal, setShowImageModal] = useState(false);
+
   const [loggingOut, setLoggingOut] = useState(false);
 
   const handleLogout = async () => {
@@ -83,6 +85,7 @@ const ProfilePage = () => {
         "
       >
         <div className="space-y-4">
+          {/* Profile Hero */}
           <section
             className="
               overflow-hidden
@@ -106,79 +109,94 @@ const ProfilePage = () => {
             />
           </section>
 
-          {profile.bio && (
-            <section
-              className="
-                rounded-2xl
-                border
-                border-slate-200
-                bg-white
-                p-4
-                shadow-[0_1px_4px_rgba(15,23,42,0.04)]
-                dark:border-neutral-800
-                dark:bg-[#171717]
-                dark:shadow-none
-              "
-            >
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
-                About
-              </h2>
-
-              <p
-                className="
-                  mt-2
-                  whitespace-pre-wrap
-                  text-sm
-                  leading-6
-                  text-slate-600
-                  dark:text-neutral-400
-                "
-              >
-                {profile.bio}
-              </p>
-            </section>
-          )}
-
+          {/* My Posts */}
           <section
             className="
               rounded-2xl
               border
               border-slate-200
               bg-white
-              p-1
               shadow-[0_1px_4px_rgba(15,23,42,0.04)]
               dark:border-neutral-800
               dark:bg-[#171717]
               dark:shadow-none
             "
           >
-            <ProfileInfo
-              college={profile.college}
-              department={profile.department ?? ""}
-              year={profile.year}
-            />
+            <button
+              type="button"
+              onClick={() => navigate("/posts/mine")}
+              className="
+                group
+                flex
+                w-full
+                items-center
+                gap-3
+                p-4
+                text-left
+                transition-colors
+                hover:bg-slate-50
+                dark:hover:bg-neutral-900/60
+              "
+            >
+              {/* Icon */}
+              <div
+                className="
+                  flex
+                  h-10
+                  w-10
+                  shrink-0
+                  items-center
+                  justify-center
+                  rounded-xl
+                  bg-violet-100
+                  text-violet-600
+                  dark:bg-violet-950/50
+                  dark:text-violet-400
+                "
+              >
+                <FileText size={19} strokeWidth={2} />
+              </div>
+
+              {/* Text */}
+              <div className="min-w-0 flex-1">
+                <h2
+                  className="
+                    text-sm
+                    font-semibold
+                    text-slate-900
+                    dark:text-white
+                  "
+                >
+                  My Posts
+                </h2>
+
+                <p
+                  className="
+                    mt-0.5
+                    text-xs
+                    text-slate-500
+                    dark:text-neutral-500
+                  "
+                >
+                  View and edit your posts
+                </p>
+              </div>
+
+              {/* Arrow */}
+              <ChevronRight
+                size={18}
+                className="
+                  shrink-0
+                  text-slate-400
+                  transition-transform
+                  group-hover:translate-x-0.5
+                  dark:text-neutral-600
+                "
+              />
+            </button>
           </section>
 
-          {/* <section
-            className="
-              rounded-2xl
-              border
-              border-slate-200
-              bg-white
-              p-1
-              shadow-[0_1px_4px_rgba(15,23,42,0.04)]
-              dark:border-neutral-800
-              dark:bg-[#171717]
-              dark:shadow-none
-            "
-          >
-            <ProfileTags
-              title="Interests"
-              tags={interests}
-              emptyText="Add interests to find people who match your vibe."
-            />
-          </section> */}
-
+          {/* Profile Actions */}
           <section
             className="
               rounded-2xl
@@ -209,6 +227,7 @@ const ProfilePage = () => {
         </div>
       </main>
 
+      {/* Logout Modal */}
       <ConfirmModal
         open={showLogoutModal}
         title="Sign out?"
@@ -225,6 +244,7 @@ const ProfilePage = () => {
         }}
       />
 
+      {/* Profile Image Modal */}
       <ProfileImageModal
         open={showImageModal}
         image={profile.profileImage || null}

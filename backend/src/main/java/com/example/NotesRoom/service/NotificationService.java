@@ -52,6 +52,7 @@ public class NotificationService {
 
         switch (type) {
             case MESSAGE -> title = "New message";
+            case VIBE_MESSAGE -> title = "New Vibe message";
             case CONNECTION_REQUEST -> title = "New connection request";
             case CONNECTION_ACCEPTED -> title = "Connection accepted";
             case CONNECTION_REJECTED -> title = "Connection request declined";
@@ -62,7 +63,8 @@ public class NotificationService {
 
         switch (type) {
             case MESSAGE -> url = "/messages/" + referenceId;
-            default -> url = "/discover";
+            case VIBE_MESSAGE -> url = "/vibe";
+            default -> url = "/home";
         }
 
         try {
@@ -100,6 +102,76 @@ public class NotificationService {
                 .stream()
                 .map(this::toDto)
                 .toList();
+    }
+
+    @Transactional
+    public Notification createVibeNotification(
+            Users recipient,
+            String message,
+            Long referenceId
+    ) {
+
+        Notification notification =
+                Notification.builder()
+                        .user(recipient)
+                        .actor(null)
+                        .type(
+                                NotificationType.VIBE_MESSAGE
+                        )
+                        .message(message)
+                        .referenceId(referenceId)
+                        .read(false)
+                        .createdAt(Instant.now())
+                        .build();
+
+        return notificationRepository.save(
+                notification
+        );
+    }
+
+    @Transactional
+    public void createVibeNotifications(
+            List<Users> recipients,
+            String message,
+            Long referenceId
+    ) {
+
+        if (
+                recipients == null ||
+                        recipients.isEmpty()
+        ) {
+            return;
+        }
+
+        List<Notification> notifications =
+                recipients.stream()
+                        .map(recipient ->
+                                Notification.builder()
+                                        .user(recipient)
+                                        .actor(null)
+                                        .type(
+                                                NotificationType.VIBE_MESSAGE
+                                        )
+                                        .message(message)
+                                        .referenceId(referenceId)
+                                        .read(false)
+                                        .createdAt(
+                                                Instant.now()
+                                        )
+                                        .build()
+                        )
+                        .toList();
+
+        notificationRepository.saveAll(
+                notifications
+        );
+
+        fcmService.sendToUsers(
+                recipients,
+                "New Vibe message",
+                message,
+                "/vibe"
+        );
     }
 
     /**

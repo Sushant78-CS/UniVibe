@@ -3,9 +3,12 @@ import { ArrowLeft, Camera, ImagePlus, Save, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useProfileApi, type UpdateProfileData } from "../../api/profileApi";
 import ConfirmModal from "../../components/common/ConfirmModal";
+import { compressImage } from "../../services/compressImage";
+import { useQueryClient } from "@tanstack/react-query";
 
 const EditProfile = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { getProfile, updateProfile, deleteProfileImage } = useProfileApi();
 
@@ -58,7 +61,7 @@ const EditProfile = () => {
     loadProfile();
   }, []);
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
 
     if (!file) {
@@ -71,16 +74,37 @@ const EditProfile = () => {
       return;
     }
 
-    // Optional size limit: 5 MB
+    // Keep the original 5 MB input limit
     if (file.size > 5 * 1024 * 1024) {
       alert("Image must be smaller than 5 MB.");
       return;
     }
 
-    setSelectedImage(file);
+    try {
+      const compressedFile = await compressImage(file);
 
-    const previewUrl = URL.createObjectURL(file);
-    setPreviewImage(previewUrl);
+      setSelectedImage(compressedFile);
+
+      // Revoke previous preview URL if it was a local blob
+      if (previewImage.startsWith("blob:")) {
+        URL.revokeObjectURL(previewImage);
+      }
+
+      const previewUrl = URL.createObjectURL(compressedFile);
+      setPreviewImage(previewUrl);
+    } catch (error) {
+      console.error("Failed to compress profile image:", error);
+
+      // Fall back to original file if compression fails
+      setSelectedImage(file);
+
+      if (previewImage.startsWith("blob:")) {
+        URL.revokeObjectURL(previewImage);
+      }
+
+      const previewUrl = URL.createObjectURL(file);
+      setPreviewImage(previewUrl);
+    }
   };
 
   const handleRemoveImage = async () => {
@@ -134,9 +158,12 @@ const EditProfile = () => {
     try {
       setSaving(true);
 
-      console.log("selectedImage", selectedImage);
-
       await updateProfile(form, selectedImage);
+
+      // Refresh the profile used by ProfilePage
+      await queryClient.invalidateQueries({
+        queryKey: ["profile"],
+      });
 
       navigate(-1);
     } catch (error) {
@@ -386,7 +413,7 @@ const EditProfile = () => {
           </div>
 
           {/* Bio */}
-          <div>
+          {/* <div>
             <label className="mb-2 block text-sm font-semibold">Bio</label>
 
             <textarea
@@ -405,10 +432,10 @@ const EditProfile = () => {
                 dark:bg-slate-950
               "
             />
-          </div>
+          </div> */}
 
           {/* College */}
-          <div>
+          {/* <div>
             <label className="mb-2 block text-sm font-semibold">College</label>
 
             <input
@@ -426,10 +453,10 @@ const EditProfile = () => {
                 dark:bg-slate-950
               "
             />
-          </div>
+          </div> */}
 
           {/* Department */}
-          <div>
+          {/* <div>
             <label className="mb-2 block text-sm font-semibold">
               Department
             </label>
@@ -449,10 +476,10 @@ const EditProfile = () => {
                 dark:bg-slate-950
               "
             />
-          </div>
+          </div> */}
 
           {/* Year */}
-          <div>
+          {/* <div>
             <label className="mb-2 block text-sm font-semibold">Year</label>
 
             <input
@@ -470,10 +497,10 @@ const EditProfile = () => {
                 dark:bg-slate-950
               "
             />
-          </div>
+          </div> */}
 
           {/* Interests */}
-          <div>
+          {/* <div>
             <label className="mb-2 block text-sm font-semibold">
               Interests
             </label>
@@ -498,7 +525,7 @@ const EditProfile = () => {
             <p className="mt-1 text-xs text-slate-400">
               Separate interests with commas.
             </p>
-          </div>
+          </div> */}
 
           {/* Save */}
           <button

@@ -38,6 +38,9 @@ import { initializeForegroundMessages } from "./firebase/messaging";
 import { useAuth } from "@clerk/react";
 import SettingsPage from "./pages/settings";
 import AboutPage from "./pages/about";
+import VibePage from "./pages/vibe";
+import VibeHome from "./pages/vibe/home";
+import EventsPage from "./pages/vibe/events";
 
 function App() {
   const { getToken } = useAuth();
@@ -98,7 +101,7 @@ function App() {
 
             <Route path="/profile/edit" element={<EditProfilePage />} />
 
-            <Route path="/posts" element={<Posts />} />
+            <Route path="/posts/mine" element={<Posts />} />
 
             <Route path="/messages" element={<MessagesPage />} />
 
@@ -111,7 +114,11 @@ function App() {
 
             <Route path="/posts/create/camera" element={<PostCameraPage />} />
 
+            <Route path="/vibe/random" element={<VibePage />} />
+            <Route path="/vibe/events" element={<EventsPage />} />
+
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/vibe" element={<VibeHome />} />
 
             <Route path="/about" element={<AboutPage />} />
           </Route>

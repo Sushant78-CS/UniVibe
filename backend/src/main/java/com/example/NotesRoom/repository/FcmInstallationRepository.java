@@ -15,4 +15,6 @@ public interface FcmInstallationRepository
     List<FcmInstallation> findAllByUser(Users user);
 
     void deleteByFid(String fid);
+
+    List<FcmInstallation> findAllByUserIn(List<Users> users);
 }

@@ -1,4 +1,4 @@
-import { Home, Search, User, Newspaper, Plus } from "lucide-react";
+import { Home, Search, User, Plus, Radio } from "lucide-react";
 
 import { useEffect, useRef, useState } from "react";
 
@@ -30,9 +30,9 @@ const FloatingTabs = () => {
       path: "/discover",
     },
     {
-      label: "Posts",
-      icon: Newspaper,
-      path: "/posts",
+      label: "Vibe",
+      icon: Radio,
+      path: "/vibe",
     },
     {
       label: "Profile",
@@ -89,8 +89,8 @@ const FloatingTabs = () => {
    */
 
   const isActive = (path: string) => {
-    if (path === "/posts") {
-      return location.pathname.startsWith("/posts");
+    if (path === "/vibe") {
+      return location.pathname === "/vibe" || location.pathname === "/vibe/";
     }
 
     return location.pathname === path;
