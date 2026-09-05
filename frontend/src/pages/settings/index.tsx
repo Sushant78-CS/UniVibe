@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Bell, ChevronRight, Moon, Sun, User } from "lucide-react";
+import {
+  ArrowLeft,
+  Bell,
+  ChevronRight,
+  Loader2,
+  Moon,
+  Sun,
+  User,
+} from "lucide-react";
 import { useNavigate } from "react-router";
 import { useAuth } from "@clerk/react";
 
@@ -7,6 +15,8 @@ import {
   enablePushNotifications,
   disablePushNotifications,
 } from "../../firebase/messaging";
+
+import InstallAppButton from "../../components/common/InstallAppButton";
 
 function SettingsPage() {
   const navigate = useNavigate();
@@ -33,6 +43,7 @@ function SettingsPage() {
   // ------------------------------------------
 
   const handlePushToggle = async () => {
+    // Prevent multiple clicks while request is running
     if (pushLoading) {
       return;
     }
@@ -88,7 +99,10 @@ function SettingsPage() {
         dark:text-white
       "
     >
-      {/* Header */}
+      {/* -------------------------------------- */}
+      {/* HEADER */}
+      {/* -------------------------------------- */}
+
       <header
         className="
           sticky
@@ -139,6 +153,10 @@ function SettingsPage() {
           <h1 className="text-base font-semibold">Settings</h1>
         </div>
       </header>
+
+      {/* -------------------------------------- */}
+      {/* MAIN */}
+      {/* -------------------------------------- */}
 
       <main
         className="
@@ -243,6 +261,12 @@ function SettingsPage() {
         </section>
 
         {/* -------------------------------------- */}
+        {/* INSTALL APP */}
+        {/* -------------------------------------- */}
+
+        <InstallAppButton />
+
+        {/* -------------------------------------- */}
         {/* NOTIFICATIONS */}
         {/* -------------------------------------- */}
 
@@ -283,6 +307,7 @@ function SettingsPage() {
                 py-3.5
               "
             >
+              {/* Bell */}
               <div
                 className="
                   flex
@@ -301,6 +326,7 @@ function SettingsPage() {
                 <Bell size={18} />
               </div>
 
+              {/* Text */}
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">Push notifications</p>
 
@@ -312,11 +338,11 @@ function SettingsPage() {
                     dark:text-neutral-400
                   "
                 >
-                  Messages and connection requests
+                  Get notified about messages and connection requests
                 </p>
               </div>
 
-              {/* FIXED SWITCH */}
+              {/* Switch */}
               <button
                 type="button"
                 role="switch"
@@ -326,9 +352,11 @@ function SettingsPage() {
                 onClick={handlePushToggle}
                 className={`
                   relative
+                  flex
                   h-6
                   w-11
                   shrink-0
+                  items-center
                   rounded-full
                   transition-colors
                   duration-200
@@ -337,33 +365,43 @@ function SettingsPage() {
                   focus-visible:ring-violet-500
                   focus-visible:ring-offset-2
                   dark:focus-visible:ring-offset-[#171717]
+
                   ${
                     pushEnabled
                       ? "bg-violet-600"
                       : "bg-slate-300 dark:bg-neutral-700"
                   }
-                  ${pushLoading ? "cursor-wait opacity-60" : "cursor-pointer"}
+
+                  ${pushLoading ? "cursor-wait opacity-70" : "cursor-pointer"}
                 `}
               >
-                <span
-                  className={`
-                    absolute
-                    left-0.5
-                    top-0.5
-                    h-5
-                    w-5
-                    rounded-full
-                    bg-white
-                    shadow-sm
-                    transition-transform
-                    duration-200
-                    ${pushEnabled ? "translate-x-5" : "translate-x-0"}
-                  `}
-                />
+                {pushLoading ? (
+                  <span className="absolute inset-0 flex items-center justify-center">
+                    <Loader2 size={14} className="animate-spin text-white" />
+                  </span>
+                ) : (
+                  <span
+                    className={`
+                      absolute
+                      left-0.5
+                      top-0.5
+                      h-5
+                      w-5
+                      rounded-full
+                      bg-white
+                      shadow-sm
+                      transition-transform
+                      duration-200
+
+                      ${pushEnabled ? "translate-x-5" : "translate-x-0"}
+                    `}
+                  />
+                )}
               </button>
             </div>
 
-            {pushEnabled && (
+            {/* Enabled information */}
+            {pushEnabled && !pushLoading && (
               <div
                 className="
                   border-t
@@ -377,6 +415,24 @@ function SettingsPage() {
                 "
               >
                 Push notifications are enabled for this browser.
+              </div>
+            )}
+
+            {/* Loading information */}
+            {pushLoading && (
+              <div
+                className="
+                  border-t
+                  border-slate-100
+                  px-4
+                  py-2.5
+                  text-[11px]
+                  text-slate-500
+                  dark:border-neutral-800
+                  dark:text-neutral-500
+                "
+              >
+                Updating notification settings...
               </div>
             )}
           </div>

@@ -3,6 +3,7 @@ import ConnectionsSection from "../components/home/ConnectionsSection";
 import FloatingTabs from "../components/home/FloatingTabs";
 import CampusFeed from "../components/posts/CampusFeed";
 import NotificationPrompt from "../components/notifications/NotificationPrompt";
+import HomeInstallApp from "../components/common/HomeInstallApp";
 
 function Home() {
   return (
@@ -19,6 +20,7 @@ function Home() {
     >
       {/* Header */}
       <Header />
+      <HomeInstallApp />
 
       {/* Main social feed */}
       <main
