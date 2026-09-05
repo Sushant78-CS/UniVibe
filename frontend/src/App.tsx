@@ -13,7 +13,7 @@ import HomePage from "./pages/home";
 import ProfilePage from "./pages/profile/profile";
 import SsoCallback from "./pages/SsoCallback";
 import DiscoverPage from "./pages/discover";
-import PersonProfilePage from "./components/discover/PersonProfilePage";
+import PersonProfilePage from "./pages/profile/PersonProfilePage";
 
 import ConnectionRequests from "./pages/connections/requests";
 import Connections from "./pages/connections";

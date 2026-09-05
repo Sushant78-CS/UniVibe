@@ -9,22 +9,22 @@ import {
   Pencil,
   Trash2,
   X,
-  Heart,
-  Send,
-  RefreshCw,
 } from "lucide-react";
 
 import { useEffect, useState } from "react";
+
 import { useQueryClient } from "@tanstack/react-query";
+
 import { useNavigate } from "react-router";
 
 import { usePostApi, type Post } from "../../api/postApi";
+
 import CommentsModal from "./CommentsModal";
 import SharePost from "./SharePost";
-import {
-  optimizeCloudinaryImage,
-  optimizeCloudinaryVideo,
-} from "../../utils/cloudinary";
+import PostMedia from "./PostMedia";
+import PostActions from "./PostActions";
+
+import { optimizeCloudinaryImage } from "../../utils/cloudinary";
 
 interface PostCardProps {
   post: Post;
@@ -33,11 +33,9 @@ interface PostCardProps {
   onDelete?: (post: Post) => void;
 }
 
-/*
- * ============================================
- * CATEGORY CONFIG
- * ============================================
- */
+/* ============================================
+   CATEGORY
+============================================ */
 
 const categoryConfig = {
   EVENT: {
@@ -66,11 +64,9 @@ const categoryConfig = {
   },
 };
 
-/*
- * ============================================
- * COMPONENT
- * ============================================
- */
+/* ============================================
+   COMPONENT
+============================================ */
 
 const PostCard = ({
   post,
@@ -81,11 +77,11 @@ const PostCard = ({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  /*
-   * ==========================================
-   * STATE
-   * ==========================================
-   */
+  const { likePost, unlikePost } = usePostApi();
+
+  /* ==========================================
+     STATE
+  ========================================== */
 
   const [imagePreview, setImagePreview] = useState(false);
 
@@ -93,58 +89,39 @@ const PostCard = ({
 
   const [showShare, setShowShare] = useState(false);
 
-  const [liked, setLiked] = useState<boolean>(post.likedByMe);
+  const [liked, setLiked] = useState(post.likedByMe);
 
-  const [likeCount, setLikeCount] = useState<number>(post.likeCount);
+  const [likeCount, setLikeCount] = useState(post.likeCount);
 
-  const [commentCount, setCommentCount] = useState<number>(post.commentCount);
+  const [commentCount, setCommentCount] = useState(post.commentCount);
 
   const [liking, setLiking] = useState(false);
 
-  /*
-   * ==========================================
-   * API
-   * ==========================================
-   */
-
-  const { likePost, unlikePost } = usePostApi();
   const [commentsLoading, setCommentsLoading] = useState(false);
-  // const isCommentOwner = comment.userId === currentUserId;
 
-  /*
-   * ==========================================
-   * SYNC WITH QUERY DATA
-   * ==========================================
-   */
-
-  const optimizedMediaUrl =
-    post.mediaType === "IMAGE"
-      ? optimizeCloudinaryImage(post.mediaUrl, 1080)
-      : post.mediaType === "VIDEO"
-        ? optimizeCloudinaryVideo(post.mediaUrl, 1080)
-        : post.mediaUrl;
+  /* ==========================================
+     SYNC
+  ========================================== */
 
   useEffect(() => {
     setLiked(post.likedByMe);
+
     setLikeCount(post.likeCount);
+
     setCommentCount(post.commentCount);
   }, [post.likedByMe, post.likeCount, post.commentCount]);
 
-  /*
-   * ==========================================
-   * CATEGORY
-   * ==========================================
-   */
+  /* ==========================================
+     CATEGORY
+  ========================================== */
 
   const category = categoryConfig[post.category] ?? categoryConfig.GENERAL;
 
   const CategoryIcon = category.icon;
 
-  /*
-   * ==========================================
-   * DATE / TIME
-   * ==========================================
-   */
+  /* ==========================================
+     DATE
+  ========================================== */
 
   const createdDate = new Date(post.createdAt);
 
@@ -161,22 +138,18 @@ const PostCard = ({
     minute: "2-digit",
   });
 
-  /*
-   * ==========================================
-   * EDITED
-   * ==========================================
-   */
+  /* ==========================================
+     EDITED
+  ========================================== */
 
   const isEdited =
     !!post.updatedAt &&
     new Date(post.updatedAt).getTime() >
       new Date(post.createdAt).getTime() + 1000;
 
-  /*
-   * ==========================================
-   * LIKE HANDLER
-   * ==========================================
-   */
+  /* ==========================================
+     LIKE
+  ========================================== */
 
   const handleLike = async () => {
     if (liking) {
@@ -184,6 +157,7 @@ const PostCard = ({
     }
 
     const previousLiked = liked;
+
     const previousCount = likeCount;
 
     const nextLiked = !previousLiked;
@@ -192,9 +166,6 @@ const PostCard = ({
       ? Math.max(0, previousCount - 1)
       : previousCount + 1;
 
-    /*
-     * Optimistic update
-     */
     setLiked(nextLiked);
     setLikeCount(nextCount);
     setLiking(true);
@@ -205,12 +176,6 @@ const PostCard = ({
       } else {
         await likePost(post.id);
       }
-
-      /*
-       * ======================================
-       * UPDATE ALL CACHED POST FEEDS
-       * ======================================
-       */
 
       queryClient.setQueriesData(
         {
@@ -240,38 +205,24 @@ const PostCard = ({
           };
         },
       );
-
-      /*
-       * Background verification
-       */
-      queryClient.invalidateQueries({
-        queryKey: ["posts"],
-      });
     } catch (error) {
       console.error("Failed to update like:", error);
 
-      /*
-       * Rollback
-       */
       setLiked(previousLiked);
+
       setLikeCount(previousCount);
     } finally {
       setLiking(false);
     }
   };
 
-  /*
-   * ==========================================
-   * COMMENT COUNT
-   * ==========================================
-   */
+  /* ==========================================
+     COMMENTS
+  ========================================== */
 
   const handleCommentCountChange = (count: number) => {
     setCommentCount(count);
 
-    /*
-     * Keep React Query cache synchronized
-     */
     queryClient.setQueriesData(
       {
         queryKey: ["posts"],
@@ -301,11 +252,9 @@ const PostCard = ({
     );
   };
 
-  /*
-   * ==========================================
-   * PROFILE NAVIGATION
-   * ==========================================
-   */
+  /* ==========================================
+     PROFILE
+  ========================================== */
 
   const openProfile = () => {
     if (!post.profileId) {
@@ -315,11 +264,9 @@ const PostCard = ({
     navigate(`/profile/${post.profileId}`);
   };
 
-  /*
-   * ==========================================
-   * RENDER
-   * ==========================================
-   */
+  /* ==========================================
+     RENDER
+  ========================================== */
 
   return (
     <>
@@ -327,25 +274,33 @@ const PostCard = ({
         className="
           overflow-hidden
           border-y
-          border-slate-200
+          border-neutral-200
           bg-white
           transition-colors
+
           sm:rounded-2xl
           sm:border
-          sm:shadow-[0_1px_4px_rgba(15,23,42,0.04)]
+          sm:shadow-[0_1px_4px_rgba(0,0,0,0.04)]
 
           dark:border-neutral-800
           dark:bg-black
           dark:shadow-none
         "
       >
-        {/* ========================================
+        {/* ======================================
             HEADER
-            ======================================== */}
+        ====================================== */}
 
-        <div className="px-4 pb-3 pt-4 sm:px-5">
+        <div
+          className="
+            px-4
+            pb-2
+            pt-3.5
+            sm:px-5
+          "
+        >
           <div className="flex items-start gap-3">
-            {/* Avatar */}
+            {/* AVATAR */}
 
             <button
               type="button"
@@ -356,7 +311,7 @@ const PostCard = ({
                 rounded-full
                 focus:outline-none
                 focus:ring-4
-                focus:ring-slate-900/10
+                focus:ring-neutral-900/10
                 dark:focus:ring-white/10
               "
             >
@@ -364,13 +319,15 @@ const PostCard = ({
                 <img
                   src={post.profileImage}
                   alt={post.fullName ?? "User"}
+                  loading="lazy"
+                  decoding="async"
                   className="
-                    h-11
-                    w-11
+                    h-10
+                    w-10
                     rounded-full
                     object-cover
                     ring-1
-                    ring-slate-200
+                    ring-neutral-200
                     dark:ring-neutral-700
                   "
                 />
@@ -378,30 +335,31 @@ const PostCard = ({
                 <div
                   className="
                     flex
-                    h-11
-                    w-11
+                    h-10
+                    w-10
                     items-center
                     justify-center
                     rounded-full
-                    bg-slate-100
-                    text-slate-500
-                    ring-1
-                    ring-slate-200
+                    bg-neutral-100
+                    text-neutral-500
                     dark:bg-neutral-900
                     dark:text-neutral-400
-                    dark:ring-neutral-700
                   "
                 >
-                  <UserRound size={19} />
+                  <UserRound size={18} />
                 </div>
               )}
             </button>
 
-            {/* ===================================
-                USER INFO
-                =================================== */}
+            {/* USER */}
 
-            <div className="min-w-0 flex-1 pt-0.5">
+            <div
+              className="
+                min-w-0
+                flex-1
+                pt-0.5
+              "
+            >
               <button
                 type="button"
                 onClick={openProfile}
@@ -413,9 +371,8 @@ const PostCard = ({
                   text-sm
                   font-semibold
                   leading-5
-                  text-slate-900
-                  transition-colors
-                  hover:text-slate-600
+                  text-neutral-900
+                  hover:text-neutral-600
                   dark:text-white
                   dark:hover:text-neutral-300
                 "
@@ -434,7 +391,7 @@ const PostCard = ({
                   gap-y-0.5
                   text-[11px]
                   leading-4
-                  text-slate-400
+                  text-neutral-400
                   dark:text-neutral-500
                 "
               >
@@ -442,27 +399,24 @@ const PostCard = ({
                   @{post.username ?? "user"}
                 </span>
 
-                <span aria-hidden="true">·</span>
+                <span>·</span>
 
-                <span className="shrink-0">{formattedDate}</span>
+                <span>{formattedDate}</span>
 
-                <span aria-hidden="true">·</span>
+                <span>·</span>
 
-                <span className="shrink-0">{formattedTime}</span>
+                <span>{formattedTime}</span>
 
                 {isEdited && (
                   <>
-                    <span aria-hidden="true">·</span>
-
-                    <span className="shrink-0">Edited</span>
+                    <span>·</span>
+                    <span>Edited</span>
                   </>
                 )}
               </div>
             </div>
 
-            {/* ===================================
-                CATEGORY
-                =================================== */}
+            {/* CATEGORY */}
 
             <div
               className="
@@ -472,15 +426,14 @@ const PostCard = ({
                 gap-1.5
                 rounded-full
                 border
-                border-slate-200
-                bg-slate-50
+                border-neutral-200
+                bg-neutral-50
                 px-2.5
                 py-1.5
                 text-[10px]
                 font-semibold
-                text-slate-600
+                text-neutral-600
                 sm:flex
-
                 dark:border-neutral-800
                 dark:bg-neutral-900
                 dark:text-neutral-300
@@ -490,9 +443,7 @@ const PostCard = ({
               <span>{category.label}</span>
             </div>
 
-            {/* ===================================
-                OWNER MENU
-                =================================== */}
+            {/* OWNER MENU */}
 
             {isOwner && (
               <div className="group relative">
@@ -506,10 +457,9 @@ const PostCard = ({
                     items-center
                     justify-center
                     rounded-full
-                    text-slate-400
-                    transition-colors
-                    hover:bg-slate-100
-                    hover:text-slate-700
+                    text-neutral-400
+                    hover:bg-neutral-100
+                    hover:text-neutral-700
                     dark:text-neutral-500
                     dark:hover:bg-neutral-900
                     dark:hover:text-neutral-200
@@ -528,7 +478,7 @@ const PostCard = ({
                     w-36
                     rounded-xl
                     border
-                    border-slate-200
+                    border-neutral-200
                     bg-white
                     p-1
                     opacity-0
@@ -558,9 +508,8 @@ const PostCard = ({
                       text-left
                       text-xs
                       font-medium
-                      text-slate-700
-                      transition-colors
-                      hover:bg-slate-50
+                      text-neutral-700
+                      hover:bg-neutral-50
                       dark:text-neutral-200
                       dark:hover:bg-neutral-900
                     "
@@ -584,7 +533,6 @@ const PostCard = ({
                       text-xs
                       font-medium
                       text-red-600
-                      transition-colors
                       hover:bg-red-50
                       dark:text-red-400
                       dark:hover:bg-red-500/10
@@ -597,283 +545,57 @@ const PostCard = ({
               </div>
             )}
           </div>
-
-          {/* =====================================
-              MOBILE CATEGORY
-              ===================================== */}
-          {/* 
-          <div
-            className="
-              mt-3
-              flex
-              w-fit
-              items-center
-              gap-1.5
-              rounded-full
-              border
-              border-slate-200
-              bg-slate-50
-              px-2.5
-              py-1
-              text-[10px]
-              font-semibold
-              text-slate-600
-              sm:hidden
-
-              dark:border-neutral-800
-              dark:bg-neutral-900
-              dark:text-neutral-300
-            "
-          >
-            <CategoryIcon size={11} />
-            <span>{category.label}</span>
-          </div> */}
         </div>
 
-        {/* ========================================
+        {/* ======================================
             DESCRIPTION
-            ======================================== */}
+        ====================================== */}
 
-        <div className="px-4 pb-4 sm:px-5">
+        <div className="px-4 pb-3 sm:px-5">
           <p
             className="
-              whitespace-pre-wrap
               break-words
+              whitespace-pre-wrap
               text-[14px]
-              leading-[1.55]
-              text-slate-700
+              leading-[1.5]
+              text-neutral-700
               dark:text-neutral-300
+              line-clamp-4
             "
           >
             {post.description}
           </p>
         </div>
 
-        {/* ========================================
-            IMAGE
-            ======================================== */}
-
-        {post.mediaUrl && post.mediaType === "IMAGE" && (
-          <div
-            className="
-                overflow-hidden
-                bg-slate-100
-                dark:bg-neutral-950
-              "
-          >
-            <button
-              type="button"
-              onClick={() => setImagePreview(true)}
-              aria-label="View image"
-              className="
-                  group
-                  block
-                  w-full
-                  cursor-zoom-in
-                "
-            >
-              <img
-                src={optimizedMediaUrl ?? ""}
-                alt="Post attachment"
-                loading="lazy"
-                className="
-                    max-h-[650px]
-                    w-full
-                    object-cover
-                    transition-transform
-                    duration-300
-                    group-hover:scale-[1.01]
-                  "
-              />
-            </button>
-          </div>
-        )}
-
-        {/* ========================================
-            VIDEO
-            ======================================== */}
-
-        {post.mediaUrl && post.mediaType === "VIDEO" && (
-          <div
-            className="
-                overflow-hidden
-                bg-black
-              "
-          >
-            <video
-              src={optimizedMediaUrl ?? ""}
-              controls
-              playsInline
-              preload="metadata"
-              className="
-                  max-h-[650px]
-                  w-full
-                  object-contain
-                  bg-black
-                "
-            />
-          </div>
-        )}
-
-        {/* ========================================
-            ACTION BAR
-            ======================================== */}
-
-        {/* ========================================
-    ACTION BAR
-    ======================================== */}
-
-        <div
-          className="
-    border-t
-    border-slate-100
-    px-3
-    py-2.5
-
-    dark:border-neutral-800
-  "
-        >
-          <div className="flex items-center gap-1">
-            {/* ======================================
-        LIKE
+        {/* ======================================
+            MEDIA
         ====================================== */}
 
-            <button
-              type="button"
-              onClick={handleLike}
-              disabled={liking}
-              aria-label={liked ? "Unlike post" : "Like post"}
-              className={`
-        group
-        flex
-        min-h-10
-        items-center
-        gap-2
-        rounded-xl
-        px-3
-        py-2
-        text-xs
-        font-semibold
-        transition-all
-        duration-150
-        active:scale-95
-        disabled:cursor-not-allowed
-        disabled:opacity-60
+        <PostMedia
+          mediaUrl={post.mediaUrl}
+          mediaType={post.mediaType}
+          onImageOpen={() => setImagePreview(true)}
+        />
 
-        ${
-          liked
-            ? `
-              text-violet-600
-              hover:bg-violet-50
-              dark:text-violet-400
-              dark:hover:bg-violet-500/10
-            `
-            : `
-              text-slate-500
-              hover:bg-slate-100
-              hover:text-slate-700
-              dark:text-neutral-400
-              dark:hover:bg-neutral-900
-              dark:hover:text-neutral-200
-            `
-        }
-      `}
-            >
-              <Heart
-                size={19}
-                strokeWidth={2}
-                fill={liked ? "currentColor" : "none"}
-                className={`
-          transition-transform
-          duration-150
-          ${liked ? "scale-105" : "group-hover:scale-105"}
-          group-active:scale-125
-        `}
-              />
-
-              <span>{likeCount}</span>
-            </button>
-
-            {/* ======================================
-        COMMENTS
+        {/* ======================================
+            ACTIONS
         ====================================== */}
 
-            <button
-              type="button"
-              onClick={() => setShowComments(true)}
-              aria-label="View comments"
-              disabled={commentsLoading}
-              className="
-        flex
-        min-h-10
-        items-center
-        gap-2
-        rounded-xl
-        px-3
-        py-2
-        text-xs
-        font-semibold
-        text-slate-500
-        transition-all
-        duration-150
-        hover:bg-slate-100
-        hover:text-slate-700
-        active:scale-95
-
-        dark:text-neutral-400
-        dark:hover:bg-neutral-900
-        dark:hover:text-neutral-200
-      "
-            >
-              {commentsLoading ? (
-                <RefreshCw size={19} strokeWidth={2} className="animate-spin" />
-              ) : (
-                <MessageCircle size={19} strokeWidth={2} />
-              )}
-              <span>{commentCount}</span>
-            </button>
-
-            {/* ======================================
-        SHARE
-        ====================================== */}
-
-            <button
-              type="button"
-              onClick={() => setShowShare(true)}
-              aria-label="Share post"
-              className="
-        flex
-        min-h-10
-        items-center
-        gap-2
-        rounded-xl
-        px-3
-        py-2
-        text-xs
-        font-semibold
-        text-slate-500
-        transition-all
-        duration-150
-        hover:bg-slate-100
-        hover:text-slate-700
-        active:scale-95
-
-        dark:text-neutral-400
-        dark:hover:bg-neutral-900
-        dark:hover:text-neutral-200
-      "
-            >
-              <Send size={19} strokeWidth={2} />
-
-              <span className="hidden sm:inline">Share</span>
-            </button>
-          </div>
-        </div>
+        <PostActions
+          liked={liked}
+          likeCount={likeCount}
+          commentCount={commentCount}
+          liking={liking}
+          commentsLoading={commentsLoading}
+          onLike={handleLike}
+          onComments={() => setShowComments(true)}
+          onShare={() => setShowShare(true)}
+        />
       </article>
 
       {/* ========================================
           IMAGE PREVIEW
-          ======================================== */}
+      ======================================== */}
 
       {imagePreview && post.mediaUrl && post.mediaType === "IMAGE" && (
         <div
@@ -886,12 +608,9 @@ const PostCard = ({
               justify-center
               bg-black/90
               p-4
-              backdrop-blur-sm
             "
           onClick={() => setImagePreview(false)}
         >
-          {/* Close */}
-
           <button
             type="button"
             onClick={() => setImagePreview(false)}
@@ -909,18 +628,14 @@ const PostCard = ({
                 rounded-full
                 bg-white/10
                 text-white
-                backdrop-blur-md
-                transition-colors
                 hover:bg-white/20
               "
           >
             <X size={22} />
           </button>
 
-          {/* Image */}
-
           <img
-            src={optimizedMediaUrl ?? ""}
+            src={optimizeCloudinaryImage(post.mediaUrl, 1600) ?? ""}
             alt="Post attachment preview"
             onClick={(event) => event.stopPropagation()}
             className="
@@ -928,7 +643,6 @@ const PostCard = ({
                 max-w-[96vw]
                 rounded-xl
                 object-contain
-                shadow-2xl
               "
           />
         </div>
@@ -936,7 +650,7 @@ const PostCard = ({
 
       {/* ========================================
           COMMENTS
-          ======================================== */}
+      ======================================== */}
 
       <CommentsModal
         open={showComments}
@@ -948,7 +662,7 @@ const PostCard = ({
 
       {/* ========================================
           SHARE
-          ======================================== */}
+      ======================================== */}
 
       <SharePost
         open={showShare}

@@ -2,6 +2,7 @@ import { Navigate, Outlet } from "react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/react";
 import LandingLoader from "../components/common/LandingLoader";
+import api from "../api/axios";
 
 interface ProfileResponse {
   profileCompleted: boolean;
@@ -11,19 +12,31 @@ function PublicLayout() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
 
   const [profileLoading, setProfileLoading] = useState(false);
+
   const [profileExists, setProfileExists] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     const checkProfile = async () => {
-      // Clerk is still loading
+      // ========================================
+      // CLERK STILL LOADING
+      // ========================================
+
       if (!isLoaded) {
         return;
       }
 
-      // User is not authenticated
+      // ========================================
+      // USER NOT AUTHENTICATED
+      // ========================================
+
       if (!isSignedIn) {
-        setProfileLoading(false);
-        setProfileExists(false);
+        if (!cancelled) {
+          setProfileLoading(false);
+          setProfileExists(false);
+        }
+
         return;
       }
 
@@ -36,76 +49,95 @@ function PublicLayout() {
           throw new Error("Unable to get Clerk session token.");
         }
 
-        const response = await fetch("http://localhost:8000/api/profile/me", {
-          method: "GET",
+        // ======================================
+        // GET PROFILE
+        // ======================================
+
+        const response = await api.get<ProfileResponse>("/user/profile", {
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
           },
         });
 
-        // User is authenticated but doesn't have a profile yet
-        if (response.status === 404) {
-          setProfileExists(false);
+        if (cancelled) {
           return;
         }
 
-        if (!response.ok) {
-          throw new Error(`Failed to check profile: ${response.status}`);
+        setProfileExists(response.data.profileCompleted === true);
+      } catch (error: any) {
+        if (cancelled) {
+          return;
         }
 
-        const profile: ProfileResponse = await response.json();
+        // ======================================
+        // PROFILE DOES NOT EXIST
+        // ======================================
 
-        setProfileExists(profile.profileCompleted === true);
-      } catch (error) {
+        if (error?.response?.status === 404) {
+          setProfileExists(false);
+
+          return;
+        }
+
+        // ======================================
+        // OTHER ERROR
+        // ======================================
+
         console.error("Failed to check profile:", error);
+
+        // Treat unknown profile errors as
+        // missing here so a newly authenticated
+        // user is not trapped on the public page.
         setProfileExists(false);
       } finally {
-        setProfileLoading(false);
+        if (!cancelled) {
+          setProfileLoading(false);
+        }
       }
     };
 
     checkProfile();
+
+    return () => {
+      cancelled = true;
+    };
   }, [isLoaded, isSignedIn, getToken]);
 
-  // =========================================
-  // CLERK AUTH LOADING
-  // =========================================
+  // ==========================================
+  // CLERK LOADING
+  // ==========================================
 
   if (!isLoaded) {
-    // return <LoadingScreen message="Loading UniVibe..." />;
     return <LandingLoader />;
   }
 
-  // =========================================
-  // USER NOT AUTHENTICATED
-  // =========================================
+  // ==========================================
+  // NOT SIGNED IN
+  // ==========================================
 
   if (!isSignedIn) {
     return <Outlet />;
   }
 
-  // =========================================
+  // ==========================================
   // PROFILE LOADING
-  // =========================================
+  // ==========================================
 
   if (profileLoading) {
     return <LandingLoader />;
   }
 
-  // =========================================
-  // USER AUTHENTICATED
+  // ==========================================
   // PROFILE DOES NOT EXIST
-  // =========================================
+  // ==========================================
 
   if (!profileExists) {
     return <Navigate to="/profile/setup" replace />;
   }
 
-  // =========================================
-  // USER AUTHENTICATED
+  // ==========================================
   // PROFILE EXISTS
-  // =========================================
+  // ==========================================
 
   return <Navigate to="/home" replace />;
 }

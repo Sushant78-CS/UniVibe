@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 
 import { useProfileApi } from "../api/profileApi";
+
 import LandingLoader from "../components/common/LandingLoader";
 
 interface Profile {
@@ -29,25 +30,13 @@ function ProtectedLayout() {
 
   const { getProfile } = useProfileApi();
 
-  /*
-   * ==================================================
-   * PROFILE QUERY
-   * ==================================================
-   *
-   * IMPORTANT:
-   * This hook is ALWAYS called.
-   *
-   * We use "enabled" instead of putting the hook
-   * below conditional returns.
-   */
-
   const {
     data: profile,
     isPending: profileLoading,
     isError,
     error,
   } = useQuery<Profile>({
-    queryKey: ["profile", "me"],
+    queryKey: ["profile", "me", userId],
 
     queryFn: async () => {
       const result = await getProfile();
@@ -57,85 +46,97 @@ function ProtectedLayout() {
 
     enabled: isLoaded && !!isSignedIn && !!userId,
 
-    staleTime: 1000 * 60 * 5,
+    staleTime: 5 * 60 * 1000,
 
-    gcTime: 1000 * 60 * 30,
+    gcTime: 30 * 60 * 1000,
 
     refetchOnWindowFocus: false,
 
     retry: (failureCount, queryError) => {
-      /*
-       * Profile does not exist.
-       * Don't retry a 404.
-       */
-
+      // A missing profile is expected for
+      // a newly registered user.
       if (isAxiosError(queryError) && queryError.response?.status === 404) {
         return false;
       }
 
-      /*
-       * Only one retry for server/network
-       * failures.
-       */
-
+      // Retry real server/network failures once.
       return failureCount < 1;
     },
   });
 
-  /*
-   * ==================================================
-   * CLERK LOADING
-   * ==================================================
-   */
+  // ==========================================
+  // CLERK LOADING
+  // ==========================================
 
   if (!isLoaded) {
     return <LandingLoader />;
   }
 
-  /*
-   * ==================================================
-   * NOT AUTHENTICATED
-   * ==================================================
-   */
+  // ==========================================
+  // NOT AUTHENTICATED
+  // ==========================================
 
   if (!isSignedIn || !userId) {
-    return <Navigate to="/signup" replace state={{ from: location }} />;
+    return (
+      <Navigate
+        to="/signup"
+        replace
+        state={{
+          from: location,
+        }}
+      />
+    );
   }
 
-  /*
-   * ==================================================
-   * PROFILE LOADING
-   * ==================================================
-   */
+  // ==========================================
+  // PROFILE LOADING
+  // ==========================================
 
   if (profileLoading) {
     return <LandingLoader />;
   }
 
-  /*
-   * ==================================================
-   * PROFILE ERROR
-   * ==================================================
-   */
+  // ==========================================
+  // PROFILE ERROR
+  // ==========================================
 
   if (isError) {
-    /*
-     * Only a 404 means that the authenticated
-     * user doesn't have a profile yet.
-     */
+    const status = isAxiosError(error) ? error.response?.status : undefined;
 
-    if (isAxiosError(error) && error.response?.status === 404) {
-      if (location.pathname !== "/profile/setup") {
-        return <Navigate to="/profile/setup" replace />;
+    // ========================================
+    // NO PROFILE YET
+    // ========================================
+
+    if (status === 404) {
+      /*
+       * IMPORTANT:
+       *
+       * A new user has no profile yet.
+       *
+       * If they are already on /profile/setup,
+       * allow ProfileSetupPage to render.
+       */
+
+      if (location.pathname === "/profile/setup") {
+        return (
+          <Outlet
+            context={{
+              profile: undefined,
+            }}
+          />
+        );
       }
+
+      /*
+       * Otherwise send them to setup.
+       */
+
+      return <Navigate to="/profile/setup" replace />;
     }
 
-    /*
-     * For 401 / 403 / 500 / network errors,
-     * don't send the user to profile setup.
-     *
-     * Show a simple error instead.
-     */
+    // ========================================
+    // REAL ERROR
+    // ========================================
 
     return (
       <div
@@ -146,7 +147,6 @@ function ProtectedLayout() {
           justify-center
           bg-slate-50
           px-5
-
           dark:bg-black
         "
       >
@@ -161,7 +161,6 @@ function ProtectedLayout() {
             p-6
             text-center
             shadow-sm
-
             dark:border-neutral-800
             dark:bg-[#171717]
             dark:shadow-none
@@ -180,7 +179,6 @@ function ProtectedLayout() {
               text-sm
               font-bold
               text-red-600
-
               dark:bg-red-500/10
               dark:text-red-400
             "
@@ -194,7 +192,6 @@ function ProtectedLayout() {
               text-base
               font-semibold
               text-slate-900
-
               dark:text-white
             "
           >
@@ -207,7 +204,6 @@ function ProtectedLayout() {
               text-sm
               leading-6
               text-slate-500
-
               dark:text-neutral-500
             "
           >
@@ -216,9 +212,7 @@ function ProtectedLayout() {
 
           <button
             type="button"
-            onClick={() => {
-              window.location.reload();
-            }}
+            onClick={() => window.location.reload()}
             className="
               mt-5
               w-full
@@ -231,8 +225,6 @@ function ProtectedLayout() {
               text-white
               transition
               hover:bg-violet-700
-
-              dark:hover:bg-violet-500
             "
           >
             Try Again
@@ -242,43 +234,43 @@ function ProtectedLayout() {
     );
   }
 
-  /*
-   * ==================================================
-   * PROFILE DOESN'T EXIST
-   * ==================================================
-   *
-   * In case the query somehow has no data without
-   * being an error, treat it safely as missing.
-   */
+  // ==========================================
+  // NO PROFILE DATA
+  // ==========================================
 
   if (!profile) {
-    if (location.pathname !== "/profile/setup") {
-      return <Navigate to="/profile/setup" replace />;
+    if (location.pathname === "/profile/setup") {
+      return (
+        <Outlet
+          context={{
+            profile: undefined,
+          }}
+        />
+      );
     }
 
-    return <Outlet context={{ profile }} />;
+    return <Navigate to="/profile/setup" replace />;
   }
 
-  /*
-   * ==================================================
-   * PROFILE EXISTS
-   * ==================================================
-   *
-   * Don't allow a completed user to remain
-   * on profile setup.
-   */
+  // ==========================================
+  // PROFILE EXISTS
+  // ==========================================
 
   if (location.pathname === "/profile/setup") {
     return <Navigate to="/home" replace />;
   }
 
-  /*
-   * ==================================================
-   * EVERYTHING IS READY
-   * ==================================================
-   */
+  // ==========================================
+  // EVERYTHING READY
+  // ==========================================
 
-  return <Outlet context={{ profile }} />;
+  return (
+    <Outlet
+      context={{
+        profile,
+      }}
+    />
+  );
 }
 
 export default ProtectedLayout;
