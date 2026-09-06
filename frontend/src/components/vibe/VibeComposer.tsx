@@ -2,6 +2,8 @@ import { FileText, Image as ImageIcon, Send, Smile, X } from "lucide-react";
 
 import { useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
 
+import EmojiPicker, { Theme, type EmojiClickData } from "emoji-picker-react";
+
 import type { VibeMediaType } from "../../api/vibe";
 import VibeGifPicker from "./VibeGifPicker";
 
@@ -37,10 +39,10 @@ const VibeComposer = ({
   canSend,
 }: VibeComposerProps) => {
   const imageInputRef = useRef<HTMLInputElement | null>(null);
-
   const pdfInputRef = useRef<HTMLInputElement | null>(null);
 
   const [gifPickerOpen, setGifPickerOpen] = useState(false);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -67,6 +69,10 @@ const VibeComposer = ({
   const handleGifSelect = (url: string) => {
     onGifSelect(url);
     setGifPickerOpen(false);
+  };
+
+  const handleEmojiClick = (emojiData: EmojiClickData) => {
+    setText(`${text}${emojiData.emoji}`);
   };
 
   return (
@@ -149,7 +155,7 @@ const VibeComposer = ({
                         {selectedFile?.name || "Shared PDF"}
                       </p>
 
-                      <p className="mt-0.5 text-[10px] text-neutral-500">
+                      <p className="mt-0.5 text-[10px] text-neutral-500 dark:text-neutral-400">
                         PDF • Ready
                       </p>
                     </div>
@@ -201,7 +207,8 @@ const VibeComposer = ({
 
           <div
             className="
-              overflow-hidden
+              relative
+              overflow-visible
               rounded-[24px]
               border
               border-neutral-200
@@ -213,17 +220,56 @@ const VibeComposer = ({
               dark:border-neutral-800
               dark:bg-neutral-900
               dark:focus-within:border-purple-700
+              dark:focus-within:bg-neutral-900
             "
           >
-            {/* Text row */}
+            {/* =================================================
+                EMOJI PICKER
+            ================================================= */}
+
+            {emojiPickerOpen && (
+              <div
+                className="
+    absolute
+    bottom-[calc(100%+8px)]
+    left-0
+    z-[60]
+    max-w-[calc(100vw-16px)]
+    overflow-hidden
+    rounded-2xl
+    border
+    border-neutral-200
+    shadow-xl
+    dark:border-neutral-800
+  "
+              >
+                <EmojiPicker
+                  onEmojiClick={handleEmojiClick}
+                  theme={Theme.AUTO}
+                  width="min(350px, calc(100vw - 16px))"
+                  height={400}
+                  searchDisabled={false}
+                  skinTonesDisabled={false}
+                  previewConfig={{
+                    showPreview: false,
+                  }}
+                />
+              </div>
+            )}
+
+            {/* =================================================
+                TEXT ROW
+            ================================================= */}
+
             <div className="flex min-w-0 items-end px-1.5 pt-1.5">
               <button
                 type="button"
                 onClick={() => {
-                  setText(`${text}😊`);
+                  setEmojiPickerOpen((current) => !current);
                 }}
-                aria-label="Add emoji"
-                className="
+                aria-label="Open emoji picker"
+                aria-expanded={emojiPickerOpen}
+                className={`
                   mb-0.5
                   flex
                   h-9
@@ -232,14 +278,25 @@ const VibeComposer = ({
                   items-center
                   justify-center
                   rounded-full
-                  text-neutral-500
                   transition
-                  hover:bg-neutral-200
-                  hover:text-neutral-700
                   active:scale-95
-                  dark:hover:bg-neutral-800
-                  dark:hover:text-neutral-200
-                "
+                  ${
+                    emojiPickerOpen
+                      ? `
+                        bg-purple-100
+                        text-purple-600
+                        dark:bg-purple-950
+                        dark:text-purple-400
+                      `
+                      : `
+                        text-neutral-500
+                        hover:bg-neutral-200
+                        hover:text-neutral-700
+                        dark:hover:bg-neutral-800
+                        dark:hover:text-neutral-200
+                      `
+                  }
+                `}
               >
                 <Smile size={21} strokeWidth={1.8} />
               </button>
@@ -273,7 +330,10 @@ const VibeComposer = ({
               />
             </div>
 
-            {/* Toolbar */}
+            {/* =================================================
+                TOOLBAR
+            ================================================= */}
+
             <div
               className="
                 flex
@@ -285,7 +345,8 @@ const VibeComposer = ({
               "
             >
               <div className="flex items-center">
-                {/* Image input */}
+                {/* IMAGE */}
+
                 <input
                   ref={imageInputRef}
                   type="file"
@@ -317,7 +378,8 @@ const VibeComposer = ({
                   <ImageIcon size={19} strokeWidth={1.8} />
                 </button>
 
-                {/* PDF input */}
+                {/* PDF */}
+
                 <input
                   ref={pdfInputRef}
                   type="file"
@@ -350,6 +412,7 @@ const VibeComposer = ({
                 </button>
 
                 {/* GIF */}
+
                 <button
                   type="button"
                   onClick={() => setGifPickerOpen(true)}
@@ -376,7 +439,8 @@ const VibeComposer = ({
                 </button>
               </div>
 
-              {/* Send */}
+              {/* SEND */}
+
               <button
                 type="button"
                 onClick={onSend}
@@ -413,9 +477,12 @@ const VibeComposer = ({
               </button>
             </div>
           </div>
-          <div className="mt-4"></div>
+
+          <div className="mt-4" />
         </div>
       </div>
+
+      {/* GIF PICKER */}
 
       <VibeGifPicker
         open={gifPickerOpen}
