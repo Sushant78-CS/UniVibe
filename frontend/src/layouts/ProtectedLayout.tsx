@@ -21,6 +21,7 @@ interface Profile {
   year: string;
   interests?: string;
   profileCompleted: boolean;
+  role: "USER" | "ADMIN";
 }
 
 function ProtectedLayout() {

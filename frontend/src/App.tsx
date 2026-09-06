@@ -40,7 +40,14 @@ import SettingsPage from "./pages/settings";
 import AboutPage from "./pages/about";
 import VibePage from "./pages/vibe";
 import VibeHome from "./pages/vibe/home";
-import EventsPage from "./pages/vibe/events";
+import EventsPage from "./pages/vibe/events/events";
+import CreateEvent from "./pages/vibe/events/createEvent";
+import CreateRegistrationForm from "./pages/vibe/events/createForm";
+import EventRegistration from "./pages/vibe/events/eventRegistration";
+import EventDetail from "./pages/vibe/events/eventDetail";
+import EditEvent from "./pages/vibe/events/editEvent";
+import EventResponses from "./pages/vibe/events/eventResponses";
+import NotificationRedirect from "./components/common/NotificationRedirect";
 
 function App() {
   const { getToken } = useAuth();
@@ -52,6 +59,8 @@ function App() {
   return (
     <>
       <PublishProgress />
+
+      <NotificationRedirect />
 
       <Routes>
         <Route element={<AppLayout />}>
@@ -116,6 +125,21 @@ function App() {
 
             <Route path="/vibe/random" element={<VibePage />} />
             <Route path="/vibe/events" element={<EventsPage />} />
+            <Route path="/vibe/events/create" element={<CreateEvent />} />
+            <Route
+              path="/vibe/events/create-form/:eventId"
+              element={<CreateRegistrationForm />}
+            />
+            <Route
+              path="/vibe/events/:eventId/register"
+              element={<EventRegistration />}
+            />
+            <Route path="/vibe/events/:eventId" element={<EventDetail />} />
+            <Route path="/vibe/events/:eventId/edit" element={<EditEvent />} />
+            <Route
+              path="/vibe/events/:eventId/responses"
+              element={<EventResponses />}
+            />
 
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/vibe" element={<VibeHome />} />

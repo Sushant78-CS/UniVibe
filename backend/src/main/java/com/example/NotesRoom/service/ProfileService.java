@@ -40,7 +40,9 @@ public class ProfileService {
                 profile.getDepartment(),
                 profile.getYear(),
                 profile.getInterests(),
-                profile.getProfileCompleted());
+                profile.getProfileCompleted(),
+                profile.getUser().getRole()
+        );
     }
 
     public Profile createProfile(String clerkId, CreateProfileDto dto, MultipartFile profileImage)
@@ -119,7 +121,8 @@ public class ProfileService {
                 savedProfile.getDepartment(),
                 savedProfile.getYear(),
                 savedProfile.getInterests(),
-                savedProfile.getProfileCompleted()
+                savedProfile.getProfileCompleted(),
+                savedProfile.getUser().getRole()
         );
     }
 
@@ -151,7 +154,8 @@ public class ProfileService {
                 savedProfile.getDepartment(),
                 savedProfile.getYear(),
                 savedProfile.getInterests(),
-                savedProfile.getProfileCompleted()
+                savedProfile.getProfileCompleted(),
+                savedProfile.getUser().getRole()
         );
     }
 }

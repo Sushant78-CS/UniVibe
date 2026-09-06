@@ -1,5 +1,6 @@
 package com.example.NotesRoom.entity;
 
+import com.example.NotesRoom.dto.user.UserRole;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -21,6 +22,11 @@ public class Users {
 
     @Column(unique = true, nullable = false)
     private String email;
+
+    @Enumerated(EnumType.STRING)
+    @Column
+    @Builder.Default
+    private UserRole role = UserRole.USER;
 
     @OneToOne(
             mappedBy = "user",

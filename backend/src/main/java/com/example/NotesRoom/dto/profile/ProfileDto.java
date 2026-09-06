@@ -1,5 +1,7 @@
 package com.example.NotesRoom.dto.profile;
 
+import com.example.NotesRoom.dto.user.UserRole;
+
 public record ProfileDto(
         Long id,
         String fullName,
@@ -10,6 +12,7 @@ public record ProfileDto(
         String department,
         String year,
         String interests,
-        Boolean profileCompleted
+        Boolean profileCompleted,
+        UserRole role
 ) {
 }

@@ -1,21 +1,6 @@
-import {
-  ArrowLeft,
-  FileText,
-  Image as ImageIcon,
-  Send,
-  Smile,
-  Wifi,
-  WifiOff,
-  X,
-} from "lucide-react";
+import { ArrowLeft, Smile, Wifi, WifiOff, X } from "lucide-react";
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type FormEvent,
-} from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 
 import { useAuth } from "@clerk/react";
 import { useNavigate } from "react-router";
@@ -31,14 +16,20 @@ import { useVibeSocket } from "../../hooks/useVibeSocket";
 
 import { uploadVibeMedia } from "../../api/vibeCloudinary";
 
+import VibeComposer from "../../components/vibe/VibeComposer";
+
+import VibeMessageMedia from "../../components/vibe/VibeMessageMedia";
+
+import VibeMediaViewer from "../../components/vibe/VibeMediaViewer";
+
 /*
 |--------------------------------------------------------------------------
 | UI MESSAGE
 |--------------------------------------------------------------------------
 |
 | The backend intentionally does not expose sender information.
-| Therefore `mine` is a frontend-only property used to identify
-| messages sent during the current session.
+| `mine` is therefore used by the frontend to identify messages
+| sent by the current user.
 |
 */
 
@@ -51,6 +42,7 @@ type UiVibeMessage = VibeMessage & {
 
 const VibePage = () => {
   const navigate = useNavigate();
+
   const { getToken } = useAuth();
 
   // =========================================================
@@ -72,11 +64,12 @@ const VibePage = () => {
 
   const [error, setError] = useState<string | null>(null);
 
-  const [showGifInput, setShowGifInput] = useState(false);
-
-  const [gifUrl, setGifUrl] = useState("");
-
   const [token, setToken] = useState<string | null>(null);
+
+  const [viewerMedia, setViewerMedia] = useState<{
+    url: string;
+    type: "IMAGE" | "GIF";
+  } | null>(null);
 
   // =========================================================
   // REFS
@@ -84,16 +77,13 @@ const VibePage = () => {
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  const imageInputRef = useRef<HTMLInputElement | null>(null);
-
-  const pdfInputRef = useRef<HTMLInputElement | null>(null);
-
   /*
    * IDs of messages sent by the current user.
    *
-   * We cannot get sender information from backend because
-   * Vibe is anonymous.
+   * Since Vibe is anonymous, this lets the frontend
+   * remember which WebSocket messages belong to us.
    */
+
   const myMessageIdsRef = useRef<Set<number>>(new Set());
 
   // =========================================================
@@ -147,6 +137,7 @@ const VibePage = () => {
             .reverse()
             .map((message) => ({
               ...message,
+
               mine:
                 message.mine === true ||
                 myMessageIdsRef.current.has(message.id),
@@ -175,16 +166,16 @@ const VibePage = () => {
   }, [getToken]);
 
   // =========================================================
-  // WEBSOCKET MESSAGE
+  // WEBSOCKET
   // =========================================================
 
   const handleIncomingMessage = (message: VibeMessage) => {
     setMessages((current) => {
-      // =====================================================
-      // MESSAGE ALREADY EXISTS
-      // =====================================================
-
       const existingIndex = current.findIndex((item) => item.id === message.id);
+
+      // -----------------------------------------------------
+      // MESSAGE ALREADY EXISTS
+      // -----------------------------------------------------
 
       if (existingIndex !== -1) {
         const updated = [...current];
@@ -192,22 +183,25 @@ const VibePage = () => {
         updated[existingIndex] = {
           ...updated[existingIndex],
           ...message,
+
           mine:
             message.mine === true || myMessageIdsRef.current.has(message.id),
+
           pending: false,
         };
 
         return updated;
       }
 
-      // =====================================================
+      // -----------------------------------------------------
       // NEW MESSAGE
-      // =====================================================
+      // -----------------------------------------------------
 
       return [
         ...current,
         {
           ...message,
+
           mine:
             message.mine === true || myMessageIdsRef.current.has(message.id),
         },
@@ -252,6 +246,7 @@ const VibePage = () => {
         setError("PDF must be smaller than 10 MB.");
 
         event.target.value = "";
+
         return;
       }
 
@@ -260,14 +255,16 @@ const VibePage = () => {
       }
 
       setSelectedFile(file);
+
       setSelectedMediaType("PDF");
+
       setPreviewUrl(null);
 
       return;
     }
 
     // -------------------------------------------------------
-    // GIF
+    // GIF FILE
     // -------------------------------------------------------
 
     if (file.type === "image/gif") {
@@ -275,6 +272,7 @@ const VibePage = () => {
         setError("GIF must be smaller than 10 MB.");
 
         event.target.value = "";
+
         return;
       }
 
@@ -285,7 +283,9 @@ const VibePage = () => {
       const objectUrl = URL.createObjectURL(file);
 
       setSelectedFile(file);
+
       setSelectedMediaType("GIF");
+
       setPreviewUrl(objectUrl);
 
       return;
@@ -300,6 +300,7 @@ const VibePage = () => {
         setError("Image must be smaller than 10 MB.");
 
         event.target.value = "";
+
         return;
       }
 
@@ -310,7 +311,9 @@ const VibePage = () => {
       const objectUrl = URL.createObjectURL(file);
 
       setSelectedFile(file);
+
       setSelectedMediaType("IMAGE");
+
       setPreviewUrl(objectUrl);
 
       return;
@@ -319,53 +322,6 @@ const VibePage = () => {
     event.target.value = "";
 
     setError("Only images, GIFs and PDFs are supported.");
-  };
-
-  // =========================================================
-  // GIF URL
-  // =========================================================
-
-  const addGifUrl = () => {
-    const url = gifUrl.trim();
-
-    if (!url) {
-      return;
-    }
-
-    if (!url.startsWith("https://")) {
-      setError("Please enter a valid GIF URL.");
-
-      return;
-    }
-
-    setSelectedFile(null);
-    setSelectedMediaType("GIF");
-    setPreviewUrl(url);
-
-    setGifUrl("");
-    setShowGifInput(false);
-    setError(null);
-  };
-
-  // =========================================================
-  // RESET COMPOSER
-  // =========================================================
-
-  const resetComposer = () => {
-    setText("");
-    setSelectedFile(null);
-    setSelectedMediaType(null);
-    setPreviewUrl(null);
-    setGifUrl("");
-    setShowGifInput(false);
-
-    if (imageInputRef.current) {
-      imageInputRef.current.value = "";
-    }
-
-    if (pdfInputRef.current) {
-      pdfInputRef.current.value = "";
-    }
   };
 
   // =========================================================
@@ -378,16 +334,24 @@ const VibePage = () => {
     }
 
     setSelectedFile(null);
+
     setSelectedMediaType(null);
+
     setPreviewUrl(null);
+  };
 
-    if (imageInputRef.current) {
-      imageInputRef.current.value = "";
-    }
+  // =========================================================
+  // RESET COMPOSER
+  // =========================================================
 
-    if (pdfInputRef.current) {
-      pdfInputRef.current.value = "";
-    }
+  const resetComposer = () => {
+    setText("");
+
+    setSelectedFile(null);
+
+    setSelectedMediaType(null);
+
+    setPreviewUrl(null);
   };
 
   // =========================================================
@@ -409,11 +373,12 @@ const VibePage = () => {
       }
 
       let mediaUrl: string | null = null;
+
       let finalMediaType = mediaType;
 
-      // =====================================================
-      // UPLOAD MEDIA
-      // =====================================================
+      // -----------------------------------------------------
+      // CLOUDINARY UPLOAD
+      // -----------------------------------------------------
 
       if (file && mediaType) {
         const uploadResult = await uploadVibeMedia(file, mediaType);
@@ -425,45 +390,39 @@ const VibePage = () => {
         mediaUrl = uploadResult.secure_url;
       }
 
-      // =====================================================
-      // GIF URL
-      // =====================================================
+      // -----------------------------------------------------
+      // GIPHY GIF
+      // -----------------------------------------------------
 
       if (!file && localPreview && mediaType === "GIF") {
         mediaUrl = localPreview;
+
         finalMediaType = "GIF";
       }
 
-      // =====================================================
+      // -----------------------------------------------------
       // SEND TO BACKEND
-      // =====================================================
+      // -----------------------------------------------------
 
       const saved = await sendVibeMessage(currentToken, {
         content: messageText || null,
+
         mediaUrl,
+
         mediaType: finalMediaType,
       });
 
-      // =====================================================
-      // MARK AS MY MESSAGE
-      // =====================================================
+      // -----------------------------------------------------
+      // MARK AS OUR MESSAGE
+      // -----------------------------------------------------
 
       myMessageIdsRef.current.add(saved.id);
 
-      // =====================================================
-      // RECONCILE OPTIMISTIC + WEBSOCKET MESSAGE
-      // =====================================================
+      // -----------------------------------------------------
+      // RECONCILE OPTIMISTIC MESSAGE
+      // -----------------------------------------------------
 
       setMessages((current) => {
-        /*
-         * Remove:
-         *
-         * 1. The optimistic message
-         * 2. Any WebSocket copy of the same saved message
-         *
-         * Then add ONE final message.
-         */
-
         const withoutDuplicates = current.filter(
           (item) => item.id !== optimisticId && item.id !== saved.id,
         );
@@ -472,17 +431,15 @@ const VibePage = () => {
           ...withoutDuplicates,
           {
             ...saved,
+
             mine: true,
+
             pending: false,
           },
         ];
       });
     } catch (error) {
       console.error("Failed to send Vibe message:", error);
-
-      // =====================================================
-      // REMOVE FAILED OPTIMISTIC MESSAGE
-      // =====================================================
 
       setMessages((current) =>
         current.filter((item) => item.id !== optimisticId),
@@ -492,10 +449,6 @@ const VibePage = () => {
         error instanceof Error ? error.message : "Failed to send message.",
       );
     } finally {
-      // =====================================================
-      // CLEAN LOCAL PREVIEW
-      // =====================================================
-
       if (localPreview?.startsWith("blob:")) {
         URL.revokeObjectURL(localPreview);
       }
@@ -506,9 +459,7 @@ const VibePage = () => {
   // SEND MESSAGE
   // =========================================================
 
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-
+  const handleSubmit = () => {
     const cleanText = text.trim();
 
     const file = selectedFile;
@@ -525,30 +476,24 @@ const VibePage = () => {
 
     setError(null);
 
-    /*
-     * -------------------------------------------------------
-     * CREATE OPTIMISTIC MESSAGE
-     * -------------------------------------------------------
-     *
-     * Negative IDs are temporary frontend-only IDs.
-     */
+    // -------------------------------------------------------
+    // OPTIMISTIC ID
+    // -------------------------------------------------------
+
     const optimisticId = -Date.now();
+
+    // -------------------------------------------------------
+    // OPTIMISTIC MESSAGE
+    // -------------------------------------------------------
 
     const optimisticMessage: UiVibeMessage = {
       id: optimisticId,
 
       content: cleanText || null,
 
-      /*
-       * For images/GIFs, display the local
-       * preview immediately.
-       *
-       * For PDFs we don't have a preview URL,
-       * so the UI will show a PDF card.
-       */
       mediaUrl: localPreview || null,
 
-      mediaType: mediaType,
+      mediaType,
 
       createdAt: new Date().toISOString(),
 
@@ -561,27 +506,18 @@ const VibePage = () => {
       localFileName: file?.name || null,
     };
 
-    /*
-     * Show user's message immediately.
-     */
     setMessages((current) => [...current, optimisticMessage]);
 
-    /*
-     * -------------------------------------------------------
-     * CLEAR UI IMMEDIATELY
-     * -------------------------------------------------------
-     *
-     * The user is free to type another message.
-     */
+    // -------------------------------------------------------
+    // CLEAR COMPOSER IMMEDIATELY
+    // -------------------------------------------------------
+
     resetComposer();
 
-    /*
-     * -------------------------------------------------------
-     * BACKGROUND REQUEST
-     * -------------------------------------------------------
-     *
-     * We intentionally DO NOT await this here.
-     */
+    // -------------------------------------------------------
+    // SEND WITHOUT BLOCKING UI
+    // -------------------------------------------------------
+
     void sendInBackground(
       optimisticId,
       cleanText,
@@ -609,227 +545,13 @@ const VibePage = () => {
   };
 
   // =========================================================
-  // RENDER MEDIA
-  // =========================================================
-
-  const renderMedia = (message: UiVibeMessage) => {
-    if (
-      !message.mediaUrl &&
-      !message.localMediaUrl &&
-      message.mediaType !== "PDF"
-    ) {
-      return null;
-    }
-
-    const mediaUrl = message.localMediaUrl || message.mediaUrl;
-
-    // -------------------------------------------------------
-    // IMAGE
-    // -------------------------------------------------------
-
-    if (message.mediaType === "IMAGE") {
-      if (!mediaUrl) {
-        return null;
-      }
-
-      return (
-        <div className="mt-3 overflow-hidden rounded-2xl">
-          <img
-            src={mediaUrl}
-            alt="Anonymous shared image"
-            className="
-              max-h-[420px]
-              w-full
-              rounded-2xl
-              object-contain
-              bg-black/5
-              dark:bg-white/5
-            "
-          />
-        </div>
-      );
-    }
-
-    // -------------------------------------------------------
-    // GIF
-    // -------------------------------------------------------
-
-    if (message.mediaType === "GIF") {
-      if (!mediaUrl) {
-        return null;
-      }
-
-      return (
-        <div className="mt-3 overflow-hidden rounded-2xl">
-          <img
-            src={mediaUrl}
-            alt="Anonymous shared GIF"
-            className="
-              max-h-[420px]
-              w-full
-              rounded-2xl
-              object-contain
-              bg-black/5
-              dark:bg-white/5
-            "
-          />
-        </div>
-      );
-    }
-
-    // -------------------------------------------------------
-    // PDF
-    // -------------------------------------------------------
-
-    if (message.mediaType === "PDF") {
-      /*
-       * Optimistic PDF doesn't have a Cloudinary URL yet.
-       */
-      if (message.pending && !message.mediaUrl) {
-        return (
-          <div
-            className="
-              mt-3
-              flex
-              items-center
-              gap-3
-              rounded-2xl
-              border
-              border-purple-200
-              bg-purple-50
-              p-3
-              dark:border-purple-900
-              dark:bg-purple-950/30
-            "
-          >
-            <div
-              className="
-                flex
-                h-10
-                w-10
-                shrink-0
-                items-center
-                justify-center
-                rounded-xl
-                bg-purple-100
-                text-purple-600
-                dark:bg-purple-950
-                dark:text-purple-300
-              "
-            >
-              <FileText size={20} />
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <p
-                className="
-                  truncate
-                  text-xs
-                  font-semibold
-                  text-purple-800
-                  dark:text-purple-200
-                "
-              >
-                {message.localFileName || "Shared PDF"}
-              </p>
-
-              <p
-                className="
-                  mt-0.5
-                  text-[10px]
-                  text-purple-500
-                  dark:text-purple-400
-                "
-              >
-                Sending...
-              </p>
-            </div>
-          </div>
-        );
-      }
-
-      if (!message.mediaUrl) {
-        return null;
-      }
-
-      return (
-        <a
-          href={message.mediaUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="
-            mt-3
-            flex
-            items-center
-            gap-3
-            rounded-2xl
-            border
-            border-neutral-200
-            bg-white
-            p-3
-            transition
-            hover:bg-neutral-100
-            dark:border-neutral-700
-            dark:bg-neutral-900
-            dark:hover:bg-neutral-800
-          "
-        >
-          <div
-            className="
-              flex
-              h-10
-              w-10
-              shrink-0
-              items-center
-              justify-center
-              rounded-xl
-              bg-purple-100
-              text-purple-600
-              dark:bg-purple-950
-              dark:text-purple-300
-            "
-          >
-            <FileText size={21} />
-          </div>
-
-          <div className="min-w-0 flex-1">
-            <p
-              className="
-                truncate
-                text-sm
-                font-semibold
-                text-neutral-800
-                dark:text-neutral-100
-              "
-            >
-              Shared PDF
-            </p>
-
-            <p
-              className="
-                mt-0.5
-                text-xs
-                text-neutral-500
-              "
-            >
-              Tap to open
-            </p>
-          </div>
-        </a>
-      );
-    }
-
-    return null;
-  };
-
-  // =========================================================
   // CAN SEND
   // =========================================================
 
   const canSend = text.trim().length > 0 || !!selectedFile || !!previewUrl;
 
   // =========================================================
-  // COMPONENT
+  // PAGE
   // =========================================================
 
   return (
@@ -845,7 +567,7 @@ const VibePage = () => {
       "
     >
       {/* =====================================================
-          FIXED HEADER
+          HEADER
       ===================================================== */}
 
       <header
@@ -875,7 +597,6 @@ const VibePage = () => {
           "
         >
           {/* Back */}
-
           <button
             type="button"
             onClick={() => navigate(-1)}
@@ -901,8 +622,7 @@ const VibePage = () => {
             <ArrowLeft size={22} strokeWidth={2} />
           </button>
 
-          {/* Vibe Avatar */}
-
+          {/* Vibe avatar */}
           <div
             className="
               ml-1
@@ -922,18 +642,10 @@ const VibePage = () => {
               shadow-purple-500/20
             "
           >
-            <span
-              className="
-                text-base
-                font-bold
-              "
-            >
-              V
-            </span>
+            <span className="text-base font-bold">V</span>
           </div>
 
-          {/* Header text */}
-
+          {/* Header info */}
           <div
             className="
               ml-3
@@ -941,13 +653,7 @@ const VibePage = () => {
               flex-1
             "
           >
-            <div
-              className="
-                flex
-                items-center
-                gap-2
-              "
-            >
+            <div className="flex items-center gap-2">
               <h1
                 className="
                   truncate
@@ -1039,7 +745,6 @@ const VibePage = () => {
           </div>
 
           {/* Desktop connection */}
-
           <div
             className="
               hidden
@@ -1079,8 +784,9 @@ const VibePage = () => {
           absolute
           inset-x-0
           top-[68px]
-          bottom-[78px]
+          bottom-[148px]
           overflow-hidden
+          sm:bottom-[145px]
         "
       >
         <div
@@ -1102,13 +808,7 @@ const VibePage = () => {
           ================================================= */}
 
           {!loadingMessages && messages.length > 0 && (
-            <div
-              className="
-                  mb-5
-                  flex
-                  justify-center
-                "
-            >
+            <div className="mb-5 flex justify-center">
               <div
                 className="
                     max-w-[300px]
@@ -1158,7 +858,7 @@ const VibePage = () => {
             </div>
           ) : messages.length === 0 ? (
             /* ===============================================
-               EMPTY STATE
+               EMPTY
             =============================================== */
 
             <div
@@ -1191,15 +891,7 @@ const VibePage = () => {
                 <Smile size={30} />
               </div>
 
-              <h2
-                className="
-                  mt-5
-                  text-base
-                  font-bold
-                "
-              >
-                Nothing here yet
-              </h2>
+              <h2 className="mt-5 text-base font-bold">Nothing here yet</h2>
 
               <p
                 className="
@@ -1226,150 +918,145 @@ const VibePage = () => {
                   <div
                     key={message.id}
                     className={`
-                        flex
-                        w-full
-                        ${mine ? "justify-end" : "justify-start"}
-                      `}
+                      flex
+                      w-full
+                      ${mine ? "justify-end" : "justify-start"}
+                    `}
                   >
                     <div
                       className={`
-                          group
-                          relative
-                          max-w-[82%]
-                          sm:max-w-[70%]
-                          ${
-                            mine
-                              ? `
-                                rounded-[20px]
-                                rounded-br-[6px]
-                                bg-gradient-to-br
-                                from-purple-600
-                                to-violet-700
-                                text-white
-                                shadow-md
-                                shadow-purple-500/10
-                              `
-                              : `
-                                rounded-[20px]
-                                rounded-bl-[6px]
-                                border
-                                border-neutral-200
-                                bg-white
-                                text-neutral-900
-                                shadow-sm
-                                dark:border-neutral-800
-                                dark:bg-neutral-950
-                                dark:text-white
-                              `
-                          }
-                          px-4
-                          py-3
-                          transition
-                        `}
+                        group
+                        relative
+                        max-w-[88%]
+                        sm:max-w-[70%]
+                        ${
+                          mine
+                            ? `
+                              rounded-[20px]
+                              rounded-br-[6px]
+                              bg-gradient-to-br
+                              from-purple-600
+                              to-violet-700
+                              text-white
+                              shadow-md
+                              shadow-purple-500/10
+                            `
+                            : `
+                              rounded-[20px]
+                              rounded-bl-[6px]
+                              border
+                              border-neutral-200
+                              bg-white
+                              text-neutral-900
+                              shadow-sm
+                              dark:border-neutral-800
+                              dark:bg-neutral-950
+                              dark:text-white
+                            `
+                        }
+                        px-4
+                        py-3
+                        transition
+                      `}
                     >
-                      {/* =================================
-                            MESSAGE HEADER
-                        ================================= */}
+                      {/* =================================================
+                          MESSAGE HEADER
+                      ================================================= */}
 
                       <div
                         className={`
-                            flex
-                            items-center
-                            justify-between
-                            gap-5
-                            ${mine ? "flex-row-reverse" : ""}
-                          `}
+                          flex
+                          items-center
+                          justify-between
+                          gap-5
+                          ${mine ? "flex-row-reverse" : ""}
+                        `}
                       >
                         <div
                           className={`
-                              flex
-                              items-center
-                              gap-2
-                              ${mine ? "flex-row-reverse" : ""}
-                            `}
+                            flex
+                            items-center
+                            gap-2
+                            ${mine ? "flex-row-reverse" : ""}
+                          `}
                         >
                           {/* Avatar */}
-
                           <div
                             className={`
-                                flex
-                                h-7
-                                w-7
-                                shrink-0
-                                items-center
-                                justify-center
-                                rounded-full
-                                text-[10px]
-                                font-bold
-                                ${
-                                  mine
-                                    ? `
-                                      bg-white/20
-                                      text-white
-                                    `
-                                    : `
-                                      bg-gradient-to-br
-                                      from-purple-500
-                                      to-indigo-600
-                                      text-white
-                                    `
-                                }
-                              `}
+                              flex
+                              h-7
+                              w-7
+                              shrink-0
+                              items-center
+                              justify-center
+                              rounded-full
+                              text-[10px]
+                              font-bold
+                              ${
+                                mine
+                                  ? `
+                                    bg-white/20
+                                    text-white
+                                  `
+                                  : `
+                                    bg-gradient-to-br
+                                    from-purple-500
+                                    to-indigo-600
+                                    text-white
+                                  `
+                              }
+                            `}
                           >
                             ?
                           </div>
 
                           <div
                             className={`
-                                min-w-0
-                                ${mine ? "text-right" : ""}
-                              `}
+                              min-w-0
+                              ${mine ? "text-right" : ""}
+                            `}
                           >
                             <p
                               className={`
-                                  truncate
-                                  text-[11px]
-                                  font-semibold
-                                  ${
-                                    mine
-                                      ? "text-white"
-                                      : `
-                                        text-neutral-700
-                                        dark:text-neutral-200
-                                      `
-                                  }
-                                `}
+                                truncate
+                                text-[11px]
+                                font-semibold
+                                ${
+                                  mine
+                                    ? "text-white"
+                                    : `
+                                      text-neutral-700
+                                      dark:text-neutral-200
+                                    `
+                                }
+                              `}
                             >
                               Anonymous
                             </p>
 
                             <div
                               className={`
-                                  mt-0.5
-                                  flex
-                                  items-center
-                                  gap-1
-                                  ${mine ? "justify-end" : ""}
-                                `}
+                                mt-0.5
+                                flex
+                                items-center
+                                gap-1
+                                ${mine ? "justify-end" : ""}
+                              `}
                             >
                               <span
                                 className={`
-                                    h-1
-                                    w-1
-                                    rounded-full
-                                    ${mine ? "bg-white/60" : "bg-purple-400"}
-                                  `}
+                                  h-1
+                                  w-1
+                                  rounded-full
+                                  ${mine ? "bg-white/60" : "bg-purple-400"}
+                                `}
                               />
 
                               <span
                                 className={`
-                                    text-[9px]
-                                    ${
-                                      mine
-                                        ? "text-white/65"
-                                        : "text-neutral-400"
-                                    }
-                                  `}
+                                  text-[9px]
+                                  ${mine ? "text-white/65" : "text-neutral-400"}
+                                `}
                               >
                                 Vibe
                               </span>
@@ -1378,61 +1065,72 @@ const VibePage = () => {
                         </div>
 
                         {/* Time */}
-
                         <span
                           className={`
-                              shrink-0
-                              text-[9px]
-                              ${mine ? "text-white/60" : "text-neutral-400"}
-                            `}
+                            shrink-0
+                            text-[9px]
+                            ${mine ? "text-white/60" : "text-neutral-400"}
+                          `}
                         >
                           {formatTime(message.createdAt)}
                         </span>
                       </div>
 
-                      {/* =================================
-                            MESSAGE CONTENT
-                        ================================= */}
+                      {/* =================================================
+                          TEXT
+                      ================================================= */}
 
                       {message.content && (
                         <p
                           className={`
-                              mt-2.5
-                              whitespace-pre-wrap
-                              break-words
-                              text-[14px]
-                              leading-5
-                              ${
-                                mine
-                                  ? "text-white"
-                                  : `
-                                    text-neutral-800
-                                    dark:text-neutral-100
-                                  `
-                              }
-                            `}
+                            mt-2.5
+                            whitespace-pre-wrap
+                            break-words
+                            text-[14px]
+                            leading-5
+                            ${
+                              mine
+                                ? "text-white"
+                                : `
+                                  text-neutral-800
+                                  dark:text-neutral-100
+                                `
+                            }
+                          `}
                         >
                           {message.content}
                         </p>
                       )}
 
-                      {/* =================================
-                            MEDIA
-                        ================================= */}
+                      {/* =================================================
+                          MEDIA
+                      ================================================= */}
 
-                      {renderMedia(message)}
+                      <VibeMessageMedia
+                        mediaUrl={message.mediaUrl}
+                        localMediaUrl={message.localMediaUrl}
+                        mediaType={message.mediaType}
+                        pending={message.pending}
+                        localFileName={message.localFileName}
+                        onMediaClick={(url, type) => {
+                          setViewerMedia({
+                            url,
+                            type,
+                          });
+                        }}
+                      />
 
-                      {/* =================================
-                            PENDING
-                        ================================= */}
+                      {/* =================================================
+                          PENDING
+                      ================================================= */}
 
                       {message.pending && (
                         <div
                           className={`
-                              mt-2
-                              text-[9px]
-                              ${mine ? "text-white/55" : "text-neutral-400"}
-                            `}
+                            mt-2
+                            text-[9px]
+                            ${mine ? "text-white/55" : "text-neutral-400"}
+                          `}
                         >
                           Sending...
                         </div>
@@ -1456,12 +1154,13 @@ const VibePage = () => {
         <div
           className="
             fixed
-            bottom-[84px]
+            bottom-[154px]
             left-3
             right-3
             z-40
             mx-auto
             max-w-2xl
+            sm:bottom-[150px]
           "
         >
           <div
@@ -1483,11 +1182,12 @@ const VibePage = () => {
               dark:text-red-400
             "
           >
-            <span className="flex-1">{error}</span>
+            <span className="min-w-0 flex-1">{error}</span>
 
             <button
               type="button"
               onClick={() => setError(null)}
+              aria-label="Dismiss error"
               className="
                 flex
                 h-6
@@ -1507,523 +1207,42 @@ const VibePage = () => {
       )}
 
       {/* =====================================================
-          FIXED COMPOSER
+          COMPOSER
       ===================================================== */}
 
-      <div
-        className="
-          fixed
-          inset-x-0
-          bottom-0
-          z-50
-          border-t
-          border-neutral-200/70
-          bg-white/95
-          backdrop-blur-xl
-          dark:border-neutral-800/70
-          dark:bg-black/95
-        "
-      >
-        <div
-          className="
-            mx-auto
-            w-full
-            max-w-2xl
-            px-2
-            pb-[max(8px,env(safe-area-inset-bottom))]
-            pt-2
-            sm:px-3
-          "
-        >
-          {/* =================================================
-              MEDIA PREVIEW
-          ================================================= */}
+      <VibeComposer
+        text={text}
+        setText={setText}
+        selectedFile={selectedFile}
+        selectedMediaType={selectedMediaType}
+        previewUrl={previewUrl}
+        onFileSelect={handleFileSelect}
+        onRemoveMedia={removeSelectedMedia}
+        onSend={handleSubmit}
+        onGifSelect={(url) => {
+          if (previewUrl?.startsWith("blob:")) {
+            URL.revokeObjectURL(previewUrl);
+          }
 
-          {previewUrl || selectedMediaType === "PDF" ? (
-            <div
-              className="
-                mb-2
-                overflow-hidden
-                rounded-2xl
-                border
-                border-neutral-200
-                bg-neutral-100
-                p-2
-                dark:border-neutral-800
-                dark:bg-neutral-900
-              "
-            >
-              <div
-                className="
-                  relative
-                  flex
-                  items-center
-                  gap-3
-                "
-              >
-                {selectedMediaType === "PDF" ? (
-                  <div
-                    className="
-                      flex
-                      min-w-0
-                      flex-1
-                      items-center
-                      gap-3
-                      px-2
-                      py-1
-                    "
-                  >
-                    <div
-                      className="
-                        flex
-                        h-10
-                        w-10
-                        shrink-0
-                        items-center
-                        justify-center
-                        rounded-xl
-                        bg-purple-100
-                        text-purple-600
-                        dark:bg-purple-950
-                        dark:text-purple-300
-                      "
-                    >
-                      <FileText size={20} />
-                    </div>
+          setSelectedFile(null);
 
-                    <div className="min-w-0">
-                      <p
-                        className="
-                          truncate
-                          text-xs
-                          font-semibold
-                        "
-                      >
-                        {selectedFile?.name || "Shared PDF"}
-                      </p>
+          setSelectedMediaType("GIF");
 
-                      <p
-                        className="
-                          mt-0.5
-                          text-[10px]
-                          text-neutral-500
-                        "
-                      >
-                        PDF • Ready
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <img
-                    src={previewUrl!}
-                    alt="Selected media preview"
-                    className="
-                      h-20
-                      w-20
-                      rounded-xl
-                      object-cover
-                    "
-                  />
-                )}
+          setPreviewUrl(url);
 
-                <button
-                  type="button"
-                  onClick={removeSelectedMedia}
-                  aria-label="Remove selected media"
-                  className="
-                    absolute
-                    right-1
-                    top-1
-                    flex
-                    h-7
-                    w-7
-                    items-center
-                    justify-center
-                    rounded-full
-                    bg-black/75
-                    text-white
-                    shadow-sm
-                    transition
-                    hover:bg-black
-                    active:scale-95
-                  "
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            </div>
-          ) : null}
+          setError(null);
+        }}
+        canSend={canSend}
+      />
 
-          {/* =================================================
-              GIF URL
-          ================================================= */}
+      {/* =====================================================
+          IMAGE / GIF VIEWER
+      ===================================================== */}
 
-          {showGifInput && (
-            <div
-              className="
-                mb-2
-                flex
-                items-center
-                gap-2
-                rounded-2xl
-                border
-                border-neutral-200
-                bg-neutral-100
-                p-2
-                dark:border-neutral-800
-                dark:bg-neutral-900
-              "
-            >
-              <div
-                className="
-                  flex
-                  h-9
-                  w-9
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-xl
-                  bg-purple-100
-                  text-[9px]
-                  font-bold
-                  text-purple-600
-                  dark:bg-purple-950
-                  dark:text-purple-300
-                "
-              >
-                GIF
-              </div>
-
-              <input
-                type="url"
-                value={gifUrl}
-                onChange={(event) => setGifUrl(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    addGifUrl();
-                  }
-                }}
-                placeholder="Paste GIF URL..."
-                className="
-                  min-w-0
-                  flex-1
-                  border-0
-                  bg-transparent
-                  px-1
-                  py-2
-                  text-xs
-                  outline-none
-                  placeholder:text-neutral-400
-                  focus:ring-0
-                "
-              />
-
-              <button
-                type="button"
-                onClick={addGifUrl}
-                className="
-                  rounded-xl
-                  bg-purple-600
-                  px-3
-                  py-2
-                  text-[11px]
-                  font-semibold
-                  text-white
-                  transition
-                  hover:bg-purple-500
-                  active:scale-95
-                "
-              >
-                Add
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowGifInput(false)}
-                className="
-                  flex
-                  h-8
-                  w-8
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-full
-                  text-neutral-500
-                  hover:bg-neutral-200
-                  dark:hover:bg-neutral-800
-                "
-              >
-                <X size={15} />
-              </button>
-            </div>
-          )}
-
-          {/* =================================================
-              COMPOSER
-          ================================================= */}
-
-          <form onSubmit={handleSubmit}>
-            <div
-              className="
-                flex
-                items-end
-                gap-2
-              "
-            >
-              {/* ===========================================
-                  WHATSAPP STYLE INPUT
-              =========================================== */}
-
-              <div
-                className="
-                  flex
-                  min-h-[50px]
-                  flex-1
-                  items-end
-                  rounded-[28px]
-                  border
-                  border-neutral-200
-                  bg-neutral-100
-                  px-1.5
-                  py-1.5
-                  shadow-sm
-                  transition
-                  focus-within:border-purple-400
-                  focus-within:bg-white
-                  dark:border-neutral-800
-                  dark:bg-neutral-900
-                  dark:focus-within:border-purple-700
-                  dark:focus-within:bg-neutral-900
-                "
-              >
-                {/* Emoji */}
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setText((current) => `${current}😊`);
-                  }}
-                  aria-label="Add emoji"
-                  className="
-                    mb-0.5
-                    flex
-                    h-9
-                    w-9
-                    shrink-0
-                    items-center
-                    justify-center
-                    rounded-full
-                    text-neutral-500
-                    transition
-                    hover:bg-neutral-200
-                    hover:text-neutral-700
-                    active:scale-95
-                    dark:hover:bg-neutral-800
-                    dark:hover:text-neutral-200
-                  "
-                >
-                  <Smile size={21} strokeWidth={1.8} />
-                </button>
-
-                {/* Text */}
-
-                <textarea
-                  value={text}
-                  onChange={(event) => setText(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && !event.shiftKey) {
-                      event.preventDefault();
-
-                      if (canSend) {
-                        event.currentTarget.form?.requestSubmit();
-                      }
-                    }
-                  }}
-                  rows={1}
-                  maxLength={5000}
-                  placeholder="Say something anonymously..."
-                  className="
-                    max-h-28
-                    min-h-9
-                    min-w-0
-                    flex-1
-                    resize-none
-                    border-0
-                    bg-transparent
-                    px-2
-                    py-2
-                    text-sm
-                    leading-5
-                    text-neutral-900
-                    outline-none
-                    placeholder:text-neutral-400
-                    focus:ring-0
-                    dark:text-white
-                    dark:placeholder:text-neutral-500
-                  "
-                />
-
-                {/* =========================================
-                    IMAGE
-                ========================================= */}
-
-                <input
-                  ref={imageInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleFileSelect}
-                />
-
-                <button
-                  type="button"
-                  onClick={() => imageInputRef.current?.click()}
-                  aria-label="Add image"
-                  className="
-                    mb-0.5
-                    flex
-                    h-9
-                    w-9
-                    shrink-0
-                    items-center
-                    justify-center
-                    rounded-full
-                    text-neutral-500
-                    transition
-                    hover:bg-neutral-200
-                    hover:text-purple-600
-                    active:scale-95
-                    dark:hover:bg-neutral-800
-                    dark:hover:text-purple-400
-                  "
-                >
-                  <ImageIcon size={19} strokeWidth={1.8} />
-                </button>
-
-                {/* =========================================
-                    PDF
-                ========================================= */}
-
-                <input
-                  ref={pdfInputRef}
-                  type="file"
-                  accept="application/pdf"
-                  className="hidden"
-                  onChange={handleFileSelect}
-                />
-
-                <button
-                  type="button"
-                  onClick={() => pdfInputRef.current?.click()}
-                  aria-label="Add PDF"
-                  className="
-                    mb-0.5
-                    flex
-                    h-9
-                    w-9
-                    shrink-0
-                    items-center
-                    justify-center
-                    rounded-full
-                    text-neutral-500
-                    transition
-                    hover:bg-neutral-200
-                    hover:text-purple-600
-                    active:scale-95
-                    dark:hover:bg-neutral-800
-                    dark:hover:text-purple-400
-                  "
-                >
-                  <FileText size={19} strokeWidth={1.8} />
-                </button>
-
-                {/* =========================================
-                    GIF
-                ========================================= */}
-
-                <button
-                  type="button"
-                  onClick={() => setShowGifInput((value) => !value)}
-                  aria-label="Add GIF"
-                  className="
-                    mb-0.5
-                    flex
-                    h-9
-                    w-9
-                    shrink-0
-                    items-center
-                    justify-center
-                    rounded-full
-                    text-[9px]
-                    font-bold
-                    text-neutral-500
-                    transition
-                    hover:bg-neutral-200
-                    hover:text-purple-600
-                    active:scale-95
-                    dark:hover:bg-neutral-800
-                    dark:hover:text-purple-400
-                  "
-                >
-                  GIF
-                </button>
-              </div>
-
-              {/* ===========================================
-                  SEND BUTTON
-              =========================================== */}
-
-              <button
-                type="submit"
-                disabled={!canSend}
-                aria-label="Send message"
-                className={`
-                  flex
-                  h-[50px]
-                  w-[50px]
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-full
-                  text-white
-                  shadow-lg
-                  transition-all
-                  active:scale-90
-                  ${
-                    canSend
-                      ? `
-                        bg-purple-600
-                        shadow-purple-600/25
-                        hover:bg-purple-500
-                      `
-                      : `
-                        bg-neutral-300
-                        shadow-none
-                        dark:bg-neutral-800
-                      `
-                  }
-                `}
-              >
-                <Send size={19} strokeWidth={2.2} />
-              </button>
-            </div>
-
-            {/* Small hint */}
-
-            <div
-              className="
-                px-3
-                pt-1
-                text-[9px]
-                text-neutral-400
-              "
-            >
-              Enter to send • Shift + Enter for a new line
-            </div>
-          </form>
-        </div>
-      </div>
+      <VibeMediaViewer
+        media={viewerMedia}
+        onClose={() => setViewerMedia(null)}
+      />
     </div>
   );
 };
