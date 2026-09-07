@@ -92,3 +92,45 @@ export const deleteVibeMessage = async (
     },
   });
 };
+
+// =========================================================
+// CHECK VIBE MEMBERSHIP
+// =========================================================
+
+export const checkVibeMembership = async (token: string): Promise<boolean> => {
+  const response = await api.get<boolean>("/vibe/membership", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return response.data;
+};
+
+// =========================================================
+// JOIN VIBE
+// =========================================================
+
+export const joinVibe = async (token: string): Promise<void> => {
+  await api.post(
+    "/vibe/join",
+    {},
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+};
+
+// =========================================================
+// LEAVE VIBE
+// =========================================================
+
+export const leaveVibe = async (token: string): Promise<void> => {
+  await api.delete("/vibe/leave", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+};

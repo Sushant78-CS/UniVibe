@@ -3,12 +3,16 @@ package com.example.NotesRoom.service;
 import com.example.NotesRoom.dto.vibe.VibeMessageRequest;
 import com.example.NotesRoom.dto.vibe.VibeMessageResponse;
 import com.example.NotesRoom.entity.Users;
+import com.example.NotesRoom.entity.VibeMember;
 import com.example.NotesRoom.entity.VibeMessage;
 import com.example.NotesRoom.repository.UserRepository;
+import com.example.NotesRoom.repository.VibeMemberRepository;
 import com.example.NotesRoom.repository.VibeMessageRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,13 +21,19 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class VibeMessageService {
+
+    private static final int MAX_VIBE_MESSAGES = 100;
 
     private final UserRepository userRepository;
     private final VibeMessageRepository vibeMessageRepository;
     private final NotificationService notificationService;
     private final VibePresenceService vibePresenceService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final VibeMemberService vibeMemberService;
+    private final VibeMemberRepository vibeMemberRepository;
+
 
     // =========================================================
     // CREATE MESSAGE
@@ -42,6 +52,8 @@ public class VibeMessageService {
                                         "User not found"
                                 )
                         );
+
+        requireMember(sender);
 
         validateMessage(request);
 
@@ -68,6 +80,8 @@ public class VibeMessageService {
 
         VibeMessage saved =
                 vibeMessageRepository.save(message);
+
+        removeMessagesOverLimit();
 
         /*
          * IMPORTANT:
@@ -121,20 +135,9 @@ public class VibeMessageService {
 
         Users currentUser =
                 userRepository.findByClerkId(clerkId)
-                        .orElseThrow(
-                                () -> new RuntimeException(
-                                        "User not found"
-                                )
-                        );
-
-        int safeLimit =
-                Math.min(
-                        Math.max(
-                                limit,
-                                1
-                        ),
-                        100
-                );
+                        .orElseThrow(() -> new RuntimeException("User not found"));
+        requireMember(currentUser);
+        int safeLimit = Math.min(Math.max(limit, 1), 100);
 
         return vibeMessageRepository
                 .findAllByOrderByCreatedAtDesc(
@@ -176,7 +179,7 @@ public class VibeMessageService {
                                         "User not found"
                                 )
                         );
-
+        requireMember(currentUser);
         VibeMessage message =
                 vibeMessageRepository.findById(messageId)
                         .orElseThrow(
@@ -262,7 +265,7 @@ public class VibeMessageService {
                                         "User not found"
                                 )
                         );
-
+        requireMember(currentUser);
         VibeMessage message =
                 vibeMessageRepository.findById(messageId)
                         .orElseThrow(
@@ -309,10 +312,12 @@ public class VibeMessageService {
             VibeMessage message
     ) {
 
-        List<Users> users =
-                userRepository.findAll();
+        List<VibeMember> members =
+                vibeMemberRepository.findAll();
 
-        for (Users recipient : users) {
+        for (VibeMember member : members) {
+
+            Users recipient = member.getUser();
 
             // Never notify sender
             if (
@@ -452,5 +457,96 @@ public class VibeMessageService {
                 message.getCreatedAt(),
                 mine
         );
+    }
+
+    private void removeMessagesOverLimit() {
+
+        List<VibeMessage> messages =
+                vibeMessageRepository
+                        .findAllByOrderByCreatedAtDesc(
+                                PageRequest.of(
+                                        0,
+                                        MAX_VIBE_MESSAGES + 1
+                                )
+                        );
+
+        if (messages.size() <= MAX_VIBE_MESSAGES) {
+            return;
+        }
+
+        List<VibeMessage> messagesToDelete =
+                messages.subList(
+                        MAX_VIBE_MESSAGES,
+                        messages.size()
+                );
+
+        List<Long> deletedIds =
+                messagesToDelete.stream()
+                        .map(VibeMessage::getId)
+                        .toList();
+
+        vibeMessageRepository.deleteAll(
+                messagesToDelete
+        );
+
+        /*
+         * Tell connected clients to remove
+         * automatically deleted messages.
+         */
+        for (Long deletedId : deletedIds) {
+
+            messagingTemplate.convertAndSend(
+                    "/topic/vibe-delete",
+                    deletedId
+            );
+        }
+
+        log.info(
+                "Deleted {} Vibe messages because the 100 message limit was exceeded",
+                deletedIds.size()
+        );
+    }
+
+    @Scheduled(fixedRate = 60 * 60 * 1000)
+    @Transactional
+    public void deleteExpiredVibeMessages() {
+
+        Instant expiryTime =
+                Instant.now()
+                        .minusSeconds(24 * 60 * 60);
+
+        int deleted =
+                vibeMessageRepository
+                        .deleteMessagesOlderThan(
+                                expiryTime
+                        );
+
+        if (deleted > 0) {
+
+            log.info(
+                    "Deleted {} Vibe messages older than 24 hours",
+                    deleted
+            );
+
+            /*
+             * Tell connected clients to refresh Vibe.
+             *
+             * We don't know the deleted IDs when using
+             * a bulk DELETE query, so send a special event.
+             */
+            messagingTemplate.convertAndSend(
+                    "/topic/vibe-refresh",
+                    true
+            );
+        }
+    }
+
+    private void requireMember(Users user) {
+
+        if (!vibeMemberRepository.existsByUser(user)) {
+            throw new IllegalStateException(
+                    "You must join Vibe before accessing Vibe."
+            );
+        }
     }
 }

@@ -2,6 +2,7 @@ package com.example.NotesRoom.controller;
 
 import com.example.NotesRoom.dto.vibe.VibeMessageRequest;
 import com.example.NotesRoom.dto.vibe.VibeMessageResponse;
+import com.example.NotesRoom.service.VibeMemberService;
 import com.example.NotesRoom.service.VibeMessageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,7 @@ import java.util.List;
 public class VibeMessageController {
 
     private final VibeMessageService vibeMessageService;
+    private final VibeMemberService vibeMemberService;
 
     // =========================================================
     // GET VIBE MESSAGES
@@ -88,6 +90,46 @@ public class VibeMessageController {
                 clerkId,
                 messageId
         );
+
+        return ResponseEntity.noContent().build();
+    }
+
+    // =========================================================
+// VIBE MEMBERSHIP
+// =========================================================
+
+    @GetMapping("/membership")
+    public ResponseEntity<Boolean> checkMembership(
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+
+        String clerkId = jwt.getSubject();
+
+        return ResponseEntity.ok(
+                vibeMemberService.isMember(clerkId)
+        );
+    }
+
+    @PostMapping("/join")
+    public ResponseEntity<Void> joinVibe(
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+
+        String clerkId = jwt.getSubject();
+
+        vibeMemberService.join(clerkId);
+
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/leave")
+    public ResponseEntity<Void> leaveVibe(
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+
+        String clerkId = jwt.getSubject();
+
+        vibeMemberService.leave(clerkId);
 
         return ResponseEntity.noContent().build();
     }

@@ -2,6 +2,7 @@ package com.example.NotesRoom.controller;
 
 import com.example.NotesRoom.entity.Users;
 import com.example.NotesRoom.repository.UserRepository;
+import com.example.NotesRoom.repository.VibeMemberRepository;
 import com.example.NotesRoom.service.VibePresenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -17,6 +18,7 @@ public class VibeWebSocketController {
 
     private final UserRepository userRepository;
     private final VibePresenceService vibePresenceService;
+    private final VibeMemberRepository vibeMemberRepository;
 
     // =========================================================
     // ENTER VIBE
@@ -28,6 +30,12 @@ public class VibeWebSocketController {
     ) {
 
         Users user = getUser(accessor);
+
+        if (!vibeMemberRepository.existsByUser(user)) {
+            throw new IllegalStateException(
+                    "You must join Vibe before entering."
+            );
+        }
 
         String sessionId =
                 accessor.getSessionId();

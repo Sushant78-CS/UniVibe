@@ -3,13 +3,14 @@ import {
   Check,
   MoreVertical,
   Pencil,
+  RefreshCw,
   Smile,
   Trash2,
-  WifiOff,
   X,
 } from "lucide-react";
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@clerk/react";
 import { useNavigate } from "react-router";
@@ -19,6 +20,9 @@ import {
   sendVibeMessage,
   editVibeMessage,
   deleteVibeMessage,
+  checkVibeMembership,
+  joinVibe,
+  leaveVibe,
   type VibeMediaType,
   type VibeMessage,
 } from "../../api/vibeApi";
@@ -28,6 +32,7 @@ import { useVibeSocket } from "../../hooks/useVibeSocket";
 import { uploadVibeMedia } from "../../api/vibeCloudinary";
 
 import VibeComposer from "../../components/vibe/VibeComposer";
+import VibeJoinBanner from "../../components/vibe/VibeJoinBanner";
 import VibeMessageMedia from "../../components/vibe/VibeMessageMedia";
 import VibeMediaViewer from "../../components/vibe/VibeMediaViewer";
 import ConfirmModal from "../../components/common/ConfirmModal";
@@ -45,6 +50,9 @@ type UiVibeMessage = VibeMessage & {
   localFileName?: string | null;
 };
 
+const EMPTY_VIBE_MESSAGES: VibeMessage[] = [];
+const MAX_VISIBLE_MESSAGES = 100;
+
 // =========================================================
 // PAGE
 // =========================================================
@@ -53,6 +61,8 @@ const VibePage = () => {
   const navigate = useNavigate();
 
   const { getToken } = useAuth();
+
+  const queryClient = useQueryClient();
 
   // =========================================================
   // STATE
@@ -69,11 +79,17 @@ const VibePage = () => {
   const [selectedMediaType, setSelectedMediaType] =
     useState<VibeMediaType | null>(null);
 
-  const [loadingMessages, setLoadingMessages] = useState(true);
+  // const [loadingMessages, setLoadingMessages] = useState(true);
 
   const [error, setError] = useState<string | null>(null);
 
   const [token, setToken] = useState<string | null>(null);
+
+  const [joining, setJoining] = useState(false);
+
+  const [leaving, setLeaving] = useState(false);
+
+  const [refreshing, setRefreshing] = useState(false);
 
   const [viewerMedia, setViewerMedia] = useState<{
     url: string;
@@ -93,6 +109,23 @@ const VibePage = () => {
   const [actionLoading, setActionLoading] = useState(false);
 
   const [deleteMessageId, setDeleteMessageId] = useState<number | null>(null);
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+
+  const openLeaveConfirm = () => {
+    if (leaving) {
+      return;
+    }
+
+    setLeaveConfirmOpen(true);
+  };
+
+  const closeLeaveConfirm = () => {
+    if (leaving) {
+      return;
+    }
+
+    setLeaveConfirmOpen(false);
+  };
 
   // =========================================================
   // REFS
@@ -131,57 +164,178 @@ const VibePage = () => {
   }, [getToken]);
 
   // =========================================================
-  // LOAD INITIAL MESSAGES
+  // VIBE MEMBERSHIP QUERY
   // =========================================================
 
-  useEffect(() => {
-    let mounted = true;
+  const {
+    data: isMember = false,
+    isLoading: checkingMembership,
+    isError: membershipError,
+  } = useQuery<boolean>({
+    queryKey: ["vibe-membership"],
+    queryFn: async () => {
+      const currentToken = await getToken();
 
-    const loadMessages = async () => {
-      try {
-        setLoadingMessages(true);
-        setError(null);
-
-        const currentToken = await getToken();
-
-        if (!currentToken) {
-          throw new Error("Authentication token unavailable.");
-        }
-
-        const data = await getVibeMessages(currentToken, 50);
-
-        if (mounted) {
-          const mappedMessages: UiVibeMessage[] = [...data]
-            .reverse()
-            .map((message) => ({
-              ...message,
-
-              mine:
-                message.mine === true ||
-                myMessageIdsRef.current.has(message.id),
-            }));
-
-          setMessages(mappedMessages);
-        }
-      } catch (error) {
-        console.error("Failed to load Vibe messages:", error);
-
-        if (mounted) {
-          setError("Unable to load Vibe messages.");
-        }
-      } finally {
-        if (mounted) {
-          setLoadingMessages(false);
-        }
+      if (!currentToken) {
+        throw new Error("Authentication token unavailable.");
       }
-    };
 
-    loadMessages();
+      return checkVibeMembership(currentToken);
+    },
+    enabled: !!token,
+    staleTime: 30 * 1000,
+  });
 
-    return () => {
-      mounted = false;
-    };
-  }, [getToken]);
+  useEffect(() => {
+    if (membershipError) {
+      setError("Unable to check Vibe membership.");
+    }
+  }, [membershipError]);
+
+  // =========================================================
+  // VIBE MESSAGES QUERY
+  // =========================================================
+
+  const {
+    data: initialMessages,
+    isLoading: loadingMessages,
+    refetch: refetchMessages,
+  } = useQuery<VibeMessage[]>({
+    queryKey: ["vibe-messages"],
+    queryFn: async () => {
+      const currentToken = await getToken();
+
+      if (!currentToken) {
+        throw new Error("Authentication token unavailable.");
+      }
+
+      return getVibeMessages(currentToken, 50);
+    },
+    enabled: !!token && isMember,
+    staleTime: 30 * 1000,
+  });
+
+  useEffect(() => {
+    if (!isMember) {
+      setMessages([]);
+      return;
+    }
+
+    const serverMessages = initialMessages ?? EMPTY_VIBE_MESSAGES;
+
+    const mappedMessages: UiVibeMessage[] = [...serverMessages]
+      .reverse()
+      .map((message) => ({
+        ...message,
+        mine: message.mine === true || myMessageIdsRef.current.has(message.id),
+      }));
+
+    setMessages(mappedMessages);
+  }, [initialMessages, isMember]);
+
+  const handleRefreshMessages = async () => {
+    if (refreshing || !isMember) {
+      return;
+    }
+
+    try {
+      setRefreshing(true);
+      setError(null);
+
+      await refetchMessages();
+    } catch (error) {
+      console.error("Failed to refresh Vibe messages:", error);
+
+      setError(
+        error instanceof Error ? error.message : "Failed to refresh messages.",
+      );
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // =========================================================
+  // JOIN VIBE
+  // =========================================================
+
+  const handleJoinVibe = async () => {
+    if (joining) {
+      return;
+    }
+
+    try {
+      setJoining(true);
+      setError(null);
+
+      const currentToken = await getToken();
+
+      if (!currentToken) {
+        throw new Error("Authentication token unavailable.");
+      }
+
+      await joinVibe(currentToken);
+
+      await queryClient.invalidateQueries({
+        queryKey: ["vibe-membership"],
+      });
+    } catch (error) {
+      console.error("Failed to join Vibe:", error);
+
+      setError(error instanceof Error ? error.message : "Failed to join Vibe.");
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  // =========================================================
+  // LEAVE VIBE
+  // =========================================================
+
+  const handleLeaveVibe = async () => {
+    if (leaving) {
+      return;
+    }
+
+    try {
+      setLeaving(true);
+      setError(null);
+
+      const currentToken = await getToken();
+
+      if (!currentToken) {
+        throw new Error("Authentication token unavailable.");
+      }
+
+      await leaveVibe(currentToken);
+
+      await queryClient.invalidateQueries({
+        queryKey: ["vibe-membership"],
+      });
+
+      queryClient.removeQueries({
+        queryKey: ["vibe-messages"],
+      });
+
+      setMessages([]);
+      setText("");
+      setSelectedFile(null);
+      setSelectedMediaType(null);
+      setPreviewUrl(null);
+      setEditingMessageId(null);
+      setEditingText("");
+      setActionMessageId(null);
+
+      setLeaveConfirmOpen(false);
+    } catch (error) {
+      console.error("Failed to leave Vibe:", error);
+
+      setError(
+        error instanceof Error ? error.message : "Failed to leave Vibe.",
+      );
+    } finally {
+      setLeaving(false);
+    }
+  };
 
   // =========================================================
   // WEBSOCKET - NEW / UPDATED MESSAGE
@@ -189,21 +343,8 @@ const VibePage = () => {
 
   const handleIncomingMessage = (message: VibeMessage) => {
     setMessages((current) => {
+      // 1. Update an existing message
       const existingIndex = current.findIndex((item) => item.id === message.id);
-
-      // Check if this incoming WebSocket message
-      // matches one of our pending optimistic messages.
-      const pendingIndex = current.findIndex(
-        (item) =>
-          item.pending &&
-          item.mine === true &&
-          item.content === message.content &&
-          item.mediaType === message.mediaType,
-      );
-
-      // -----------------------------------------------------
-      // EXISTING SERVER MESSAGE
-      // -----------------------------------------------------
 
       if (existingIndex !== -1) {
         const updated = [...current];
@@ -219,9 +360,14 @@ const VibePage = () => {
         return updated;
       }
 
-      // -----------------------------------------------------
-      // REPLACE OUR OPTIMISTIC MESSAGE
-      // -----------------------------------------------------
+      // 2. Replace our optimistic message
+      const pendingIndex = current.findIndex(
+        (item) =>
+          item.pending &&
+          item.mine === true &&
+          item.content === message.content &&
+          item.mediaType === message.mediaType,
+      );
 
       if (pendingIndex !== -1) {
         const updated = [...current];
@@ -237,11 +383,8 @@ const VibePage = () => {
         return updated;
       }
 
-      // -----------------------------------------------------
-      // NEW MESSAGE FROM SOMEONE ELSE
-      // -----------------------------------------------------
-
-      return [
+      // 3. Add new message
+      const updated = [
         ...current,
         {
           ...message,
@@ -249,6 +392,13 @@ const VibePage = () => {
             message.mine === true || myMessageIdsRef.current.has(message.id),
         },
       ];
+
+      // 4. Never keep more than 100 messages
+      if (updated.length > MAX_VISIBLE_MESSAGES) {
+        return updated.slice(-MAX_VISIBLE_MESSAGES);
+      }
+
+      return updated;
     });
   };
 
@@ -270,13 +420,22 @@ const VibePage = () => {
   };
 
   // =========================================================
+  // REFRESH MESSAGES
+  // =========================================================
+
+  const refreshMessages = async () => {
+    await refetchMessages();
+  };
+
+  // =========================================================
   // VIBE SOCKET
   // =========================================================
 
   const { connected } = useVibeSocket({
-    token,
+    token: isMember ? token : null,
     onMessage: handleIncomingMessage,
     onDelete: handleDeletedMessage,
+    onRefresh: refreshMessages,
   });
 
   // =========================================================
@@ -803,23 +962,24 @@ const VibePage = () => {
       max-w-2xl
       items-center
       px-2.5
+      sm:px-3
     "
         >
-          {/* BACK */}
+          {/* BACK BUTTON */}
           <button
             type="button"
             onClick={() => navigate(-1)}
             aria-label="Go back"
             className="
         flex
-        h-10
-        w-10
+        h-9
+        w-9
         shrink-0
         items-center
         justify-center
         rounded-full
         text-neutral-600
-        transition
+        transition-all
         hover:bg-neutral-100
         hover:text-neutral-900
         active:scale-95
@@ -828,17 +988,17 @@ const VibePage = () => {
         dark:hover:text-white
       "
           >
-            <ArrowLeft size={21} strokeWidth={2} />
+            <ArrowLeft size={20} strokeWidth={2} />
           </button>
 
-          {/* TITLE */}
-          <div className="ml-2 min-w-0 flex-1">
+          {/* TITLE + STATUS */}
+          <div className="ml-2.5 min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <h1
                 className="
             truncate
-            text-[16px]
-            font-semibold
+            text-[15px]
+            font-bold
             tracking-tight
             text-neutral-900
             dark:text-white
@@ -849,16 +1009,17 @@ const VibePage = () => {
 
               <span
                 className="
+            shrink-0
             rounded-full
             bg-purple-100
             px-2
             py-0.5
-            text-[9px]
-            font-semibold
+            text-[8px]
+            font-bold
             uppercase
-            tracking-wide
+            tracking-wider
             text-purple-600
-            dark:bg-purple-950
+            dark:bg-purple-950/70
             dark:text-purple-300
           "
               >
@@ -866,15 +1027,17 @@ const VibePage = () => {
               </span>
             </div>
 
+            {/* LIVE STATUS */}
             <div
               className="
           mt-0.5
           flex
           items-center
           gap-1.5
-          text-[11px]
-          text-neutral-500
-          dark:text-neutral-400
+          text-[10px]
+          font-medium
+          text-neutral-400
+          dark:text-neutral-500
         "
             >
               {connected ? (
@@ -892,6 +1055,7 @@ const VibePage = () => {
                   opacity-60
                 "
                     />
+
                     <span
                       className="
                   relative
@@ -904,49 +1068,104 @@ const VibePage = () => {
                     />
                   </span>
 
-                  <span>Live now</span>
+                  <span className="text-emerald-600 dark:text-emerald-400">
+                    Live now
+                  </span>
                 </>
               ) : (
                 <>
-                  <WifiOff size={11} />
+                  <span
+                    className="
+                h-1.5
+                w-1.5
+                rounded-full
+                bg-neutral-400
+              "
+                  />
+
                   <span>Connecting...</span>
                 </>
               )}
             </div>
           </div>
 
-          {/* CONNECTION STATUS */}
-          <div
-            className="
-        hidden
-        items-center
-        gap-1.5
-        rounded-full
-        border
-        border-neutral-200
-        bg-neutral-50
-        px-2.5
-        py-1.5
-        text-[10px]
-        font-medium
-        text-neutral-500
-        sm:flex
-        dark:border-neutral-800
-        dark:bg-neutral-900
-        dark:text-neutral-400
-      "
-          >
-            <span
-              className={`
-          h-1.5
-          w-1.5
-          rounded-full
-          ${connected ? "bg-emerald-500" : "bg-neutral-400"}
-        `}
-            />
+          {/* ACTIONS */}
+          {isMember && (
+            <div className="flex items-center gap-1.5">
+              {/* REFRESH */}
+              <button
+                type="button"
+                onClick={() => void handleRefreshMessages()}
+                disabled={refreshing || leaving}
+                aria-label="Refresh messages"
+                title="Refresh messages"
+                className="
+            flex
+            h-9
+            w-9
+            items-center
+            justify-center
+            rounded-full
+            border
+            border-neutral-200
+            bg-white
+            text-neutral-500
+            transition-all
+            hover:border-neutral-300
+            hover:bg-neutral-50
+            hover:text-neutral-900
+            active:scale-95
+            disabled:cursor-not-allowed
+            disabled:opacity-50
+            dark:border-neutral-800
+            dark:bg-neutral-900
+            dark:text-neutral-400
+            dark:hover:border-neutral-700
+            dark:hover:bg-neutral-800
+            dark:hover:text-white
+          "
+              >
+                <RefreshCw
+                  size={15}
+                  strokeWidth={2}
+                  className={refreshing ? "animate-spin" : ""}
+                />
+              </button>
 
-            {connected ? "Connected" : "Offline"}
-          </div>
+              {/* LEAVE */}
+              <button
+                type="button"
+                onClick={openLeaveConfirm}
+                disabled={leaving || refreshing}
+                className="
+            rounded-full
+            border
+            border-neutral-200
+            bg-white
+            px-3
+            py-1.5
+            text-[10px]
+            font-semibold
+            text-neutral-600
+            transition-all
+            hover:border-neutral-300
+            hover:bg-neutral-50
+            hover:text-neutral-900
+            active:scale-95
+            disabled:cursor-not-allowed
+            disabled:opacity-50
+            dark:border-neutral-800
+            dark:bg-neutral-900
+            dark:text-neutral-400
+            dark:hover:border-neutral-700
+            dark:hover:bg-neutral-800
+            dark:hover:text-white
+          "
+              >
+                {leaving ? "Leaving..." : "Leave"}
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -978,10 +1197,18 @@ const VibePage = () => {
             sm:px-4
           "
         >
-          {!loadingMessages && messages.length > 0 && (
-            <div className="mb-5 flex justify-center">
-              <div
-                className="
+          {checkingMembership ? (
+            <div className="flex h-full items-center justify-center">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-300 border-t-purple-600 dark:border-neutral-700 dark:border-t-purple-400" />
+            </div>
+          ) : !isMember ? (
+            <VibeJoinBanner joining={joining} onJoin={handleJoinVibe} />
+          ) : (
+            <>
+              {!loadingMessages && messages.length > 0 && (
+                <div className="mb-5 flex justify-center">
+                  <div
+                    className="
                     max-w-[300px]
                     rounded-2xl
                     border
@@ -997,20 +1224,20 @@ const VibePage = () => {
                     dark:bg-purple-950/40
                     dark:text-purple-300
                   "
-              >
-                Messages in Vibe are anonymous. Be kind, respectful and have
-                fun.
-              </div>
-            </div>
-          )}
+                  >
+                    Messages in Vibe are anonymous. Be kind, respectful and have
+                    fun.
+                  </div>
+                </div>
+              )}
 
-          {loadingMessages ? (
-            <div className="flex h-full items-center justify-center">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-300 border-t-purple-600 dark:border-neutral-700 dark:border-t-purple-400" />
-            </div>
-          ) : messages.length === 0 ? (
-            <div
-              className="
+              {loadingMessages ? (
+                <div className="flex h-full items-center justify-center">
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-300 border-t-purple-600 dark:border-neutral-700 dark:border-t-purple-400" />
+                </div>
+              ) : messages.length === 0 ? (
+                <div
+                  className="
                 flex
                 h-full
                 flex-col
@@ -1019,9 +1246,9 @@ const VibePage = () => {
                 px-6
                 text-center
               "
-            >
-              <div
-                className="
+                >
+                  <div
+                    className="
                   flex
                   h-16
                   w-16
@@ -1035,40 +1262,40 @@ const VibePage = () => {
                   shadow-lg
                   shadow-purple-500/20
                 "
-              >
-                <Smile size={30} />
-              </div>
+                  >
+                    <Smile size={30} />
+                  </div>
 
-              <h2 className="mt-5 text-base font-bold">Nothing here yet</h2>
+                  <h2 className="mt-5 text-base font-bold">Nothing here yet</h2>
 
-              <p
-                className="
+                  <p
+                    className="
                   mt-1.5
                   max-w-[260px]
                   text-xs
                   leading-5
                   text-neutral-500
                 "
-              >
-                Drop an anonymous message and start the conversation.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2.5">
-              {messages.map((message) => {
-                const mine = message.mine === true;
-                const isEditing = editingMessageId === message.id;
-                const menuOpen = actionMessageId === message.id;
-
-                return (
-                  <div
-                    key={message.id}
-                    className={`flex w-full ${
-                      mine ? "justify-end" : "justify-start"
-                    }`}
                   >
-                    <div
-                      className={`
+                    Drop an anonymous message and start the conversation.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {messages.map((message) => {
+                    const mine = message.mine === true;
+                    const isEditing = editingMessageId === message.id;
+                    const menuOpen = actionMessageId === message.id;
+
+                    return (
+                      <div
+                        key={message.id}
+                        className={`flex w-full ${
+                          mine ? "justify-end" : "justify-start"
+                        }`}
+                      >
+                        <div
+                          className={`
                         group relative w-fit max-w-[85%]
                         sm:max-w-[68%]
                         transition-all duration-200
@@ -1088,19 +1315,19 @@ const VibePage = () => {
                             `
                         }
                       `}
-                    >
-                      {/* =================================================
+                        >
+                          {/* =================================================
                           MESSAGE HEADER
                       ================================================= */}
 
-                      <div
-                        className={`
+                          <div
+                            className={`
                           flex items-center gap-2 px-3.5 pt-2.5
                           ${mine ? "justify-end" : "justify-start"}
                         `}
-                      >
-                        <div
-                          className={`
+                          >
+                            <div
+                              className={`
                             flex h-6 w-6 shrink-0 items-center justify-center
                             rounded-full text-[9px] font-bold
                             ${
@@ -1109,18 +1336,18 @@ const VibePage = () => {
                                 : "bg-gradient-to-br from-violet-500 to-indigo-500 text-white"
                             }
                           `}
-                        >
-                          ?
-                        </div>
+                            >
+                              ?
+                            </div>
 
-                        <div
-                          className={`
+                            <div
+                              className={`
                             flex min-w-0 items-center gap-1.5
                             ${mine ? "flex-row-reverse" : ""}
                           `}
-                        >
-                          <span
-                            className={`
+                            >
+                              <span
+                                className={`
                               text-[10px] font-semibold
                               ${
                                 mine
@@ -1128,163 +1355,172 @@ const VibePage = () => {
                                   : "text-neutral-600 dark:text-neutral-300"
                               }
                             `}
-                          >
-                            Anonymous
-                          </span>
+                              >
+                                Anonymous
+                              </span>
 
-                          <span
-                            className={`
+                              <span
+                                className={`
                               h-1 w-1 rounded-full
                               ${mine ? "bg-white/40" : "bg-violet-400"}
                             `}
-                          />
+                              />
 
-                          <span
-                            className={`
+                              <span
+                                className={`
                               text-[9px]
                               ${mine ? "text-white/55" : "text-neutral-400"}
                             `}
-                          >
-                            {formatTime(message.createdAt)}
-                          </span>
-                        </div>
+                              >
+                                {formatTime(message.createdAt)}
+                              </span>
+                            </div>
 
-                        {/* =================================================
+                            {/* =================================================
                             MESSAGE MENU
                         ================================================= */}
 
-                        {mine && !message.pending && !isEditing && (
-                          <div className="relative ml-0.5">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setActionMessageId(menuOpen ? null : message.id)
-                              }
-                              aria-label="Message options"
-                              className="
+                            {mine && !message.pending && !isEditing && (
+                              <div className="relative ml-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setActionMessageId(
+                                      menuOpen ? null : message.id,
+                                    )
+                                  }
+                                  aria-label="Message options"
+                                  className="
   flex h-6 w-6 items-center justify-center
   rounded-full text-white/60
   transition-all duration-150
   hover:bg-white/10 hover:text-white
 "
-                            >
-                              <MoreVertical size={14} />
-                            </button>
+                                >
+                                  <MoreVertical size={14} />
+                                </button>
 
-                            {menuOpen && (
-                              <div
-                                className="
+                                {menuOpen && (
+                                  <div
+                                    className="
                                     absolute right-0 top-7 z-50 w-32
                                     overflow-hidden rounded-xl border
                                     border-neutral-200 bg-white p-1 shadow-xl
                                     dark:border-neutral-700 dark:bg-neutral-900
                                   "
-                              >
-                                {message.content && (
-                                  <button
-                                    type="button"
-                                    onClick={() => startEditing(message)}
-                                    className="
+                                  >
+                                    {message.content && (
+                                      <button
+                                        type="button"
+                                        onClick={() => startEditing(message)}
+                                        className="
                                         flex w-full items-center gap-2
                                         rounded-lg px-3 py-2 text-left text-xs
                                         text-neutral-700 transition
                                         hover:bg-neutral-100
                                         dark:text-neutral-200 dark:hover:bg-neutral-800
                                       "
-                                  >
-                                    <Pencil size={13} />
-                                    Edit
-                                  </button>
-                                )}
+                                      >
+                                        <Pencil size={13} />
+                                        Edit
+                                      </button>
+                                    )}
 
-                                <button
-                                  type="button"
-                                  disabled={actionLoading}
-                                  onClick={() => openDeleteModal(message.id)}
-                                  className="
+                                    <button
+                                      type="button"
+                                      disabled={actionLoading}
+                                      onClick={() =>
+                                        openDeleteModal(message.id)
+                                      }
+                                      className="
                                       flex w-full items-center gap-2
                                       rounded-lg px-3 py-2 text-left text-xs
                                       text-red-500 transition
                                       hover:bg-red-50 disabled:opacity-50
                                       dark:hover:bg-red-950/40
                                     "
-                                >
-                                  <Trash2 size={13} />
-                                  Delete
-                                </button>
+                                    >
+                                      <Trash2 size={13} />
+                                      Delete
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
-                        )}
-                      </div>
 
-                      {/* =================================================
+                          {/* =================================================
                           MESSAGE CONTENT
                       ================================================= */}
 
-                      {isEditing ? (
-                        <div className="px-3.5 pb-3 pt-2">
-                          <textarea
-                            value={editingText}
-                            onChange={(event) =>
-                              setEditingText(event.target.value)
-                            }
-                            autoFocus
-                            rows={3}
-                            maxLength={5000}
-                            className="
+                          {isEditing ? (
+                            <div className="px-3.5 pb-3 pt-2">
+                              <textarea
+                                value={editingText}
+                                onChange={(event) =>
+                                  setEditingText(event.target.value)
+                                }
+                                autoFocus
+                                rows={3}
+                                maxLength={5000}
+                                className="
                               w-full resize-none rounded-xl border
                               border-white/20 bg-white/10 px-3 py-2.5
                               text-sm leading-5 text-white outline-none
                               placeholder:text-white/40 focus:border-white/40
                             "
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter" && !event.shiftKey) {
-                                event.preventDefault();
-                                void saveEditedMessage();
-                              }
+                                onKeyDown={(event) => {
+                                  if (
+                                    event.key === "Enter" &&
+                                    !event.shiftKey
+                                  ) {
+                                    event.preventDefault();
+                                    void saveEditedMessage();
+                                  }
 
-                              if (event.key === "Escape") {
-                                cancelEdit();
-                              }
-                            }}
-                          />
+                                  if (event.key === "Escape") {
+                                    cancelEdit();
+                                  }
+                                }}
+                              />
 
-                          <div className="mt-2 flex items-center justify-end gap-1.5">
-                            <button
-                              type="button"
-                              onClick={cancelEdit}
-                              disabled={actionLoading}
-                              className="
+                              <div className="mt-2 flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={cancelEdit}
+                                  disabled={actionLoading}
+                                  className="
                                 rounded-lg px-2.5 py-1.5 text-[10px]
                                 font-medium text-white/65 transition
                                 hover:bg-white/10 hover:text-white
                               "
-                            >
-                              Cancel
-                            </button>
+                                >
+                                  Cancel
+                                </button>
 
-                            <button
-                              type="button"
-                              onClick={() => void saveEditedMessage()}
-                              disabled={actionLoading || !editingText.trim()}
-                              className="
+                                <button
+                                  type="button"
+                                  onClick={() => void saveEditedMessage()}
+                                  disabled={
+                                    actionLoading || !editingText.trim()
+                                  }
+                                  className="
                                 flex items-center gap-1.5 rounded-lg bg-white
                                 px-2.5 py-1.5 text-[10px] font-semibold
                                 text-violet-700 transition hover:bg-white/90
                                 disabled:cursor-not-allowed disabled:opacity-50
                               "
-                            >
-                              <Check size={12} />
-                              {actionLoading ? "Saving..." : "Save"}
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          {message.content && (
-                            <p
-                              className={`
+                                >
+                                  <Check size={12} />
+                                  {actionLoading ? "Saving..." : "Save"}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              {message.content && (
+                                <p
+                                  className={`
                                 px-3.5 pb-3 pt-2 whitespace-pre-wrap
                                 break-words text-[14px] leading-[1.4]
                                 ${
@@ -1293,46 +1529,50 @@ const VibePage = () => {
                                     : "text-neutral-800 dark:text-neutral-100"
                                 }
                               `}
-                            >
-                              {message.content}
-                            </p>
+                                >
+                                  {message.content}
+                                </p>
+                              )}
+
+                              <div
+                                className={message.mediaUrl ? "px-2 pb-2" : ""}
+                              >
+                                <VibeMessageMedia
+                                  mediaUrl={message.mediaUrl}
+                                  localMediaUrl={message.localMediaUrl}
+                                  mediaType={message.mediaType}
+                                  pending={message.pending}
+                                  localFileName={message.localFileName}
+                                  onMediaClick={(url, type) => {
+                                    setViewerMedia({
+                                      url,
+                                      type,
+                                    });
+                                  }}
+                                />
+                              </div>
+                            </>
                           )}
 
-                          <div className={message.mediaUrl ? "px-2 pb-2" : ""}>
-                            <VibeMessageMedia
-                              mediaUrl={message.mediaUrl}
-                              localMediaUrl={message.localMediaUrl}
-                              mediaType={message.mediaType}
-                              pending={message.pending}
-                              localFileName={message.localFileName}
-                              onMediaClick={(url, type) => {
-                                setViewerMedia({
-                                  url,
-                                  type,
-                                });
-                              }}
-                            />
-                          </div>
-                        </>
-                      )}
-
-                      {message.pending && (
-                        <div
-                          className={`
+                          {message.pending && (
+                            <div
+                              className={`
                             px-3.5 pb-2.5 text-[9px]
                             ${mine ? "text-white/50" : "text-neutral-400"}
                           `}
-                        >
-                          Sending...
+                            >
+                              Sending...
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                      </div>
+                    );
+                  })}
 
-              <div ref={messagesEndRef} />
-            </div>
+                  <div ref={messagesEndRef} />
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>
@@ -1401,27 +1641,29 @@ const VibePage = () => {
           COMPOSER
       ===================================================== */}
 
-      <VibeComposer
-        text={text}
-        setText={setText}
-        selectedFile={selectedFile}
-        selectedMediaType={selectedMediaType}
-        previewUrl={previewUrl}
-        onFileSelect={handleFileSelect}
-        onRemoveMedia={removeSelectedMedia}
-        onSend={handleSubmit}
-        onGifSelect={(url) => {
-          if (previewUrl?.startsWith("blob:")) {
-            URL.revokeObjectURL(previewUrl);
-          }
+      {isMember && (
+        <VibeComposer
+          text={text}
+          setText={setText}
+          selectedFile={selectedFile}
+          selectedMediaType={selectedMediaType}
+          previewUrl={previewUrl}
+          onFileSelect={handleFileSelect}
+          onRemoveMedia={removeSelectedMedia}
+          onSend={handleSubmit}
+          onGifSelect={(url) => {
+            if (previewUrl?.startsWith("blob:")) {
+              URL.revokeObjectURL(previewUrl);
+            }
 
-          setSelectedFile(null);
-          setSelectedMediaType("GIF");
-          setPreviewUrl(url);
-          setError(null);
-        }}
-        canSend={canSend}
-      />
+            setSelectedFile(null);
+            setSelectedMediaType("GIF");
+            setPreviewUrl(url);
+            setError(null);
+          }}
+          canSend={canSend}
+        />
+      )}
 
       {/* =====================================================
           DELETE CONFIRMATION
@@ -1437,6 +1679,18 @@ const VibePage = () => {
         loadingText="Deleting..."
         onConfirm={() => void handleDeleteMessage()}
         onCancel={closeDeleteModal}
+      />
+
+      <ConfirmModal
+        open={leaveConfirmOpen}
+        title="Leave Vibe?"
+        message="Are you sure you want to leave Vibe? You won't receive new messages or notifications from this space until you join again."
+        confirmText="Leave Vibe"
+        cancelText="Stay"
+        loading={leaving}
+        loadingText="Leaving..."
+        onConfirm={() => void handleLeaveVibe()}
+        onCancel={closeLeaveConfirm}
       />
 
       {/* =====================================================

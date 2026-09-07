@@ -8,6 +8,7 @@ interface UseVibeSocketOptions {
   token: string | null;
   onMessage: (message: VibeMessage) => void;
   onDelete?: (messageId: number) => void;
+  onRefresh?: () => void;
 }
 
 const API_URL =
@@ -17,6 +18,7 @@ export const useVibeSocket = ({
   token,
   onMessage,
   onDelete,
+  onRefresh,
 }: UseVibeSocketOptions) => {
   const clientRef = useRef<Client | null>(null);
 
@@ -28,6 +30,7 @@ export const useVibeSocket = ({
    */
   const onMessageRef = useRef(onMessage);
   const onDeleteRef = useRef(onDelete);
+  const onRefreshRef = useRef(onRefresh);
 
   useEffect(() => {
     onMessageRef.current = onMessage;
@@ -36,6 +39,10 @@ export const useVibeSocket = ({
   useEffect(() => {
     onDeleteRef.current = onDelete;
   }, [onDelete]);
+
+  useEffect(() => {
+    onRefreshRef.current = onRefresh;
+  }, [onRefresh]);
 
   const disconnect = useCallback(async () => {
     const client = clientRef.current;
@@ -169,6 +176,20 @@ export const useVibeSocket = ({
           } catch (error) {
             console.error(
               "Failed to parse deleted Vibe message:",
+              error,
+              message.body,
+            );
+          }
+        });
+
+        client.subscribe("/topic/vibe-refresh", (message: IMessage) => {
+          try {
+            console.log("Vibe WebSocket REFRESH RECEIVED:", message.body);
+
+            onRefreshRef.current?.();
+          } catch (error) {
+            console.error(
+              "Failed to handle Vibe refresh event:",
               error,
               message.body,
             );
