@@ -57,4 +57,38 @@ public class VibeMessageController {
                 )
         );
     }
+
+    @PutMapping("/messages/{messageId}")
+    public ResponseEntity<VibeMessageResponse> editMessage(
+            @PathVariable Long messageId,
+            @RequestBody VibeMessageRequest request,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+
+        String clerkId = jwt.getSubject();
+
+        return ResponseEntity.ok(
+                vibeMessageService.editMessage(
+                        clerkId,
+                        messageId,
+                        request
+                )
+        );
+    }
+
+    @DeleteMapping("/messages/{messageId}")
+    public ResponseEntity<Void> deleteMessage(
+            @PathVariable Long messageId,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+
+        String clerkId = jwt.getSubject();
+
+        vibeMessageService.deleteMessage(
+                clerkId,
+                messageId
+        );
+
+        return ResponseEntity.noContent().build();
+    }
 }

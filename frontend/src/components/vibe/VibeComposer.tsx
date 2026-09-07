@@ -1,10 +1,18 @@
-import { FileText, Image as ImageIcon, Send, Smile, X } from "lucide-react";
+import {
+  FileText,
+  Image as ImageIcon,
+  Paperclip,
+  Send,
+  Smile,
+  Sticker,
+  X,
+} from "lucide-react";
 
 import { useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
 
 import EmojiPicker, { Theme, type EmojiClickData } from "emoji-picker-react";
 
-import type { VibeMediaType } from "../../api/vibe";
+import type { VibeMediaType } from "../../api/vibeApi";
 import VibeGifPicker from "./VibeGifPicker";
 
 interface VibeComposerProps {
@@ -23,6 +31,8 @@ interface VibeComposerProps {
 
   onGifSelect: (url: string) => void;
 
+  onStickerSelect?: (url: string) => void;
+
   canSend: boolean;
 }
 
@@ -36,13 +46,57 @@ const VibeComposer = ({
   onRemoveMedia,
   onSend,
   onGifSelect,
+  onStickerSelect,
   canSend,
 }: VibeComposerProps) => {
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const pdfInputRef = useRef<HTMLInputElement | null>(null);
+  const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const [gifPickerOpen, setGifPickerOpen] = useState(false);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const [stickerPickerOpen, setStickerPickerOpen] = useState(false);
+  const [stickerCategory, setStickerCategory] = useState("All");
+
+  /*
+   * UniVibe stickers.
+   *
+   * Add your WebP/PNG sticker files to:
+   * public/stickers/
+   *
+   * Example:
+   * public/stickers/happy.webp
+   */
+  const stickerCategories = {
+    All: [
+      "/stickers/happy.webp",
+      "/stickers/laughing.webp",
+      "/stickers/love.webp",
+      "/stickers/celebrate.webp",
+      "/stickers/coding.webp",
+      "/stickers/exam.webp",
+      "/stickers/study.webp",
+      "/stickers/sad.webp",
+    ],
+    Reactions: [
+      "/stickers/happy.webp",
+      "/stickers/laughing.webp",
+      "/stickers/love.webp",
+      "/stickers/sad.webp",
+    ],
+    College: [
+      "/stickers/celebrate.webp",
+      "/stickers/exam.webp",
+      "/stickers/study.webp",
+    ],
+    Coding: ["/stickers/coding.webp"],
+  } as const;
+
+  const stickerCategoryNames = Object.keys(stickerCategories);
+
+  const visibleStickers =
+    stickerCategories[stickerCategory as keyof typeof stickerCategories] ??
+    stickerCategories.All;
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -72,7 +126,42 @@ const VibeComposer = ({
   };
 
   const handleEmojiClick = (emojiData: EmojiClickData) => {
-    setText(`${text}${emojiData.emoji}`);
+    const textarea = textAreaRef.current;
+
+    if (!textarea) {
+      setText(`${text}${emojiData.emoji}`);
+      return;
+    }
+
+    const start = textarea.selectionStart ?? text.length;
+    const end = textarea.selectionEnd ?? text.length;
+
+    const nextText = text.slice(0, start) + emojiData.emoji + text.slice(end);
+
+    setText(nextText);
+
+    requestAnimationFrame(() => {
+      const cursorPosition = start + emojiData.emoji.length;
+      textarea.focus();
+      textarea.setSelectionRange(cursorPosition, cursorPosition);
+    });
+  };
+
+  const handleEmojiButtonClick = () => {
+    setStickerPickerOpen(false);
+    setGifPickerOpen(false);
+    setEmojiPickerOpen((current) => !current);
+  };
+
+  const handleStickerButtonClick = () => {
+    setEmojiPickerOpen(false);
+    setGifPickerOpen(false);
+    setStickerPickerOpen((current) => !current);
+  };
+
+  const handleStickerSelect = (url: string) => {
+    setStickerPickerOpen(false);
+    onStickerSelect?.(url);
   };
 
   return (
@@ -89,6 +178,9 @@ const VibeComposer = ({
           backdrop-blur-xl
           dark:border-neutral-800/70
           dark:bg-black/95
+          max-md:border-t-0
+          max-md:bg-transparent
+          max-md:backdrop-blur-none
         "
       >
         <div
@@ -98,7 +190,9 @@ const VibeComposer = ({
             max-w-2xl
             px-2
             pt-2
+            pb-1
             sm:px-3
+            md:pb-0
           "
         >
           {/* =================================================
@@ -221,57 +315,205 @@ const VibeComposer = ({
               dark:bg-neutral-900
               dark:focus-within:border-purple-700
               dark:focus-within:bg-neutral-900
+              max-md:rounded-full
+              max-md:border-neutral-200/80
+              max-md:bg-white
+              max-md:shadow-lg
+              max-md:dark:border-neutral-700
+              max-md:dark:bg-neutral-900
             "
           >
             {/* =================================================
-                EMOJI PICKER
+                DESKTOP-ONLY EMOJI / STICKER PICKERS
             ================================================= */}
+
+            {stickerPickerOpen && (
+              <div
+                className="
+            hidden
+            md:block
+            absolute
+            bottom-full
+            left-0
+            z-[99999]
+            mb-3
+            w-[350px]
+            max-w-[calc(100vw-24px)]
+            overflow-hidden
+            rounded-2xl
+            border
+            border-neutral-200
+            bg-white
+            shadow-2xl
+            dark:border-neutral-800
+            dark:bg-neutral-900
+          "
+              >
+                <div className="flex items-center justify-between border-b border-neutral-200 px-3 py-2.5 dark:border-neutral-800">
+                  <div className="flex items-center gap-2">
+                    <Sticker
+                      size={18}
+                      className="text-purple-600 dark:text-purple-400"
+                    />
+                    <span className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">
+                      Stickers
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setStickerPickerOpen(false)}
+                    aria-label="Close sticker picker"
+                    className="
+                flex h-7 w-7 items-center justify-center rounded-full
+                text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700
+                dark:hover:bg-neutral-800 dark:hover:text-neutral-200
+              "
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+
+                <div className="flex gap-1 overflow-x-auto border-b border-neutral-200 px-2 py-2 dark:border-neutral-800">
+                  {stickerCategoryNames.map((category) => {
+                    const active = stickerCategory === category;
+
+                    return (
+                      <button
+                        key={category}
+                        type="button"
+                        onClick={() => setStickerCategory(category)}
+                        className={`
+                    shrink-0 rounded-full px-3 py-1.5 text-[11px] font-medium transition
+                    ${
+                      active
+                        ? "bg-purple-600 text-white"
+                        : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                    }
+                  `}
+                      >
+                        {category}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="grid max-h-[300px] grid-cols-4 gap-2 overflow-y-auto p-3">
+                  {visibleStickers.map((url) => (
+                    <button
+                      key={url}
+                      type="button"
+                      onClick={() => handleStickerSelect(url)}
+                      className="
+                  flex aspect-square items-center justify-center rounded-xl
+                  p-1 transition hover:bg-neutral-100 hover:scale-105
+                  active:scale-95 dark:hover:bg-neutral-800
+                "
+                      aria-label="Send sticker"
+                    >
+                      <img
+                        src={url}
+                        alt="Sticker"
+                        className="h-full w-full object-contain"
+                        draggable={false}
+                      />
+                    </button>
+                  ))}
+                </div>
+
+                <div className="border-t border-neutral-200 px-3 py-2 text-center dark:border-neutral-800">
+                  <span className="text-[10px] text-neutral-400">
+                    Tap a sticker to send
+                  </span>
+                </div>
+              </div>
+            )}
 
             {emojiPickerOpen && (
               <div
                 className="
-    absolute
-    bottom-[calc(100%+8px)]
-    left-0
-    z-[60]
-    max-w-[calc(100vw-16px)]
-    overflow-hidden
-    rounded-2xl
-    border
-    border-neutral-200
-    shadow-xl
-    dark:border-neutral-800
-  "
+                  hidden
+                  md:block
+                  absolute
+                  bottom-full
+                  left-0
+                  mb-3
+                  z-[99999]
+                  overflow-hidden
+                  rounded-2xl
+                  border
+                  border-neutral-200
+                  bg-white
+                  shadow-2xl
+                  dark:border-neutral-800
+                  dark:bg-neutral-900
+                "
               >
-                <EmojiPicker
-                  onEmojiClick={handleEmojiClick}
-                  theme={Theme.AUTO}
-                  width="min(350px, calc(100vw - 16px))"
-                  height={400}
-                  searchDisabled={false}
-                  skinTonesDisabled={false}
-                  previewConfig={{
-                    showPreview: false,
-                  }}
-                />
+                <div className="w-[350px] max-w-[calc(100vw-24px)]">
+                  <EmojiPicker
+                    onEmojiClick={handleEmojiClick}
+                    theme={Theme.AUTO}
+                    width={350}
+                    height={400}
+                    searchDisabled={false}
+                    skinTonesDisabled={false}
+                    previewConfig={{
+                      showPreview: false,
+                    }}
+                  />
+                </div>
               </div>
             )}
 
+            {/* On mobile, keep the native OS keyboard in control. The custom
+                emoji/sticker/GIF controls below are desktop-only. */}
+
             {/* =================================================
-                TEXT ROW
+                RESPONSIVE MESSAGE ROW
+                Mobile: Telegram-style single pill.
+                Desktop: emoji/sticker controls + textarea.
             ================================================= */}
 
-            <div className="flex min-w-0 items-end px-1.5 pt-1.5">
+            <div className="flex min-w-0 items-end px-1.5 py-1.5">
+              {/* MOBILE ATTACHMENT */}
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={onFileSelect}
+              />
+
               <button
                 type="button"
-                onClick={() => {
-                  setEmojiPickerOpen((current) => !current);
-                }}
+                onClick={() => imageInputRef.current?.click()}
+                aria-label="Attach image"
+                className="
+                  flex
+                  h-10
+                  w-10
+                  shrink-0
+                  items-center
+                  justify-center
+                  rounded-full
+                  text-neutral-500
+                  transition
+                  active:scale-90
+                  md:hidden
+                "
+              >
+                <Paperclip size={23} strokeWidth={1.9} />
+              </button>
+
+              {/* DESKTOP EMOJI */}
+              <button
+                type="button"
+                onClick={handleEmojiButtonClick}
                 aria-label="Open emoji picker"
                 aria-expanded={emojiPickerOpen}
                 className={`
                   mb-0.5
-                  flex
+                  hidden
                   h-9
                   w-9
                   shrink-0
@@ -280,34 +522,53 @@ const VibeComposer = ({
                   rounded-full
                   transition
                   active:scale-95
+                  md:flex
                   ${
                     emojiPickerOpen
-                      ? `
-                        bg-purple-100
-                        text-purple-600
-                        dark:bg-purple-950
-                        dark:text-purple-400
-                      `
-                      : `
-                        text-neutral-500
-                        hover:bg-neutral-200
-                        hover:text-neutral-700
-                        dark:hover:bg-neutral-800
-                        dark:hover:text-neutral-200
-                      `
+                      ? "bg-purple-100 text-purple-600 dark:bg-purple-950 dark:text-purple-400"
+                      : "text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
                   }
                 `}
               >
                 <Smile size={21} strokeWidth={1.8} />
               </button>
 
+              {/* DESKTOP STICKER */}
+              <button
+                type="button"
+                onClick={handleStickerButtonClick}
+                aria-label="Open sticker picker"
+                aria-expanded={stickerPickerOpen}
+                className={`
+                  mb-0.5
+                  hidden
+                  h-9
+                  w-9
+                  shrink-0
+                  items-center
+                  justify-center
+                  rounded-full
+                  transition
+                  active:scale-95
+                  md:flex
+                  ${
+                    stickerPickerOpen
+                      ? "bg-purple-100 text-purple-600 dark:bg-purple-950 dark:text-purple-400"
+                      : "text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                  }
+                `}
+              >
+                <Sticker size={20} strokeWidth={1.8} />
+              </button>
+
               <textarea
+                ref={textAreaRef}
                 value={text}
                 onChange={(event) => setText(event.target.value)}
                 onKeyDown={handleKeyDown}
                 rows={1}
                 maxLength={5000}
-                placeholder="Say something anonymously..."
+                placeholder="Message"
                 className="
                   min-h-10
                   max-h-28
@@ -326,35 +587,59 @@ const VibeComposer = ({
                   focus:ring-0
                   dark:text-white
                   dark:placeholder:text-neutral-500
+                  max-md:min-h-10
+                  max-md:px-1
+                  max-md:py-2.5
+                  max-md:text-[16px]
                 "
               />
+
+              {/* MOBILE SEND */}
+              <button
+                type="button"
+                onClick={onSend}
+                disabled={!canSend}
+                aria-label="Send message"
+                className={`
+                  flex
+                  h-10
+                  w-10
+                  shrink-0
+                  items-center
+                  justify-center
+                  rounded-full
+                  text-white
+                  transition-all
+                  active:scale-90
+                  md:hidden
+                  ${
+                    canSend
+                      ? "bg-purple-600 shadow-md shadow-purple-600/20 hover:bg-purple-500"
+                      : "bg-neutral-300 dark:bg-neutral-800"
+                  }
+                `}
+              >
+                <Send size={18} strokeWidth={2.2} />
+              </button>
             </div>
 
             {/* =================================================
-                TOOLBAR
+                DESKTOP TOOLBAR
             ================================================= */}
 
             <div
               className="
-                flex
+                hidden
                 items-center
                 justify-between
                 px-2
                 pb-1.5
                 pt-0.5
+                md:flex
               "
             >
               <div className="flex items-center">
                 {/* IMAGE */}
-
-                <input
-                  ref={imageInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={onFileSelect}
-                />
-
                 <button
                   type="button"
                   onClick={() => imageInputRef.current?.click()}
@@ -379,7 +664,6 @@ const VibeComposer = ({
                 </button>
 
                 {/* PDF */}
-
                 <input
                   ref={pdfInputRef}
                   type="file"
@@ -412,7 +696,6 @@ const VibeComposer = ({
                 </button>
 
                 {/* GIF */}
-
                 <button
                   type="button"
                   onClick={() => setGifPickerOpen(true)}
@@ -439,8 +722,7 @@ const VibeComposer = ({
                 </button>
               </div>
 
-              {/* SEND */}
-
+              {/* DESKTOP SEND */}
               <button
                 type="button"
                 onClick={onSend}
@@ -459,17 +741,8 @@ const VibeComposer = ({
                   active:scale-90
                   ${
                     canSend
-                      ? `
-                        bg-purple-600
-                        shadow-md
-                        shadow-purple-600/20
-                        hover:bg-purple-500
-                      `
-                      : `
-                        bg-neutral-300
-                        shadow-none
-                        dark:bg-neutral-800
-                      `
+                      ? "bg-purple-600 shadow-md shadow-purple-600/20 hover:bg-purple-500"
+                      : "bg-neutral-300 shadow-none dark:bg-neutral-800"
                   }
                 `}
               >
@@ -478,7 +751,7 @@ const VibeComposer = ({
             </div>
           </div>
 
-          <div className="mt-4" />
+          <div className="mt-1 md:mt-4" />
         </div>
       </div>
 

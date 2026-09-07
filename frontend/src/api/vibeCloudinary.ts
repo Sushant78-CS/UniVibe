@@ -4,7 +4,7 @@ const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
-export type VibeMediaType = "IMAGE" | "GIF" | "PDF";
+export type VibeMediaType = "IMAGE" | "GIF" | "STICKER" | "PDF";
 
 export interface VibeUploadResult {
   secure_url: string;

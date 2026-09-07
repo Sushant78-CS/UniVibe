@@ -159,6 +159,148 @@ public class VibeMessageService {
     }
 
     // =========================================================
+// EDIT MESSAGE
+// =========================================================
+
+    @Transactional
+    public VibeMessageResponse editMessage(
+            String clerkId,
+            Long messageId,
+            VibeMessageRequest request
+    ) {
+
+        Users currentUser =
+                userRepository.findByClerkId(clerkId)
+                        .orElseThrow(
+                                () -> new RuntimeException(
+                                        "User not found"
+                                )
+                        );
+
+        VibeMessage message =
+                vibeMessageRepository.findById(messageId)
+                        .orElseThrow(
+                                () -> new RuntimeException(
+                                        "Vibe message not found"
+                                )
+                        );
+
+        // Only the creator can edit the message
+        if (
+                !message.getSender()
+                        .getId()
+                        .equals(currentUser.getId())
+        ) {
+            throw new RuntimeException(
+                    "You can only edit your own messages"
+            );
+        }
+
+        String content =
+                normalize(
+                        request.content()
+                );
+
+        // For now, editing means editing the text.
+        // Existing media remains unchanged.
+        if (content == null || content.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Message content cannot be empty"
+            );
+        }
+
+        if (content.length() > 5000) {
+            throw new IllegalArgumentException(
+                    "Message is too long"
+            );
+        }
+
+        message.setContent(content);
+
+        VibeMessage saved =
+                vibeMessageRepository.save(message);
+
+        /*
+         * Broadcast the updated message.
+         *
+         * mine must NOT be included here because
+         * WebSocket is received by everyone.
+         */
+        VibeMessageResponse websocketResponse =
+                toResponse(
+                        saved,
+                        false
+                );
+
+        messagingTemplate.convertAndSend(
+                "/topic/vibe",
+                websocketResponse
+        );
+
+        // REST response is specifically for the editor
+        return toResponse(
+                saved,
+                true
+        );
+    }
+
+
+// =========================================================
+// DELETE MESSAGE
+// =========================================================
+
+    @Transactional
+    public void deleteMessage(
+            String clerkId,
+            Long messageId
+    ) {
+
+        Users currentUser =
+                userRepository.findByClerkId(clerkId)
+                        .orElseThrow(
+                                () -> new RuntimeException(
+                                        "User not found"
+                                )
+                        );
+
+        VibeMessage message =
+                vibeMessageRepository.findById(messageId)
+                        .orElseThrow(
+                                () -> new RuntimeException(
+                                        "Vibe message not found"
+                                )
+                        );
+
+        // Only the creator can delete the message
+        if (
+                !message.getSender()
+                        .getId()
+                        .equals(currentUser.getId())
+        ) {
+            throw new RuntimeException(
+                    "You can only delete your own messages"
+            );
+        }
+
+        Long deletedMessageId =
+                message.getId();
+
+        vibeMessageRepository.delete(message);
+
+        /*
+         * Tell every connected Vibe user that this
+         * message has been deleted.
+         *
+         * We don't send VibeMessageResponse here because
+         * the message no longer exists.
+         */
+        messagingTemplate.convertAndSend(
+                "/topic/vibe-delete",
+                deletedMessageId
+        );
+    }
+
+    // =========================================================
     // NOTIFICATIONS
     // =========================================================
 

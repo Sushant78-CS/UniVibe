@@ -1,6 +1,5 @@
 import { FileText } from "lucide-react";
-
-import type { VibeMediaType } from "../../api/vibe";
+import type { VibeMediaType } from "../../api/vibeApi";
 
 interface VibeMessageMediaProps {
   mediaUrl: string | null;
@@ -8,7 +7,6 @@ interface VibeMessageMediaProps {
   mediaType: VibeMediaType | null;
   pending?: boolean;
   localFileName?: string | null;
-
   onMediaClick?: (url: string, type: "IMAGE" | "GIF") => void;
 }
 
@@ -20,15 +18,21 @@ const VibeMessageMedia = ({
   localFileName,
   onMediaClick,
 }: VibeMessageMediaProps) => {
+  /*
+   * Nothing to render.
+   */
   if (!mediaUrl && !localMediaUrl && mediaType !== "PDF") {
     return null;
   }
 
   const displayUrl = localMediaUrl || mediaUrl;
 
-  {
-    /* IMAGE */
-  }
+  /*
+   * =========================================================
+   * IMAGE
+   * =========================================================
+   */
+
   if (mediaType === "IMAGE") {
     if (!displayUrl) {
       return null;
@@ -64,9 +68,12 @@ const VibeMessageMedia = ({
     );
   }
 
-  {
-    /* GIF */
-  }
+  /*
+   * =========================================================
+   * GIF
+   * =========================================================
+   */
+
   if (mediaType === "GIF") {
     if (!displayUrl) {
       return null;
@@ -102,10 +109,50 @@ const VibeMessageMedia = ({
     );
   }
 
-  {
-    /* PDF */
+  /*
+   * =========================================================
+   * STICKER
+   * =========================================================
+   *
+   * Stickers are displayed directly inside the message.
+   * They do not open the media viewer.
+   */
+
+  if (mediaType === "STICKER") {
+    if (!displayUrl) {
+      return null;
+    }
+
+    return (
+      <div className="mt-2 flex items-center justify-start">
+        <img
+          src={displayUrl}
+          alt="Anonymous shared sticker"
+          className="
+            h-32
+            w-32
+            object-contain
+            sm:h-36
+            sm:w-36
+            select-none
+          "
+          draggable={false}
+        />
+      </div>
+    );
   }
+
+  /*
+   * =========================================================
+   * PDF
+   * =========================================================
+   */
+
   if (mediaType === "PDF") {
+    /*
+     * Optimistic PDF message while uploading.
+     */
+
     if (pending && !mediaUrl) {
       return (
         <div
@@ -168,6 +215,10 @@ const VibeMessageMedia = ({
         </div>
       );
     }
+
+    /*
+     * Uploaded PDF.
+     */
 
     if (!mediaUrl) {
       return null;
