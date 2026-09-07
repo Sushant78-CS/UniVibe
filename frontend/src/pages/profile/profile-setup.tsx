@@ -8,6 +8,7 @@ import ProfileHeader from "../../components/profile-setup/ProfileHeader";
 import ProfilePhoto from "../../components/profile-setup/ProfilePhoto";
 import ProfileInput from "../../components/profile-setup/ProfileInput";
 import { useProfileApi } from "../../api/profileApi";
+import { compressImage } from "../../services/compressImage";
 
 interface Profile {
   id: number;
@@ -26,11 +27,9 @@ function ProfileSetupPage() {
   const navigate = useNavigate();
   const { userId } = useAuth();
   const queryClient = useQueryClient();
-
   const { createProfile } = useProfileApi();
 
   const [profileImage, setProfileImage] = useState<string | null>(null);
-
   const [profileFile, setProfileFile] = useState<File | null>(null);
 
   const [form, setForm] = useState({
@@ -39,7 +38,7 @@ function ProfileSetupPage() {
   });
 
   const [loading, setLoading] = useState(false);
-
+  const [compressing, setCompressing] = useState(false);
   const [error, setError] = useState("");
 
   // ==========================================
@@ -51,6 +50,42 @@ function ProfileSetupPage() {
       ...prev,
       [key]: value,
     }));
+  };
+
+  // ==========================================
+  // HANDLE PROFILE IMAGE
+  // ==========================================
+
+  const handleProfileFileChange = async (file: File | null) => {
+    if (!file) {
+      setProfileFile(null);
+      return;
+    }
+
+    // Only allow images
+    if (!file.type.startsWith("image/")) {
+      setError("Please select a valid image file.");
+      return;
+    }
+
+    try {
+      setError("");
+      setCompressing(true);
+
+      // No original file-size restriction.
+      // Compress the image before storing/uploading it.
+      const compressedFile = await compressImage(file);
+
+      setProfileFile(compressedFile);
+    } catch (error) {
+      console.error("Failed to compress profile image:", error);
+
+      setError("Failed to process the image. Please try another image.");
+
+      setProfileFile(null);
+    } finally {
+      setCompressing(false);
+    }
   };
 
   // ==========================================
@@ -67,6 +102,11 @@ function ProfileSetupPage() {
 
     if (!form.username.trim()) {
       setError("Please choose a username.");
+      return;
+    }
+
+    if (compressing) {
+      setError("Please wait for the image to finish processing.");
       return;
     }
 
@@ -125,6 +165,10 @@ function ProfileSetupPage() {
     }
   };
 
+  // ==========================================
+  // RENDER
+  // ==========================================
+
   return (
     <div
       className="
@@ -137,9 +181,9 @@ function ProfileSetupPage() {
         dark:text-white
       "
     >
-      {/* ====================================== */}
-      {/* HEADER */}
-      {/* ====================================== */}
+      {/* ======================================
+          HEADER
+      ====================================== */}
 
       <header
         className="
@@ -157,9 +201,9 @@ function ProfileSetupPage() {
         </div>
       </header>
 
-      {/* ====================================== */}
-      {/* MAIN */}
-      {/* ====================================== */}
+      {/* ======================================
+          MAIN
+      ====================================== */}
 
       <main
         className="
@@ -201,9 +245,9 @@ function ProfileSetupPage() {
             </p>
           </div>
 
-          {/* ================================== */}
-          {/* FORM */}
-          {/* ================================== */}
+          {/* ==================================
+              FORM
+          ================================== */}
 
           <form
             onSubmit={handleSubmit}
@@ -224,12 +268,42 @@ function ProfileSetupPage() {
             <ProfilePhoto
               image={profileImage}
               onChange={setProfileImage}
-              onFileChange={setProfileFile}
+              onFileChange={handleProfileFileChange}
             />
 
-            {/* ================================= */}
-            {/* INPUTS */}
-            {/* ================================= */}
+            {/* IMAGE PROCESSING STATUS */}
+
+            {compressing && (
+              <div
+                className="
+                  mt-3
+                  flex
+                  items-center
+                  justify-center
+                  gap-2
+                  text-xs
+                  text-slate-500
+                  dark:text-neutral-400
+                "
+              >
+                <span
+                  className="
+                    h-3.5
+                    w-3.5
+                    animate-spin
+                    rounded-full
+                    border-2
+                    border-slate-300
+                    border-t-violet-600
+                  "
+                />
+                Processing image...
+              </div>
+            )}
+
+            {/* =================================
+                INPUTS
+            ================================= */}
 
             <div className="mt-7 space-y-5">
               <ProfileInput
@@ -247,9 +321,9 @@ function ProfileSetupPage() {
               />
             </div>
 
-            {/* ================================= */}
-            {/* ERROR */}
-            {/* ================================= */}
+            {/* =================================
+                ERROR
+            ================================= */}
 
             {error && (
               <div
@@ -272,13 +346,13 @@ function ProfileSetupPage() {
               </div>
             )}
 
-            {/* ================================= */}
-            {/* SUBMIT */}
-            {/* ================================= */}
+            {/* =================================
+                SUBMIT
+            ================================= */}
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || compressing}
               className="
                 mt-6
                 flex
@@ -315,6 +389,8 @@ function ProfileSetupPage() {
                   />
                   Setting up...
                 </>
+              ) : compressing ? (
+                "Processing image..."
               ) : (
                 "Continue to UniVibe"
               )}

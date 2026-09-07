@@ -22,6 +22,7 @@ const EditProfile = () => {
     interests: "",
     // profileImage: "",
   });
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -74,13 +75,9 @@ const EditProfile = () => {
       return;
     }
 
-    // Keep the original 5 MB input limit
-    if (file.size > 5 * 1024 * 1024) {
-      alert("Image must be smaller than 5 MB.");
-      return;
-    }
-
     try {
+      // Automatically compress the image before uploading.
+      // No original file-size restriction is applied.
       const compressedFile = await compressImage(file);
 
       setSelectedImage(compressedFile);
@@ -253,27 +250,27 @@ const EditProfile = () => {
                   src={previewImage}
                   alt="Profile preview"
                   className="
-          h-32 w-32
-          rounded-full
-          border-4
-          border-white
-          object-cover
-          shadow-lg
-          dark:border-slate-800
-        "
+                    h-32 w-32
+                    rounded-full
+                    border-4
+                    border-white
+                    object-cover
+                    shadow-lg
+                    dark:border-slate-800
+                  "
                 />
               ) : (
                 <div
                   className="
-          flex h-32 w-32
-          items-center justify-center
-          rounded-full
-          bg-violet-100
-          text-4xl font-bold
-          text-violet-600
-          dark:bg-violet-500/10
-          dark:text-violet-400
-        "
+                    flex h-32 w-32
+                    items-center justify-center
+                    rounded-full
+                    bg-violet-100
+                    text-4xl font-bold
+                    text-violet-600
+                    dark:bg-violet-500/10
+                    dark:text-violet-400
+                  "
                 >
                   {form.fullName ? form.fullName.charAt(0).toUpperCase() : "U"}
                 </div>
@@ -305,20 +302,20 @@ const EditProfile = () => {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="
-        flex items-center justify-center gap-2
-        rounded-xl
-        border border-slate-200
-        bg-slate-50
-        px-4 py-3
-        text-sm font-semibold
-        text-slate-700
-        transition
-        hover:bg-slate-100
-        dark:border-slate-700
-        dark:bg-slate-950
-        dark:text-slate-200
-        dark:hover:bg-slate-800
-      "
+                  flex items-center justify-center gap-2
+                  rounded-xl
+                  border border-slate-200
+                  bg-slate-50
+                  px-4 py-3
+                  text-sm font-semibold
+                  text-slate-700
+                  transition
+                  hover:bg-slate-100
+                  dark:border-slate-700
+                  dark:bg-slate-950
+                  dark:text-slate-200
+                  dark:hover:bg-slate-800
+                "
               >
                 <ImagePlus size={18} />
                 Select Image
@@ -328,15 +325,15 @@ const EditProfile = () => {
                 type="button"
                 onClick={() => cameraInputRef.current?.click()}
                 className="
-        flex items-center justify-center gap-2
-        rounded-xl
-        bg-violet-600
-        px-4 py-3
-        text-sm font-semibold
-        text-white
-        transition
-        hover:bg-violet-700
-      "
+                  flex items-center justify-center gap-2
+                  rounded-xl
+                  bg-violet-600
+                  px-4 py-3
+                  text-sm font-semibold
+                  text-white
+                  transition
+                  hover:bg-violet-700
+                "
               >
                 <Camera size={18} />
                 Take Photo
@@ -349,13 +346,13 @@ const EditProfile = () => {
                 type="button"
                 onClick={() => setShowConfirmModal(true)}
                 className="
-      mx-auto mt-3
-      flex items-center gap-2
-      text-xs font-semibold
-      text-red-500
-      transition
-      hover:text-red-600
-    "
+                  mx-auto mt-3
+                  flex items-center gap-2
+                  text-xs font-semibold
+                  text-red-500
+                  transition
+                  hover:text-red-600
+                "
               >
                 <Trash2 size={14} />
                 Remove Photo
@@ -363,7 +360,7 @@ const EditProfile = () => {
             )}
 
             <p className="mt-3 text-center text-xs text-slate-400">
-              JPG, PNG or WEBP • Maximum 5 MB
+              JPG, PNG or WEBP • Image will be automatically compressed
             </p>
           </div>
 
@@ -414,7 +411,9 @@ const EditProfile = () => {
 
           {/* Bio */}
           {/* <div>
-            <label className="mb-2 block text-sm font-semibold">Bio</label>
+            <label className="mb-2 block text-sm font-semibold">
+              Bio
+            </label>
 
             <textarea
               name="bio"
@@ -436,7 +435,9 @@ const EditProfile = () => {
 
           {/* College */}
           {/* <div>
-            <label className="mb-2 block text-sm font-semibold">College</label>
+            <label className="mb-2 block text-sm font-semibold">
+              College
+            </label>
 
             <input
               name="college"
@@ -480,7 +481,9 @@ const EditProfile = () => {
 
           {/* Year */}
           {/* <div>
-            <label className="mb-2 block text-sm font-semibold">Year</label>
+            <label className="mb-2 block text-sm font-semibold">
+              Year
+            </label>
 
             <input
               name="year"
@@ -550,6 +553,7 @@ const EditProfile = () => {
             {saving ? "Saving..." : "Save Changes"}
           </button>
         </form>
+
         <ConfirmModal
           open={showConfirmModal}
           loading={saving}

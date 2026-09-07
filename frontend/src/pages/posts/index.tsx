@@ -1,11 +1,10 @@
-import { Plus, RefreshCw, Newspaper } from "lucide-react";
+import { Plus, RefreshCw, Newspaper, ArrowLeft } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "react-router";
 
 import { usePostApi, type Post } from "../../api/postApi";
 import PostCard from "../../components/posts/PostCard";
-import FloatingTabs from "../../components/home/FloatingTabs";
 import EditPostModal from "../../components/posts/EditPostModal";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import { usePublishingStore } from "../../store/publishingStore";
@@ -304,84 +303,127 @@ const Posts = () => {
             PAGE HEADER
             ====================================== */}
 
-        <div
-          className="
-            border-b
-            border-slate-200
-            bg-white
-            px-4
-            py-4
-            dark:border-neutral-800
-            dark:bg-black
-            sm:border
-            sm:rounded-2xl
-            sm:px-5
-            sm:py-4
-            sm:shadow-sm
-            dark:sm:bg-[#111111]
-            dark:sm:shadow-none
-          "
-        >
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <h1
-                className="
-                  text-xl
-                  font-bold
-                  tracking-tight
-                  text-slate-950
-                  dark:text-white
-                "
-              >
-                {isMyPostsPage ? "My Posts" : "Campus Posts"}
-              </h1>
+        {/* ======================================
+    PAGE HEADER
+    ====================================== */}
 
-              <p
+        <header
+          className="
+    sticky
+    top-0
+    z-40
+    border-b
+    border-slate-200
+    bg-white/95
+    backdrop-blur-xl
+    dark:border-neutral-800
+    dark:bg-black/95
+  "
+        >
+          <div
+            className="
+      mx-auto
+      flex
+      w-full
+      max-w-[680px]
+      items-center
+      justify-between
+      px-4
+      py-3.5
+      sm:px-5
+    "
+          >
+            {/* Back + Title */}
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                aria-label="Go back"
                 className="
-                  mt-1
-                  text-xs
-                  leading-5
-                  text-slate-500
-                  dark:text-neutral-500
-                "
+          flex
+          h-9
+          w-9
+          shrink-0
+          items-center
+          justify-center
+          rounded-full
+          border
+          border-slate-200
+          bg-white
+          text-slate-600
+          transition-all
+          hover:bg-slate-100
+          active:scale-95
+          dark:border-neutral-800
+          dark:bg-[#171717]
+          dark:text-neutral-300
+          dark:hover:bg-neutral-800
+        "
               >
-                {isMyPostsPage
-                  ? "View and manage the posts you have shared."
-                  : "Discover what's happening around your campus."}
-              </p>
+                <span className="text-lg leading-none">
+                  <ArrowLeft />
+                </span>
+              </button>
+
+              <div className="min-w-0">
+                <h1
+                  className="
+            truncate
+            text-lg
+            font-bold
+            tracking-tight
+            text-slate-950
+            dark:text-white
+          "
+                >
+                  {isMyPostsPage ? "My Posts" : "Campus Posts"}
+                </h1>
+
+                <p
+                  className="
+            truncate
+            text-xs
+            text-slate-500
+            dark:text-neutral-500
+          "
+                >
+                  {isMyPostsPage
+                    ? "Posts you've shared"
+                    : "What's happening around campus"}
+                </p>
+              </div>
             </div>
 
             {/* Refresh */}
-
             <button
               type="button"
               onClick={handleRefresh}
               disabled={isFetching}
               aria-label="Refresh posts"
               className="
-                flex
-                h-9
-                w-9
-                shrink-0
-                items-center
-                justify-center
-                rounded-full
-                border
-                border-slate-200
-                bg-white
-                text-slate-500
-                transition-all
-                hover:bg-slate-50
-                hover:text-slate-800
-                active:scale-95
-                disabled:cursor-not-allowed
-                disabled:opacity-50
-                dark:border-neutral-800
-                dark:bg-[#171717]
-                dark:text-neutral-400
-                dark:hover:bg-neutral-800
-                dark:hover:text-neutral-200
-              "
+        flex
+        h-9
+        w-9
+        shrink-0
+        items-center
+        justify-center
+        rounded-full
+        border
+        border-slate-200
+        bg-white
+        text-slate-500
+        transition-all
+        hover:bg-slate-50
+        hover:text-slate-800
+        active:scale-95
+        disabled:cursor-not-allowed
+        disabled:opacity-50
+        dark:border-neutral-800
+        dark:bg-[#171717]
+        dark:text-neutral-400
+        dark:hover:bg-neutral-800
+        dark:hover:text-neutral-200
+      "
             >
               <RefreshCw
                 size={16}
@@ -389,7 +431,7 @@ const Posts = () => {
               />
             </button>
           </div>
-        </div>
+        </header>
 
         {/* ======================================
             ERROR
@@ -748,7 +790,7 @@ const Posts = () => {
           BOTTOM NAVIGATION
           ======================================== */}
 
-      <FloatingTabs />
+      {/* <FloatingTabs /> */}
 
       {/* ========================================
           CREATE POST MODAL

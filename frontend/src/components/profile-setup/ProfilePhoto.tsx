@@ -13,29 +13,45 @@ function ProfilePhoto({ image, onChange, onFileChange }: ProfilePhotoProps) {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
 
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
+    // Only allow images
     if (!file.type.startsWith("image/")) {
       alert("Please select an image.");
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert("Image must be less than 5MB.");
-      return;
-    }
+    // No file-size restriction here.
+    // The image will be compressed before upload
+    // in ProfileSetupPage using compressImage().
 
     // Create local preview
     const imageUrl = URL.createObjectURL(file);
 
-    setPreview(imageUrl);
+    setPreview((previousPreview) => {
+      if (previousPreview?.startsWith("blob:")) {
+        URL.revokeObjectURL(previousPreview);
+      }
 
-    // Keep the actual file for later upload
+      return imageUrl;
+    });
+
+    // Keep the actual file for compression/upload
     onFileChange(file);
 
     // Store preview
     onChange(imageUrl);
+
+    // Allow selecting the same file again
+    e.target.value = "";
   };
+
+  // Sync preview when the parent image changes
+  useEffect(() => {
+    setPreview(image);
+  }, [image]);
 
   // Cleanup preview URL
   useEffect(() => {
@@ -64,7 +80,6 @@ function ProfilePhoto({ image, onChange, onFileChange }: ProfilePhotoProps) {
             shadow-lg
             ring-2
             ring-indigo-100
-
             dark:border-slate-900
             dark:from-indigo-950
             dark:to-purple-950
@@ -101,10 +116,8 @@ function ProfilePhoto({ image, onChange, onFileChange }: ProfilePhotoProps) {
             to-purple-600
             text-white
             shadow-md
-
             transition
             group-hover:scale-105
-
             dark:border-slate-900
           "
         >
@@ -139,7 +152,7 @@ function ProfilePhoto({ image, onChange, onFileChange }: ProfilePhotoProps) {
           dark:text-slate-500
         "
       >
-        JPG, PNG or WebP · Max 5MB
+        JPG, PNG or WebP · Image will be compressed automatically
       </p>
     </div>
   );
