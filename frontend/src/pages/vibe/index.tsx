@@ -5,7 +5,6 @@ import {
   Pencil,
   Smile,
   Trash2,
-  Wifi,
   WifiOff,
   X,
 } from "lucide-react";
