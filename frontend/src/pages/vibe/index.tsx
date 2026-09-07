@@ -1137,12 +1137,11 @@ const VibePage = () => {
                               }
                               aria-label="Message options"
                               className="
-                                  flex h-6 w-6 items-center justify-center
-                                  rounded-full text-white/50 opacity-0
-                                  transition-all duration-150
-                                  hover:bg-white/10 hover:text-white
-                                  group-hover:opacity-100 focus:opacity-100
-                                "
+  flex h-6 w-6 items-center justify-center
+  rounded-full text-white/60
+  transition-all duration-150
+  hover:bg-white/10 hover:text-white
+"
                             >
                               <MoreVertical size={14} />
                             </button>

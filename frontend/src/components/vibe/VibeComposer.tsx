@@ -8,7 +8,7 @@ import {
   X,
 } from "lucide-react";
 
-import { useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 
 import EmojiPicker, { Theme, type EmojiClickData } from "emoji-picker-react";
 
@@ -57,6 +57,7 @@ const VibeComposer = ({
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [stickerPickerOpen, setStickerPickerOpen] = useState(false);
   const [stickerCategory, setStickerCategory] = useState("All");
+  const [attachmentMenuOpen, setAttachmentMenuOpen] = useState(false);
 
   /*
    * UniVibe stickers.
@@ -98,15 +99,15 @@ const VibeComposer = ({
     stickerCategories[stickerCategory as keyof typeof stickerCategories] ??
     stickerCategories.All;
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
+  // const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+  //   if (event.key === "Enter" && !event.shiftKey) {
+  //     event.preventDefault();
 
-      if (canSend) {
-        onSend();
-      }
-    }
-  };
+  //     if (canSend) {
+  //       onSend();
+  //     }
+  //   }
+  // };
 
   const handleRemoveMedia = () => {
     onRemoveMedia();
@@ -474,36 +475,242 @@ const VibeComposer = ({
                 Desktop: emoji/sticker controls + textarea.
             ================================================= */}
 
-            <div className="flex min-w-0 items-end px-1.5 py-1.5">
-              {/* MOBILE ATTACHMENT */}
-              <input
-                ref={imageInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={onFileSelect}
-              />
+            {/* MOBILE ATTACHMENT */}
+            {/* =================================================
+    RESPONSIVE MESSAGE ROW
+    ================================================= */}
 
-              <button
-                type="button"
-                onClick={() => imageInputRef.current?.click()}
-                aria-label="Attach image"
-                className="
-                  flex
-                  h-10
-                  w-10
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-full
-                  text-neutral-500
-                  transition
-                  active:scale-90
-                  md:hidden
-                "
-              >
-                <Paperclip size={23} strokeWidth={1.9} />
-              </button>
+            <div className="flex w-full min-w-0 items-center gap-0 px-1.5 py-1.5">
+              {/* MOBILE ATTACHMENT */}
+              <div className="relative shrink-0">
+                {/* PHOTO INPUT */}
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(event) => {
+                    onFileSelect(event);
+                    setAttachmentMenuOpen(false);
+                  }}
+                />
+
+                {/* PDF INPUT */}
+                <input
+                  ref={pdfInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(event) => {
+                    onFileSelect(event);
+                    setAttachmentMenuOpen(false);
+                  }}
+                />
+
+                {/* PAPERCLIP */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAttachmentMenuOpen((current) => !current);
+                    setEmojiPickerOpen(false);
+                    setStickerPickerOpen(false);
+                    setGifPickerOpen(false);
+                  }}
+                  aria-label="Add attachment"
+                  aria-expanded={attachmentMenuOpen}
+                  className="
+        flex
+        h-10
+        w-10
+        items-center
+        justify-center
+        rounded-full
+        text-neutral-500
+        transition
+        active:scale-90
+        md:hidden
+      "
+                >
+                  <Paperclip size={22} strokeWidth={1.9} />
+                </button>
+
+                {/* ATTACHMENT MENU */}
+                {attachmentMenuOpen && (
+                  <div
+                    className="
+          absolute
+          bottom-12
+          left-0
+          z-[99999]
+          w-48
+          overflow-hidden
+          rounded-2xl
+          border
+          border-neutral-200
+          bg-white
+          p-1.5
+          shadow-2xl
+          dark:border-neutral-700
+          dark:bg-neutral-900
+          md:hidden
+        "
+                  >
+                    {/* PHOTO */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAttachmentMenuOpen(false);
+                        imageInputRef.current?.click();
+                      }}
+                      className="
+            flex
+            w-full
+            items-center
+            gap-3
+            rounded-xl
+            px-3
+            py-3
+            text-left
+            transition
+            hover:bg-neutral-100
+            active:scale-[0.98]
+            dark:hover:bg-neutral-800
+          "
+                    >
+                      <div
+                        className="
+              flex
+              h-9
+              w-9
+              shrink-0
+              items-center
+              justify-center
+              rounded-full
+              bg-purple-100
+              text-purple-600
+              dark:bg-purple-950
+              dark:text-purple-400
+            "
+                      >
+                        <ImageIcon size={18} />
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100">
+                          Photo
+                        </p>
+                        <p className="text-[10px] text-neutral-400">
+                          Choose an image
+                        </p>
+                      </div>
+                    </button>
+
+                    {/* PDF */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAttachmentMenuOpen(false);
+                        pdfInputRef.current?.click();
+                      }}
+                      className="
+            flex
+            w-full
+            items-center
+            gap-3
+            rounded-xl
+            px-3
+            py-3
+            text-left
+            transition
+            hover:bg-neutral-100
+            active:scale-[0.98]
+            dark:hover:bg-neutral-800
+          "
+                    >
+                      <div
+                        className="
+              flex
+              h-9
+              w-9
+              shrink-0
+              items-center
+              justify-center
+              rounded-full
+              bg-red-100
+              text-red-500
+              dark:bg-red-950
+              dark:text-red-400
+            "
+                      >
+                        <FileText size={18} />
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100">
+                          PDF
+                        </p>
+                        <p className="text-[10px] text-neutral-400">
+                          Share a document
+                        </p>
+                      </div>
+                    </button>
+
+                    {/* GIF */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAttachmentMenuOpen(false);
+                        setEmojiPickerOpen(false);
+                        setStickerPickerOpen(false);
+                        setGifPickerOpen(true);
+                      }}
+                      className="
+            flex
+            w-full
+            items-center
+            gap-3
+            rounded-xl
+            px-3
+            py-3
+            text-left
+            transition
+            hover:bg-neutral-100
+            active:scale-[0.98]
+            dark:hover:bg-neutral-800
+          "
+                    >
+                      <div
+                        className="
+              flex
+              h-9
+              w-9
+              shrink-0
+              items-center
+              justify-center
+              rounded-full
+              bg-blue-100
+              text-[10px]
+              font-bold
+              text-blue-600
+              dark:bg-blue-950
+              dark:text-blue-400
+            "
+                      >
+                        GIF
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100">
+                          GIF
+                        </p>
+                        <p className="text-[10px] text-neutral-400">
+                          Search GIFs
+                        </p>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
 
               {/* DESKTOP EMOJI */}
               <button
@@ -512,23 +719,23 @@ const VibeComposer = ({
                 aria-label="Open emoji picker"
                 aria-expanded={emojiPickerOpen}
                 className={`
-                  mb-0.5
-                  hidden
-                  h-9
-                  w-9
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-full
-                  transition
-                  active:scale-95
-                  md:flex
-                  ${
-                    emojiPickerOpen
-                      ? "bg-purple-100 text-purple-600 dark:bg-purple-950 dark:text-purple-400"
-                      : "text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
-                  }
-                `}
+      mb-0.5
+      hidden
+      h-9
+      w-9
+      shrink-0
+      items-center
+      justify-center
+      rounded-full
+      transition
+      active:scale-95
+      md:flex
+      ${
+        emojiPickerOpen
+          ? "bg-purple-100 text-purple-600 dark:bg-purple-950 dark:text-purple-400"
+          : "text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+      }
+    `}
               >
                 <Smile size={21} strokeWidth={1.8} />
               </button>
@@ -540,84 +747,77 @@ const VibeComposer = ({
                 aria-label="Open sticker picker"
                 aria-expanded={stickerPickerOpen}
                 className={`
-                  mb-0.5
-                  hidden
-                  h-9
-                  w-9
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-full
-                  transition
-                  active:scale-95
-                  md:flex
-                  ${
-                    stickerPickerOpen
-                      ? "bg-purple-100 text-purple-600 dark:bg-purple-950 dark:text-purple-400"
-                      : "text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
-                  }
-                `}
+      mb-0.5
+      hidden
+      h-9
+      w-9
+      shrink-0
+      items-center
+      justify-center
+      rounded-full
+      transition
+      active:scale-95
+      md:flex
+      ${
+        stickerPickerOpen
+          ? "bg-purple-100 text-purple-600 dark:bg-purple-950 dark:text-purple-400"
+          : "text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+      }
+    `}
               >
                 <Sticker size={20} strokeWidth={1.8} />
               </button>
 
+              {/* MESSAGE INPUT */}
               <textarea
                 ref={textAreaRef}
                 value={text}
                 onChange={(event) => setText(event.target.value)}
-                onKeyDown={handleKeyDown}
                 rows={1}
                 maxLength={5000}
                 placeholder="Message"
                 className="
-                  min-h-10
-                  max-h-28
-                  min-w-0
-                  flex-1
-                  resize-none
-                  border-0
-                  bg-transparent
-                  px-2
-                  py-2
-                  text-sm
-                  leading-5
-                  text-neutral-900
-                  outline-none
-                  placeholder:text-neutral-400
-                  focus:ring-0
-                  dark:text-white
-                  dark:placeholder:text-neutral-500
-                  max-md:min-h-10
-                  max-md:px-1
-                  max-md:py-2.5
-                  max-md:text-[16px]
-                "
+      min-w-0
+      flex-1
+      resize-none
+      border-0
+      bg-transparent
+      px-2
+      py-2.5
+      text-[16px]
+      leading-5
+      text-neutral-900
+      outline-none
+      placeholder:text-neutral-400
+      dark:text-white
+      dark:placeholder:text-neutral-500
+    "
               />
 
-              {/* MOBILE SEND */}
+              {/* SEND */}
               <button
                 type="button"
                 onClick={onSend}
                 disabled={!canSend}
                 aria-label="Send message"
                 className={`
-                  flex
-                  h-10
-                  w-10
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-full
-                  text-white
-                  transition-all
-                  active:scale-90
-                  md:hidden
-                  ${
-                    canSend
-                      ? "bg-purple-600 shadow-md shadow-purple-600/20 hover:bg-purple-500"
-                      : "bg-neutral-300 dark:bg-neutral-800"
-                  }
-                `}
+      flex
+      h-10
+      w-10
+      shrink-0
+      items-center
+      justify-center
+      rounded-full
+      text-white
+      transition-all
+      active:scale-90
+      md:hidden
+      ${
+        canSend
+          ? "bg-purple-600 shadow-md shadow-purple-600/20"
+          : "bg-neutral-300 dark:bg-neutral-800"
+      }
+    `}
               >
                 <Send size={18} strokeWidth={2.2} />
               </button>

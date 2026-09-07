@@ -46,7 +46,8 @@ public class SecurityConfig {
 
         config.setAllowedOrigins(List.of(
                 "https://uni-vibe-479c.vercel.app",
-                "http://localhost:5173"
+                "http://localhost:5173",
+                "http://192.168.1.12:5173"
         ));
 
         config.setAllowedMethods(List.of(
