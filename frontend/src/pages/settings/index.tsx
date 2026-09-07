@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ArrowLeft,
   Bell,
@@ -17,54 +17,82 @@ import {
 } from "../../firebase/messaging";
 
 import InstallAppButton from "../../components/common/InstallAppButton";
+import api from "../../api/axios";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 function SettingsPage() {
   const navigate = useNavigate();
   const { getToken } = useAuth();
 
-  const [pushEnabled, setPushEnabled] = useState(false);
-  const [pushLoading, setPushLoading] = useState(false);
+  // const [pushEnabled, setPushEnabled] = useState(false);
+  // const [pushLoading, setPushLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
 
   // ------------------------------------------
   // Initial settings state
   // ------------------------------------------
 
-  useEffect(() => {
-    if ("Notification" in window) {
-      setPushEnabled(Notification.permission === "granted");
-    }
+  // useEffect(() => {
+  //   if ("Notification" in window) {
+  //     setPushEnabled(Notification.permission === "granted");
+  //   }
 
-    setDarkMode(document.documentElement.classList.contains("dark"));
-  }, []);
+  //   setDarkMode(document.documentElement.classList.contains("dark"));
+  // }, []);
+
+  const queryClient = useQueryClient();
+
+  const { data: pushEnabled = false, isLoading: pushStatusLoading } = useQuery({
+    queryKey: ["fcm-status"],
+    queryFn: async () => {
+      const clerkToken = await getToken();
+
+      if (!clerkToken) {
+        return false;
+      }
+
+      const response = await api.get("/fcm/status", {
+        headers: {
+          Authorization: `Bearer ${clerkToken}`,
+        },
+      });
+
+      return response.data === true;
+    },
+  });
+
+  const pushMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (enabled) {
+        await enablePushNotifications(getToken);
+      } else {
+        await disablePushNotifications(getToken);
+      }
+
+      return enabled;
+    },
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["fcm-status"],
+      });
+    },
+
+    onError: (error: unknown) => {
+      console.error("Failed to update push notification setting:", error);
+    },
+  });
 
   // ------------------------------------------
   // Push notifications
   // ------------------------------------------
 
-  const handlePushToggle = async () => {
-    // Prevent multiple clicks while request is running
-    if (pushLoading) {
+  const handlePushToggle = () => {
+    if (pushMutation.isPending) {
       return;
     }
 
-    setPushLoading(true);
-
-    try {
-      if (!pushEnabled) {
-        await enablePushNotifications(getToken);
-
-        setPushEnabled(true);
-      } else {
-        await disablePushNotifications();
-
-        setPushEnabled(false);
-      }
-    } catch (error) {
-      console.error("Failed to update push notification setting:", error);
-    } finally {
-      setPushLoading(false);
-    }
+    pushMutation.mutate(!pushEnabled);
   };
 
   // ------------------------------------------
@@ -348,7 +376,7 @@ function SettingsPage() {
                 role="switch"
                 aria-checked={pushEnabled}
                 aria-label="Push notifications"
-                disabled={pushLoading}
+                disabled={pushStatusLoading || pushMutation.isPending}
                 onClick={handlePushToggle}
                 className={`
                   relative
@@ -372,10 +400,10 @@ function SettingsPage() {
                       : "bg-slate-300 dark:bg-neutral-700"
                   }
 
-                  ${pushLoading ? "cursor-wait opacity-70" : "cursor-pointer"}
+                  ${pushMutation.isPending ? "cursor-wait opacity-70" : "cursor-pointer"}
                 `}
               >
-                {pushLoading ? (
+                {pushMutation.isPending ? (
                   <span className="absolute inset-0 flex items-center justify-center">
                     <Loader2 size={14} className="animate-spin text-white" />
                   </span>
@@ -401,7 +429,7 @@ function SettingsPage() {
             </div>
 
             {/* Enabled information */}
-            {pushEnabled && !pushLoading && (
+            {pushEnabled && !pushMutation.isPending && (
               <div
                 className="
                   border-t
@@ -419,7 +447,7 @@ function SettingsPage() {
             )}
 
             {/* Loading information */}
-            {pushLoading && (
+            {pushMutation.isPending && (
               <div
                 className="
                   border-t

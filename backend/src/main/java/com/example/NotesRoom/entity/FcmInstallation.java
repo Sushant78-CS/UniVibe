@@ -4,14 +4,20 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(
         name = "fcm_installations",
         indexes = {
-                @Index(name = "idx_fcm_installation_user", columnList = "user_id"),
-                @Index(name = "idx_fcm_installation_fid", columnList = "fid", unique = true)
+                @Index(
+                        name = "idx_fcm_installation_user",
+                        columnList = "user_id"
+                ),
+                @Index(
+                        name = "idx_fcm_installation_token",
+                        columnList = "token",
+                        unique = true
+                )
         }
 )
 @Getter
@@ -29,8 +35,8 @@ public class FcmInstallation {
     @JoinColumn(name = "user_id", nullable = false)
     private Users user;
 
-    @Column(nullable = false, unique = true, length = 512)
-    private String fid;
+    @Column(nullable = false, unique = true, length = 2048)
+    private String token;
 
     @Column(nullable = false)
     private Instant createdAt;

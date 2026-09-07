@@ -10,11 +10,11 @@ import java.util.Optional;
 public interface FcmInstallationRepository
         extends JpaRepository<FcmInstallation, Long> {
 
-    Optional<FcmInstallation> findByFid(String fid);
+    Optional<FcmInstallation> findByToken(String token);
 
     List<FcmInstallation> findAllByUser(Users user);
 
-    void deleteByFid(String fid);
+    void deleteByToken(String token);
 
     List<FcmInstallation> findAllByUserIn(List<Users> users);
 }

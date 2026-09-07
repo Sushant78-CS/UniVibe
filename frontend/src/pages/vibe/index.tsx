@@ -191,8 +191,18 @@ const VibePage = () => {
     setMessages((current) => {
       const existingIndex = current.findIndex((item) => item.id === message.id);
 
+      // Check if this incoming WebSocket message
+      // matches one of our pending optimistic messages.
+      const pendingIndex = current.findIndex(
+        (item) =>
+          item.pending &&
+          item.mine === true &&
+          item.content === message.content &&
+          item.mediaType === message.mediaType,
+      );
+
       // -----------------------------------------------------
-      // EXISTING MESSAGE
+      // EXISTING SERVER MESSAGE
       // -----------------------------------------------------
 
       if (existingIndex !== -1) {
@@ -201,10 +211,8 @@ const VibePage = () => {
         updated[existingIndex] = {
           ...updated[existingIndex],
           ...message,
-
           mine:
             message.mine === true || myMessageIdsRef.current.has(message.id),
-
           pending: false,
         };
 
@@ -212,14 +220,31 @@ const VibePage = () => {
       }
 
       // -----------------------------------------------------
-      // NEW MESSAGE
+      // REPLACE OUR OPTIMISTIC MESSAGE
+      // -----------------------------------------------------
+
+      if (pendingIndex !== -1) {
+        const updated = [...current];
+
+        updated[pendingIndex] = {
+          ...message,
+          mine: true,
+          pending: false,
+        };
+
+        myMessageIdsRef.current.add(message.id);
+
+        return updated;
+      }
+
+      // -----------------------------------------------------
+      // NEW MESSAGE FROM SOMEONE ELSE
       // -----------------------------------------------------
 
       return [
         ...current,
         {
           ...message,
-
           mine:
             message.mine === true || myMessageIdsRef.current.has(message.id),
         },

@@ -1,17 +1,15 @@
 import {
+  deleteToken as deleteFcmToken,
   getMessaging,
+  getToken as getFcmToken,
   isSupported,
   onMessage,
-  onRegistered,
-  register,
 } from "firebase/messaging";
 
 import api from "../api/axios";
 import { app } from "./config";
 
 let messagingInstance: ReturnType<typeof getMessaging> | null = null;
-
-let fcmInitializationPromise: Promise<boolean | null> | null = null;
 
 // ==========================================
 // GET FIREBASE MESSAGING INSTANCE
@@ -37,15 +35,7 @@ async function getFcmMessaging() {
 // INITIALIZE FCM
 // ==========================================
 
-export function initializeFcm() {
-  if (!fcmInitializationPromise) {
-    fcmInitializationPromise = initializeFcmInternal();
-  }
-
-  return fcmInitializationPromise;
-}
-
-async function initializeFcmInternal() {
+export async function initializeFcm() {
   if (typeof window === "undefined" || typeof navigator === "undefined") {
     return null;
   }
@@ -68,9 +58,6 @@ async function initializeFcmInternal() {
     return null;
   }
 
-  // Do not automatically ask for permission here.
-  // Permission should be requested from Settings / prompt.
-
   if (Notification.permission !== "granted") {
     return null;
   }
@@ -79,45 +66,7 @@ async function initializeFcmInternal() {
     "/firebase-messaging-sw.js",
   );
 
-  onRegistered(messaging, async (fid) => {
-    console.log("UniVibe Firebase Installation ID:", fid);
-
-    try {
-      console.log("Registering FCM installation with backend...");
-
-      const token = await getClerkTokenSafely();
-
-      if (!token) {
-        console.warn("No authentication token available for FCM registration.");
-
-        return;
-      }
-
-      await api.post(
-        "/fcm/register",
-        {
-          fid,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      console.log("FCM installation registered with UniVibe backend.");
-    } catch (error) {
-      console.error("Failed to register FCM with server:", error);
-    }
-  });
-
-  await register(messaging, {
-    vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
-
-    serviceWorkerRegistration: registration,
-  });
-
-  console.log("FCM registration completed.");
+  console.log("Firebase messaging service worker registered.", registration);
 
   return true;
 }
@@ -169,7 +118,7 @@ export async function initializeForegroundMessages() {
 // ==========================================
 
 export async function enablePushNotifications(
-  getToken: () => Promise<string | null>,
+  getClerkToken: () => Promise<string | null>,
 ) {
   if (typeof window === "undefined" || typeof navigator === "undefined") {
     throw new Error("Browser environment is required.");
@@ -201,54 +150,53 @@ export async function enablePushNotifications(
     "/firebase-messaging-sw.js",
   );
 
+  console.log("Firebase messaging service worker registered.", registration);
+
   // ----------------------------------------
-  // FCM REGISTRATION
+  // GET ACTUAL FCM TOKEN
   // ----------------------------------------
 
-  onRegistered(messaging, async (fid) => {
-    console.log("UniVibe Firebase Installation ID:", fid);
-
-    try {
-      // Use the Clerk token passed by SettingsPage
-      const token = await getToken();
-
-      if (!token) {
-        throw new Error("Clerk authentication token is unavailable.");
-      }
-
-      console.log("Sending FCM installation to UniVibe backend...");
-
-      // IMPORTANT:
-      // Do NOT use localhost here.
-      // Axios already points to your configured
-      // Render backend in production.
-      await api.post(
-        "/fcm/register",
-        {
-          fid,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      console.log("FCM installation registered with UniVibe backend.");
-    } catch (error) {
-      console.error("Failed to register FCM with server:", error);
-
-      throw error;
-    }
-  });
-
-  await register(messaging, {
+  const fcmToken = await getFcmToken(messaging, {
     vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
 
     serviceWorkerRegistration: registration,
   });
 
-  console.log("FCM push notifications enabled.");
+  if (!fcmToken) {
+    throw new Error("Firebase did not return an FCM registration token.");
+  }
+
+  console.log("UniVibe FCM registration token obtained.");
+
+  // ----------------------------------------
+  // GET CLERK AUTH TOKEN
+  // ----------------------------------------
+
+  const clerkToken = await getClerkToken();
+
+  if (!clerkToken) {
+    throw new Error("Clerk authentication token is unavailable.");
+  }
+
+  // ----------------------------------------
+  // REGISTER FCM TOKEN WITH BACKEND
+  // ----------------------------------------
+
+  console.log("Registering FCM token with UniVibe backend...");
+
+  await api.post(
+    "/fcm/register",
+    {
+      token: fcmToken,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${clerkToken}`,
+      },
+    },
+  );
+
+  console.log("FCM token registered with UniVibe backend.");
 
   return true;
 }
@@ -257,34 +205,76 @@ export async function enablePushNotifications(
 // DISABLE PUSH NOTIFICATIONS
 // ==========================================
 
-export async function disablePushNotifications() {
-  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
+export async function disablePushNotifications(
+  getClerkToken: () => Promise<string | null>,
+) {
+  if (typeof window === "undefined" || typeof navigator === "undefined") {
     return;
   }
 
-  const registration = await navigator.serviceWorker.getRegistration("/");
+  const messaging = await getFcmMessaging();
 
-  if (registration) {
-    const subscription = await registration.pushManager.getSubscription();
+  if (!messaging) {
+    return;
+  }
 
-    if (subscription) {
-      await subscription.unsubscribe();
+  // ----------------------------------------
+  // GET CURRENT FCM TOKEN
+  // ----------------------------------------
+
+  let fcmToken: string | null = null;
+
+  try {
+    const registration = await navigator.serviceWorker.getRegistration("/");
+
+    if (registration) {
+      fcmToken = await getFcmToken(messaging, {
+        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+
+        serviceWorkerRegistration: registration,
+      });
+    }
+  } catch (error) {
+    console.warn("Could not get current FCM token:", error);
+  }
+
+  // ----------------------------------------
+  // REMOVE TOKEN FROM BACKEND
+  // ----------------------------------------
+
+  if (fcmToken) {
+    try {
+      const clerkToken = await getClerkToken();
+
+      if (clerkToken) {
+        await api.delete("/fcm/unregister", {
+          data: {
+            token: fcmToken,
+          },
+
+          headers: {
+            Authorization: `Bearer ${clerkToken}`,
+          },
+        });
+
+        console.log("FCM token removed from UniVibe backend.");
+      }
+    } catch (error) {
+      console.error("Failed to remove FCM token from backend:", error);
     }
   }
 
-  console.log("Push notifications disabled for this browser.");
-}
+  // ----------------------------------------
+  // DELETE FCM TOKEN FROM FIREBASE
+  // ----------------------------------------
 
-// ==========================================
-// SAFE CLERK TOKEN
-// ==========================================
-//
-// Used only by initializeFcm().
-// enablePushNotifications() receives getToken
-// directly from the React component.
-//
-// ==========================================
+  try {
+    await deleteFcmToken(messaging);
 
-async function getClerkTokenSafely(): Promise<string | null> {
-  return null;
+    console.log("FCM token deleted from Firebase.");
+  } catch (error) {
+    console.error("Failed to delete FCM token:", error);
+  }
+
+  console.log("Push notifications disabled.");
 }

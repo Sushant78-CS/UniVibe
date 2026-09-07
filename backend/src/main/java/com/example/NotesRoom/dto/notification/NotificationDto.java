@@ -22,6 +22,8 @@ public record NotificationDto(
 
         boolean read,
 
-        Instant createdAt
+        Instant createdAt,
+
+        String url
 ) {
 }

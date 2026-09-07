@@ -99,15 +99,15 @@ const VibeComposer = ({
     stickerCategories[stickerCategory as keyof typeof stickerCategories] ??
     stickerCategories.All;
 
-  // const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-  //   if (event.key === "Enter" && !event.shiftKey) {
-  //     event.preventDefault();
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
 
-  //     if (canSend) {
-  //       onSend();
-  //     }
-  //   }
-  // };
+      if (canSend) {
+        onSend();
+      }
+    }
+  };
 
   const handleRemoveMedia = () => {
     onRemoveMedia();
@@ -236,10 +236,10 @@ const VibeComposer = ({
                         items-center
                         justify-center
                         rounded-xl
-                        bg-purple-100
-                        text-purple-600
-                        dark:bg-purple-950
-                        dark:text-purple-300
+                        bg-violet-100
+                        text-violet-600
+                        dark:bg-violet-950
+                        dark:text-violet-300
                       "
                     >
                       <FileText size={20} />
@@ -310,11 +310,9 @@ const VibeComposer = ({
               bg-neutral-100
               shadow-sm
               transition
-              focus-within:border-purple-400
               focus-within:bg-white
               dark:border-neutral-800
               dark:bg-neutral-900
-              dark:focus-within:border-purple-700
               dark:focus-within:bg-neutral-900
               max-md:rounded-full
               max-md:border-neutral-200/80
@@ -354,7 +352,7 @@ const VibeComposer = ({
                   <div className="flex items-center gap-2">
                     <Sticker
                       size={18}
-                      className="text-purple-600 dark:text-purple-400"
+                      className="text-violet-600 dark:text-violet-400"
                     />
                     <span className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">
                       Stickers
@@ -388,7 +386,7 @@ const VibeComposer = ({
                     shrink-0 rounded-full px-3 py-1.5 text-[11px] font-medium transition
                     ${
                       active
-                        ? "bg-purple-600 text-white"
+                        ? "bg-violet-600 text-white"
                         : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
                     }
                   `}
@@ -586,10 +584,10 @@ const VibeComposer = ({
               items-center
               justify-center
               rounded-full
-              bg-purple-100
-              text-purple-600
-              dark:bg-purple-950
-              dark:text-purple-400
+              bg-violet-100
+              text-violet-600
+              dark:bg-violet-950
+              dark:text-violet-400
             "
                       >
                         <ImageIcon size={18} />
@@ -732,7 +730,7 @@ const VibeComposer = ({
       md:flex
       ${
         emojiPickerOpen
-          ? "bg-purple-100 text-purple-600 dark:bg-purple-950 dark:text-purple-400"
+          ? "bg-violet-100 text-violet-600 dark:bg-violet-950 dark:text-violet-400"
           : "text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
       }
     `}
@@ -760,7 +758,7 @@ const VibeComposer = ({
       md:flex
       ${
         stickerPickerOpen
-          ? "bg-purple-100 text-purple-600 dark:bg-purple-950 dark:text-purple-400"
+          ? "bg-violet-100 text-violet-600 dark:bg-violet-950 dark:text-violet-400"
           : "text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
       }
     `}
@@ -773,6 +771,7 @@ const VibeComposer = ({
                 ref={textAreaRef}
                 value={text}
                 onChange={(event) => setText(event.target.value)}
+                onKeyDown={handleKeyDown}
                 rows={1}
                 maxLength={5000}
                 placeholder="Message"
@@ -814,7 +813,7 @@ const VibeComposer = ({
       md:hidden
       ${
         canSend
-          ? "bg-purple-600 shadow-md shadow-purple-600/20"
+          ? "bg-violet-600 shadow-md shadow-violet-600/20"
           : "bg-neutral-300 dark:bg-neutral-800"
       }
     `}
@@ -854,10 +853,10 @@ const VibeComposer = ({
                     text-neutral-500
                     transition
                     hover:bg-neutral-200
-                    hover:text-purple-600
+                    hover:text-violet-600
                     active:scale-95
                     dark:hover:bg-neutral-800
-                    dark:hover:text-purple-400
+                    dark:hover:text-violet-400
                   "
                 >
                   <ImageIcon size={19} strokeWidth={1.8} />
@@ -886,10 +885,10 @@ const VibeComposer = ({
                     text-neutral-500
                     transition
                     hover:bg-neutral-200
-                    hover:text-purple-600
+                    hover:text-violet-600
                     active:scale-95
                     dark:hover:bg-neutral-800
-                    dark:hover:text-purple-400
+                    dark:hover:text-violet-400
                   "
                 >
                   <FileText size={19} strokeWidth={1.8} />
@@ -912,10 +911,10 @@ const VibeComposer = ({
                     text-neutral-500
                     transition
                     hover:bg-neutral-200
-                    hover:text-purple-600
+                    hover:text-violet-600
                     active:scale-95
                     dark:hover:bg-neutral-800
-                    dark:hover:text-purple-400
+                    dark:hover:text-violet-400
                   "
                 >
                   GIF
@@ -941,7 +940,7 @@ const VibeComposer = ({
                   active:scale-90
                   ${
                     canSend
-                      ? "bg-purple-600 shadow-md shadow-purple-600/20 hover:bg-purple-500"
+                      ? "bg-violet-600 shadow-md shadow-violet-600/20 hover:bg-violet-500"
                       : "bg-neutral-300 shadow-none dark:bg-neutral-800"
                   }
                 `}

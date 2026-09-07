@@ -54,6 +54,8 @@ public class Notification {
     @Column(nullable = false)
     private boolean read;
 
+    private Instant readAt;
+
     @Column(nullable = false)
     private Instant createdAt;
 }

@@ -20,11 +20,16 @@ public class FcmController {
     private final FcmService fcmService;
     private final UserRepository userRepository;
 
+    // =========================================================
+    // REGISTER FCM TOKEN
+    // =========================================================
+
     @PostMapping("/register")
     public ResponseEntity<Void> register(
             @AuthenticationPrincipal Jwt jwt,
             @RequestBody FcmRegistrationDto dto
     ) {
+
         fcmInstallationService.register(
                 jwt.getSubject(),
                 dto
@@ -33,23 +38,40 @@ public class FcmController {
         return ResponseEntity.ok().build();
     }
 
-    @DeleteMapping("/register")
+    // =========================================================
+    // UNREGISTER FCM TOKEN
+    // =========================================================
+
+    @DeleteMapping("/unregister")
     public ResponseEntity<Void> unregister(
             @AuthenticationPrincipal Jwt jwt,
-            @RequestParam String fid
+            @RequestBody FcmRegistrationDto dto
     ) {
+
+        if (dto == null ||
+                dto.token() == null ||
+                dto.token().isBlank()) {
+
+            return ResponseEntity.badRequest().build();
+        }
+
         fcmInstallationService.unregister(
                 jwt.getSubject(),
-                fid
+                dto.token()
         );
 
         return ResponseEntity.noContent().build();
     }
 
+    // =========================================================
+    // TEST FCM
+    // =========================================================
+
     @PostMapping("/test")
     public ResponseEntity<Void> test(
             @AuthenticationPrincipal Jwt jwt
     ) {
+
         Users user = userRepository
                 .findByClerkId(jwt.getSubject())
                 .orElseThrow(() ->
@@ -64,5 +86,18 @@ public class FcmController {
         );
 
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/status")
+    public ResponseEntity<Boolean> status(
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+
+        boolean registered =
+                fcmInstallationService.isRegistered(
+                        jwt.getSubject()
+                );
+
+        return ResponseEntity.ok(registered);
     }
 }

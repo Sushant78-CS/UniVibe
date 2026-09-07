@@ -4,7 +4,9 @@ import com.example.NotesRoom.entity.FcmInstallation;
 import com.example.NotesRoom.entity.Users;
 import com.example.NotesRoom.repository.FcmInstallationRepository;
 import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
+import com.google.firebase.messaging.MessagingErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -12,9 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -24,28 +23,32 @@ public class FcmService {
     private final FcmInstallationRepository fcmInstallationRepository;
 
     // =========================================================
-    // EXISTING SINGLE USER METHOD
+    // SEND TO SINGLE USER
     // =========================================================
 
-    @Transactional(readOnly = true)
+    @Transactional
     public void sendToUser(
             Users user,
             String title,
             String body,
             String url
     ) {
+
         List<FcmInstallation> installations =
                 fcmInstallationRepository.findAllByUser(user);
 
         if (installations.isEmpty()) {
+
             log.info(
                     "No FCM installations found for userId={}",
                     user.getId()
             );
+
             return;
         }
 
         for (FcmInstallation installation : installations) {
+
             sendToInstallation(
                     installation,
                     title,
@@ -56,11 +59,11 @@ public class FcmService {
     }
 
     // =========================================================
-    // BATCH VIBE NOTIFICATIONS
+    // SEND TO MULTIPLE USERS
     // =========================================================
 
     @Async
-    @Transactional(readOnly = true)
+    @Transactional
     public void sendToUsers(
             List<Users> users,
             String title,
@@ -79,15 +82,17 @@ public class FcmService {
                             .findAllByUserIn(users);
 
             if (installations.isEmpty()) {
+
                 log.info(
                         "No FCM installations found for {} users",
                         users.size()
                 );
+
                 return;
             }
 
             log.info(
-                    "Sending Vibe FCM notification to {} installations",
+                    "Sending FCM notification to {} installations",
                     installations.size()
             );
 
@@ -122,13 +127,23 @@ public class FcmService {
             String url
     ) {
 
+        String token = installation.getToken();
+
+        if (token == null || token.isBlank()) {
+
+            log.warn(
+                    "Skipping FCM installation with empty token. installationId={}",
+                    installation.getId()
+            );
+
+            return;
+        }
+
         try {
 
             Message message =
                     Message.builder()
-                            .setFid(
-                                    installation.getFid()
-                            )
+                            .setToken(token)
                             .putData(
                                     "title",
                                     title
@@ -149,18 +164,56 @@ public class FcmService {
                             .send(message);
 
             log.info(
-                    "FCM push sent successfully. userId={}, fid={}, response={}",
+                    "FCM push sent successfully. userId={}, response={}",
                     installation.getUser().getId(),
-                    installation.getFid(),
                     response
             );
+
+        } catch (FirebaseMessagingException e) {
+
+            MessagingErrorCode errorCode =
+                    e.getMessagingErrorCode();
+
+            log.error(
+                    "FCM send failed. userId={}, errorCode={}",
+                    installation.getUser().getId(),
+                    errorCode,
+                    e
+            );
+
+            // -----------------------------------------------
+            // REMOVE INVALID / EXPIRED TOKEN
+            // -----------------------------------------------
+
+            if (
+                    errorCode == MessagingErrorCode.UNREGISTERED ||
+                            errorCode == MessagingErrorCode.INVALID_ARGUMENT
+            ) {
+
+                try {
+
+                    fcmInstallationRepository
+                            .deleteByToken(token);
+
+                    log.info(
+                            "Removed invalid FCM token from database. userId={}",
+                            installation.getUser().getId()
+                    );
+
+                } catch (Exception deleteError) {
+
+                    log.error(
+                            "Failed to remove invalid FCM token from database.",
+                            deleteError
+                    );
+                }
+            }
 
         } catch (Exception e) {
 
             log.error(
-                    "Failed to send FCM push. userId={}, fid={}",
+                    "Unexpected error while sending FCM notification. userId={}",
                     installation.getUser().getId(),
-                    installation.getFid(),
                     e
             );
         }

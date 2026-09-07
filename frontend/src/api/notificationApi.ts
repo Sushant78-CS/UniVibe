@@ -20,6 +20,7 @@ export interface Notification {
   actorProfileImage?: string | null;
   read: boolean;
   createdAt: string;
+  url: string;
 }
 
 export const useNotificationApi = () => {

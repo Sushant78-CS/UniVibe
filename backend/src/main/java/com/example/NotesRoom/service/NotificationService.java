@@ -8,6 +8,7 @@ import com.example.NotesRoom.repository.NotificationRepository;
 import com.example.NotesRoom.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -221,7 +222,10 @@ public class NotificationService {
             );
         }
 
-        notification.setRead(true);
+        if (!notification.isRead()) {
+            notification.setRead(true);
+            notification.setReadAt(Instant.now());
+        }
 
         notificationRepository.save(notification);
     }
@@ -243,11 +247,37 @@ public class NotificationService {
                 notificationRepository
                         .findByUserOrderByCreatedAtDesc(user);
 
-        notifications.forEach(notification ->
-                notification.setRead(true)
-        );
+        Instant now = Instant.now();
+
+        notifications.forEach(notification -> {
+            if (!notification.isRead()) {
+                notification.setRead(true);
+                notification.setReadAt(now);
+            }
+        });
 
         notificationRepository.saveAll(notifications);
+    }
+
+    @Scheduled(fixedRate = 60 * 60 * 1000)
+    @Transactional
+    public void deleteExpiredReadNotifications() {
+
+        Instant expiryTime =
+                Instant.now().minusSeconds(24 * 60 * 60);
+
+        int deleted =
+                notificationRepository
+                        .deleteExpiredReadNotifications(
+                                expiryTime
+                        );
+
+        if (deleted > 0) {
+            log.info(
+                    "Deleted {} expired read notifications",
+                    deleted
+            );
+        }
     }
 
     private NotificationDto toDto(
@@ -256,28 +286,53 @@ public class NotificationService {
 
         Users actor = notification.getActor();
 
+        String url;
+
+        switch (notification.getType()) {
+
+            case MESSAGE -> url = "/messages/" + notification.getReferenceId();
+
+            case VIBE_MESSAGE -> url = "/vibe";
+
+            case CONNECTION_REQUEST -> url = "/connections/requests";
+
+            case CONNECTION_ACCEPTED -> url = "/connections";
+
+            case CONNECTION_REJECTED -> url = "/connections";
+
+            default -> url = "/home";
+        }
+
         return new NotificationDto(
                 notification.getId(),
                 notification.getType(),
                 notification.getMessage(),
                 notification.getReferenceId(),
+
                 actor != null
                         ? actor.getId()
                         : null,
+
                 actor != null &&
                         actor.getProfile() != null
                         ? actor.getProfile().getFullName()
                         : null,
+
                 actor != null &&
                         actor.getProfile() != null
                         ? actor.getProfile().getUsername()
                         : null,
+
                 actor != null &&
                         actor.getProfile() != null
                         ? actor.getProfile().getProfileImage()
                         : null,
+
                 notification.isRead(),
-                notification.getCreatedAt()
+
+                notification.getCreatedAt(),
+
+                url
         );
     }
 }

@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -24,9 +23,13 @@ public class FcmInstallationService {
             String clerkId,
             FcmRegistrationDto dto
     ) {
-        if (dto == null || dto.fid() == null || dto.fid().isBlank()) {
+
+        if (dto == null ||
+                dto.token() == null ||
+                dto.token().isBlank()) {
+
             throw new IllegalArgumentException(
-                    "FCM installation ID is required"
+                    "FCM token is required"
             );
         }
 
@@ -36,22 +39,26 @@ public class FcmInstallationService {
                         new RuntimeException("User not found")
                 );
 
-        String fid = dto.fid().trim();
+        String token = dto.token().trim();
         Instant now = Instant.now();
 
         FcmInstallation installation =
                 fcmInstallationRepository
-                        .findByFid(fid)
+                        .findByToken(token)
                         .orElse(null);
 
         if (installation == null) {
-            installation = FcmInstallation.builder()
-                    .user(user)
-                    .fid(fid)
-                    .createdAt(now)
-                    .updatedAt(now)
-                    .build();
+
+            installation =
+                    FcmInstallation.builder()
+                            .user(user)
+                            .token(token)
+                            .createdAt(now)
+                            .updatedAt(now)
+                            .build();
+
         } else {
+
             installation.setUser(user);
             installation.setUpdatedAt(now);
         }
@@ -62,15 +69,38 @@ public class FcmInstallationService {
     @Transactional
     public void unregister(
             String clerkId,
-            String fid
+            String token
     ) {
+
         userRepository
                 .findByClerkId(clerkId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        if (fid == null || fid.isBlank()) {
-            throw new IllegalArgumentException("FCM installation ID is required");
+                .orElseThrow(() ->
+                        new RuntimeException("User not found")
+                );
+
+        if (token == null || token.isBlank()) {
+
+            throw new IllegalArgumentException(
+                    "FCM token is required"
+            );
         }
 
-        fcmInstallationRepository.deleteByFid(fid.trim());
+        fcmInstallationRepository.deleteByToken(
+                token.trim()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isRegistered(String clerkId) {
+
+        Users user = userRepository
+                .findByClerkId(clerkId)
+                .orElseThrow(() ->
+                        new RuntimeException("User not found")
+                );
+
+        return !fcmInstallationRepository
+                .findAllByUser(user)
+                .isEmpty();
     }
 }
