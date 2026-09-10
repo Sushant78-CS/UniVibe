@@ -26,7 +26,7 @@ import {
 export default function EventResponses() {
   const navigate = useNavigate();
   const { eventId } = useParams();
-  const { getToken, isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn } = useAuth();
 
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -36,13 +36,7 @@ export default function EventResponses() {
   const { data: event, isLoading: loadingEvent } = useQuery<Event>({
     queryKey: ["event", numericEventId],
     queryFn: async () => {
-      const token = await getToken();
-
-      if (!token) {
-        throw new Error("Authentication required");
-      }
-
-      return getEvent(token, numericEventId);
+      return getEvent(numericEventId);
     },
     enabled: isLoaded && !!isSignedIn && Number.isFinite(numericEventId),
   });
@@ -55,13 +49,7 @@ export default function EventResponses() {
   } = useQuery<EventRegistrationResponse[]>({
     queryKey: ["event-registrations", numericEventId],
     queryFn: async () => {
-      const token = await getToken();
-
-      if (!token) {
-        throw new Error("Authentication required");
-      }
-
-      return getEventRegistrations(token, numericEventId);
+      return getEventRegistrations(numericEventId);
     },
     enabled: isLoaded && !!isSignedIn && Number.isFinite(numericEventId),
   });

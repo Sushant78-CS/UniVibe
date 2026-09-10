@@ -1,4 +1,3 @@
-import { useAuth } from "@clerk/react";
 import api from "./axios";
 
 export type PostCategory =
@@ -56,24 +55,13 @@ export interface CreatePostData {
 }
 
 export const usePostApi = () => {
-  const { getToken } = useAuth();
-
   /*
    * ================================
    * GET POSTS
    * ================================
    */
   const getPosts = async (page = 0, size = 10): Promise<PageResponse<Post>> => {
-    const token = await getToken();
-
-    if (!token) {
-      throw new Error("Authentication token not available");
-    }
-
     const response = await api.get<PageResponse<Post>>("/posts", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
       params: {
         page,
         size,
@@ -92,16 +80,7 @@ export const usePostApi = () => {
     page = 0,
     size = 10,
   ): Promise<PageResponse<Post>> => {
-    const token = await getToken();
-
-    if (!token) {
-      throw new Error("Authentication token not available");
-    }
-
     const response = await api.get<PageResponse<Post>>("/posts/mine", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
       params: {
         page,
         size,
@@ -117,15 +96,8 @@ export const usePostApi = () => {
    * ================================
    */
   const createPost = async (data: CreatePostData): Promise<Post> => {
-    const token = await getToken();
-
-    if (!token) {
-      throw new Error("Authentication token not available");
-    }
-
     const response = await api.post<Post>("/posts", data, {
       headers: {
-        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
     });
@@ -154,12 +126,6 @@ export const usePostApi = () => {
     data: CreatePostData,
     removeMedia = false,
   ): Promise<Post> => {
-    const token = await getToken();
-
-    if (!token) {
-      throw new Error("Authentication token not available");
-    }
-
     const response = await api.put<Post>(
       `/posts/${postId}`,
       {
@@ -170,7 +136,6 @@ export const usePostApi = () => {
       },
       {
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         params: {
@@ -188,17 +153,7 @@ export const usePostApi = () => {
    * ================================
    */
   const deletePost = async (id: number): Promise<void> => {
-    const token = await getToken();
-
-    if (!token) {
-      throw new Error("Authentication token not available");
-    }
-
-    await api.delete(`/posts/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    await api.delete(`/posts/${id}`);
   };
 
   /*
@@ -207,17 +162,7 @@ export const usePostApi = () => {
    * ================================
    */
   const likePost = async (postId: number): Promise<void> => {
-    const token = await getToken();
-
-    if (!token) {
-      throw new Error("Authentication token not available");
-    }
-
-    await api.post(`/posts/${postId}/like`, null, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    await api.post(`/posts/${postId}/like`, null);
   };
 
   /*
@@ -226,17 +171,7 @@ export const usePostApi = () => {
    * ================================
    */
   const unlikePost = async (postId: number): Promise<void> => {
-    const token = await getToken();
-
-    if (!token) {
-      throw new Error("Authentication token not available");
-    }
-
-    await api.delete(`/posts/${postId}/like`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    await api.delete(`/posts/${postId}/like`);
   };
 
   /*
@@ -245,17 +180,7 @@ export const usePostApi = () => {
    * ================================
    */
   const getComments = async (postId: number): Promise<Comment[]> => {
-    const token = await getToken();
-
-    if (!token) {
-      throw new Error("Authentication token not available");
-    }
-
-    const response = await api.get<Comment[]>(`/posts/${postId}/comments`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.get<Comment[]>(`/posts/${postId}/comments`);
 
     return response.data;
   };
@@ -269,23 +194,9 @@ export const usePostApi = () => {
     postId: number,
     content: string,
   ): Promise<Comment> => {
-    const token = await getToken();
-
-    if (!token) {
-      throw new Error("Authentication token not available");
-    }
-
-    const response = await api.post<Comment>(
-      `/posts/${postId}/comments`,
-      {
-        content,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-    );
+    const response = await api.post<Comment>(`/posts/${postId}/comments`, {
+      content,
+    });
 
     return response.data;
   };
@@ -296,17 +207,7 @@ export const usePostApi = () => {
    * ================================
    */
   const deleteComment = async (commentId: number): Promise<void> => {
-    const token = await getToken();
-
-    if (!token) {
-      throw new Error("Authentication token not available");
-    }
-
-    await api.delete(`/posts/comments/${commentId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    await api.delete(`/posts/comments/${commentId}`);
   };
 
   /*

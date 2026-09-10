@@ -185,7 +185,7 @@ const CreateEvent: React.FC = () => {
 
       const imageUrl = await uploadImage();
 
-      const response = await createEvent(token, {
+      const response = await createEvent({
         title: title.trim(),
 
         description: description.trim() || null,

@@ -58,7 +58,7 @@ const EventDetail = () => {
         throw new Error("Authentication token unavailable.");
       }
 
-      return getEvent(token, numericEventId);
+      return getEvent(numericEventId);
     },
 
     enabled: isLoaded && !!isSignedIn && Number.isFinite(numericEventId),

@@ -1,5 +1,4 @@
 import api from "./axios";
-import { useAuth } from "@clerk/react";
 
 export interface Club {
   id: number;
@@ -26,77 +25,46 @@ export interface MembershipResponse {
 }
 
 export const useClubApi = () => {
-  const { getToken } = useAuth();
-
-  const authConfig = async () => {
-    const token = await getToken();
-
-    return {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    };
-  };
-
   const getClubs = async (): Promise<Club[]> => {
-    const config = await authConfig();
-
-    const response = await api.get("/clubs", config);
+    const response = await api.get("/clubs");
 
     return response.data;
   };
 
   const getMyClubs = async (): Promise<Club[]> => {
-    const config = await authConfig();
-
-    const response = await api.get("/clubs/my", config);
+    const response = await api.get("/clubs/my");
 
     return response.data;
   };
 
   const getClub = async (id: number) => {
-    const token = await getToken();
-
-    const response = await api.get(`/clubs/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.get(`/clubs/${id}`);
 
     return response.data as Club;
   };
 
   const getClubMembers = async (clubId: number): Promise<ClubMember[]> => {
-    const config = await authConfig();
-
-    const response = await api.get(`/clubs/${clubId}/members`, config);
+    const response = await api.get(`/clubs/${clubId}/members`);
 
     return response.data;
   };
 
   const getMembership = async (clubId: number): Promise<boolean> => {
-    const config = await authConfig();
-
     const response = await api.get<MembershipResponse>(
       `/clubs/${clubId}/membership`,
-      config,
     );
 
     return response.data.member;
   };
 
   const joinClub = async (clubId: number) => {
-    const config = await authConfig();
-
-    const response = await api.post(`/clubs/${clubId}/join`, {}, config);
+    const response = await api.post(`/clubs/${clubId}/join`);
 
     return response.data;
   };
 
   const leaveClub = async (clubId: number) => {
-    const config = await authConfig();
-
-    const response = await api.delete(`/clubs/${clubId}/leave`, config);
+    const response = await api.delete(`/clubs/${clubId}/leave`);
 
     return response.data;
   };

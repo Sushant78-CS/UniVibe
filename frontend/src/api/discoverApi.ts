@@ -1,4 +1,3 @@
-import { useAuth } from "@clerk/react";
 import api from "./axios";
 
 export interface DiscoverPerson {
@@ -31,47 +30,29 @@ export interface SearchResponse {
 }
 
 export const useDiscoverApi = () => {
-  const { getToken } = useAuth();
-
   const getPeople = async (params?: {
     query?: string;
     college?: string;
     department?: string;
     year?: string;
   }) => {
-    const token = await getToken();
-
     const response = await api.get<DiscoverPerson[]>("/discover/people", {
       params,
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
     });
 
     return response.data;
   };
 
   const getPersonProfile = async (id: number) => {
-    const token = await getToken();
-
-    const response = await api.get(`/discover/people/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.get(`/discover/people/${id}`);
 
     return response.data;
   };
 
   const searchProfiles = async (query: string): Promise<SearchResponse> => {
-    const token = await getToken();
-
     const response = await api.get<SearchResponse>("/search", {
       params: {
         query,
-      },
-      headers: {
-        Authorization: `Bearer ${token}`,
       },
     });
 

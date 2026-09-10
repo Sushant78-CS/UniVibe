@@ -1,4 +1,3 @@
-import { useAuth } from "@clerk/react";
 import { useCallback } from "react";
 import api from "./axios";
 
@@ -27,33 +26,15 @@ export interface Message {
 }
 
 export const useMessageApi = () => {
-  const { getToken } = useAuth();
-
-  // ==========================================
-  // AUTH HEADERS
-  // ==========================================
-
-  const getAuthHeaders = useCallback(async () => {
-    const token = await getToken();
-
-    return {
-      Authorization: `Bearer ${token}`,
-    };
-  }, [getToken]);
-
   // ==========================================
   // GET CONVERSATIONS
   // ==========================================
 
   const getConversations = useCallback(async (): Promise<Conversation[]> => {
-    const headers = await getAuthHeaders();
-
-    const response = await api.get("/messages/conversations", {
-      headers,
-    });
+    const response = await api.get<Conversation[]>("/messages/conversations");
 
     return response.data;
-  }, [getAuthHeaders]);
+  }, []);
 
   // ==========================================
   // CREATE / GET CONVERSATION
@@ -61,19 +42,14 @@ export const useMessageApi = () => {
 
   const getOrCreateConversation = useCallback(
     async (userId: number): Promise<Conversation> => {
-      const headers = await getAuthHeaders();
-
-      const response = await api.post(
+      const response = await api.post<Conversation>(
         `/messages/conversations/${userId}`,
         {},
-        {
-          headers,
-        },
       );
 
       return response.data;
     },
-    [getAuthHeaders],
+    [],
   );
 
   // ==========================================
@@ -82,18 +58,13 @@ export const useMessageApi = () => {
 
   const getConversation = useCallback(
     async (conversationId: number): Promise<Conversation> => {
-      const headers = await getAuthHeaders();
-
-      const response = await api.get(
+      const response = await api.get<Conversation>(
         `/messages/conversations/${conversationId}/details`,
-        {
-          headers,
-        },
       );
 
       return response.data;
     },
-    [getAuthHeaders],
+    [],
   );
 
   // ==========================================
@@ -102,18 +73,13 @@ export const useMessageApi = () => {
 
   const getMessages = useCallback(
     async (conversationId: number): Promise<Message[]> => {
-      const headers = await getAuthHeaders();
-
-      const response = await api.get(
+      const response = await api.get<Message[]>(
         `/messages/conversations/${conversationId}`,
-        {
-          headers,
-        },
       );
 
       return response.data;
     },
-    [getAuthHeaders],
+    [],
   );
 
   // ==========================================
@@ -122,21 +88,16 @@ export const useMessageApi = () => {
 
   const sendMessage = useCallback(
     async (conversationId: number, content: string): Promise<Message> => {
-      const headers = await getAuthHeaders();
-
-      const response = await api.post(
+      const response = await api.post<Message>(
         `/messages/conversations/${conversationId}/messages`,
         {
           content,
-        },
-        {
-          headers,
         },
       );
 
       return response.data;
     },
-    [getAuthHeaders],
+    [],
   );
 
   // ==========================================
@@ -145,17 +106,9 @@ export const useMessageApi = () => {
 
   const markMessagesAsRead = useCallback(
     async (conversationId: number): Promise<void> => {
-      const headers = await getAuthHeaders();
-
-      await api.patch(
-        `/messages/conversations/${conversationId}/read`,
-        {},
-        {
-          headers,
-        },
-      );
+      await api.patch(`/messages/conversations/${conversationId}/read`, {});
     },
-    [getAuthHeaders],
+    [],
   );
 
   return {

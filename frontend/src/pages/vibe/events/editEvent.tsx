@@ -150,7 +150,7 @@ export default function EditEvent() {
         throw new Error("Authentication required");
       }
 
-      return getEvent(token, numericEventId);
+      return getEvent(numericEventId);
     },
     enabled: isLoaded && !!isSignedIn && Number.isFinite(numericEventId),
   });
@@ -196,13 +196,7 @@ export default function EditEvent() {
       setLoadingForm(true);
       setFormError("");
 
-      const token = await getToken();
-
-      if (!token) {
-        throw new Error("Authentication required");
-      }
-
-      const form = await getRegistrationForm(token, numericEventId);
+      const form = await getRegistrationForm(numericEventId);
 
       setFormExists(true);
 
@@ -366,7 +360,7 @@ export default function EditEvent() {
         registrationEnabled,
       };
 
-      await updateEvent(token, numericEventId, request);
+      await updateEvent(numericEventId, request);
 
       await queryClient.invalidateQueries({
         queryKey: ["event", numericEventId],
@@ -517,9 +511,9 @@ export default function EditEvent() {
       };
 
       if (formExists) {
-        await updateRegistrationForm(token, numericEventId, request);
+        await updateRegistrationForm(numericEventId, request);
       } else {
-        await createRegistrationForm(token, numericEventId, request);
+        await createRegistrationForm(numericEventId, request);
 
         setFormExists(true);
       }

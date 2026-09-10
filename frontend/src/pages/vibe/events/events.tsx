@@ -279,7 +279,7 @@ const ConfirmModal = ({
 const Events = () => {
   const navigate = useNavigate();
 
-  const { getToken, isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn } = useAuth();
 
   const { getProfile } = useProfileApi();
 
@@ -330,13 +330,7 @@ const Events = () => {
   } = useQuery<Event[]>({
     queryKey: ["events"],
     queryFn: async () => {
-      const token = await getToken();
-
-      if (!token) {
-        throw new Error("Authentication token unavailable.");
-      }
-
-      return getEvents(token);
+      return getEvents();
     },
 
     enabled: isLoaded && !!isSignedIn,
@@ -377,13 +371,7 @@ const Events = () => {
     try {
       setDeleteLoading(true);
 
-      const token = await getToken();
-
-      if (!token) {
-        throw new Error("Authentication token unavailable.");
-      }
-
-      await deleteEvent(token, eventToDelete.id);
+      await deleteEvent(eventToDelete.id);
 
       /*
        * Immediately update TanStack Query cache.

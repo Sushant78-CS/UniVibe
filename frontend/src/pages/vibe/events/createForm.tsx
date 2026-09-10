@@ -203,7 +203,7 @@ const CreateRegistrationForm: React.FC = () => {
         })),
       };
 
-      await createRegistrationForm(token, parsedEventId, request);
+      await createRegistrationForm(parsedEventId, request);
 
       navigate("/vibe/events");
     } catch (err) {

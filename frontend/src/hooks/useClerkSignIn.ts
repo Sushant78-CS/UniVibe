@@ -98,7 +98,8 @@ const useClerkSignIn = () => {
 
   const signInWithGoogle = async (): Promise<SignInResult> => {
     try {
-      console.log("signInWithGoogle called");
+      console.log("Google sign-in started");
+
       if (!signIn) {
         return {
           success: false,
@@ -113,24 +114,30 @@ const useClerkSignIn = () => {
       });
 
       if (error) {
-        console.error("Google sign-in error:", error);
+        console.error("Google sign-in error:", JSON.stringify(error, null, 2));
 
         return {
           success: false,
-          error: getClerkError(error),
+          error:
+            error.longMessage ||
+            error.message ||
+            "Unable to sign in with Google.",
         };
       }
 
-      return {
-        success: true,
-      };
-    } catch (error: unknown) {
-      console.error("Google sign-in error:", error);
+      console.log("Google OAuth redirect started");
+
+      return { success: true };
+    } catch (error: any) {
+      console.error("Google sign-in exception:", error);
 
       return {
         success: false,
         error:
-          error instanceof Error ? error.message : "Google sign-in failed.",
+          error?.errors?.[0]?.longMessage ||
+          error?.errors?.[0]?.message ||
+          error?.message ||
+          "Google sign-in failed.",
       };
     }
   };

@@ -48,14 +48,20 @@ import EventDetail from "./pages/vibe/events/eventDetail";
 import EditEvent from "./pages/vibe/events/editEvent";
 import EventResponses from "./pages/vibe/events/eventResponses";
 import NotificationRedirect from "./components/common/NotificationRedirect";
+import { setClerkTokenGetter } from "./api/axios";
 
 function App() {
   const { getToken } = useAuth();
+
+  useEffect(() => {
+    setClerkTokenGetter(getToken);
+  }, [getToken]);
+
   useEffect(() => {
     initializeForegroundMessages().catch((error) => {
       console.error("FCM foreground initialization failed:", error);
     });
-  }, [getToken]);
+  }, []);
   return (
     <>
       <PublishProgress />
@@ -71,14 +77,13 @@ function App() {
             <Route path="/" element={<SignInPage />} />
             <Route path="/signup" element={<SignUpPage />} />
           </Route>
+          <Route path="/sso-callback" element={<SsoCallback />} />
 
           {/* =========================================
               PROTECTED ROUTES
               ========================================= */}
           <Route element={<ProtectedLayout />}>
             <Route path="/profile/setup" element={<ProfileSetupPage />} />
-
-            <Route path="/sso-callback" element={<SsoCallback />} />
 
             <Route path="/home" element={<HomePage />} />
 

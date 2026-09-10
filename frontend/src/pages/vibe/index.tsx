@@ -174,13 +174,7 @@ const VibePage = () => {
   } = useQuery<boolean>({
     queryKey: ["vibe-membership"],
     queryFn: async () => {
-      const currentToken = await getToken();
-
-      if (!currentToken) {
-        throw new Error("Authentication token unavailable.");
-      }
-
-      return checkVibeMembership(currentToken);
+      return checkVibeMembership();
     },
     enabled: !!token,
     staleTime: 30 * 1000,
@@ -203,13 +197,7 @@ const VibePage = () => {
   } = useQuery<VibeMessage[]>({
     queryKey: ["vibe-messages"],
     queryFn: async () => {
-      const currentToken = await getToken();
-
-      if (!currentToken) {
-        throw new Error("Authentication token unavailable.");
-      }
-
-      return getVibeMessages(currentToken, 50);
+      return getVibeMessages(50);
     },
     enabled: !!token && isMember,
     staleTime: 30 * 1000,
@@ -267,13 +255,7 @@ const VibePage = () => {
       setJoining(true);
       setError(null);
 
-      const currentToken = await getToken();
-
-      if (!currentToken) {
-        throw new Error("Authentication token unavailable.");
-      }
-
-      await joinVibe(currentToken);
+      await joinVibe();
 
       await queryClient.invalidateQueries({
         queryKey: ["vibe-membership"],
@@ -300,13 +282,7 @@ const VibePage = () => {
       setLeaving(true);
       setError(null);
 
-      const currentToken = await getToken();
-
-      if (!currentToken) {
-        throw new Error("Authentication token unavailable.");
-      }
-
-      await leaveVibe(currentToken);
+      await leaveVibe();
 
       await queryClient.invalidateQueries({
         queryKey: ["vibe-membership"],
@@ -653,7 +629,7 @@ const VibePage = () => {
       // SEND TO BACKEND
       // -----------------------------------------------------
 
-      const saved = await sendVibeMessage(currentToken, {
+      const saved = await sendVibeMessage({
         content: messageText || null,
 
         mediaUrl,
@@ -796,14 +772,7 @@ const VibePage = () => {
       setActionLoading(true);
       setError(null);
 
-      const currentToken = await getToken();
-
-      if (!currentToken) {
-        throw new Error("Authentication token unavailable.");
-      }
-
       const updatedMessage = await editVibeMessage(
-        currentToken,
         editingMessageId,
         editingText.trim(),
       );
@@ -872,7 +841,7 @@ const VibePage = () => {
         throw new Error("Authentication token unavailable.");
       }
 
-      await deleteVibeMessage(currentToken, messageId);
+      await deleteVibeMessage(messageId);
 
       // Remove immediately for the current user.
       // Other users are updated through the WebSocket delete event.

@@ -21,15 +21,9 @@ export interface CreateVibeMessageRequest {
 // GET VIBE MESSAGES
 // =========================================================
 
-export const getVibeMessages = async (
-  token: string,
-  limit = 50,
-): Promise<VibeMessage[]> => {
+export const getVibeMessages = async (limit = 50): Promise<VibeMessage[]> => {
   const response = await api.get<VibeMessage[]>("/vibe/messages", {
     params: { limit },
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
   });
 
   return response.data;
@@ -40,14 +34,9 @@ export const getVibeMessages = async (
 // =========================================================
 
 export const sendVibeMessage = async (
-  token: string,
   request: CreateVibeMessageRequest,
 ): Promise<VibeMessage> => {
-  const response = await api.post<VibeMessage>("/vibe/messages", request, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await api.post<VibeMessage>("/vibe/messages", request);
 
   return response.data;
 };
@@ -57,23 +46,14 @@ export const sendVibeMessage = async (
 // =========================================================
 
 export const editVibeMessage = async (
-  token: string,
   messageId: number,
   content: string,
 ): Promise<VibeMessage> => {
-  const response = await api.put<VibeMessage>(
-    `/vibe/messages/${messageId}`,
-    {
-      content,
-      mediaUrl: null,
-      mediaType: null,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    },
-  );
+  const response = await api.put<VibeMessage>(`/vibe/messages/${messageId}`, {
+    content,
+    mediaUrl: null,
+    mediaType: null,
+  });
 
   return response.data;
 };
@@ -82,27 +62,16 @@ export const editVibeMessage = async (
 // DELETE VIBE MESSAGE
 // =========================================================
 
-export const deleteVibeMessage = async (
-  token: string,
-  messageId: number,
-): Promise<void> => {
-  await api.delete(`/vibe/messages/${messageId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+export const deleteVibeMessage = async (messageId: number): Promise<void> => {
+  await api.delete(`/vibe/messages/${messageId}`);
 };
 
 // =========================================================
 // CHECK VIBE MEMBERSHIP
 // =========================================================
 
-export const checkVibeMembership = async (token: string): Promise<boolean> => {
-  const response = await api.get<boolean>("/vibe/membership", {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+export const checkVibeMembership = async (): Promise<boolean> => {
+  const response = await api.get<boolean>("/vibe/membership");
 
   return response.data;
 };
@@ -111,26 +80,14 @@ export const checkVibeMembership = async (token: string): Promise<boolean> => {
 // JOIN VIBE
 // =========================================================
 
-export const joinVibe = async (token: string): Promise<void> => {
-  await api.post(
-    "/vibe/join",
-    {},
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    },
-  );
+export const joinVibe = async (): Promise<void> => {
+  await api.post("/vibe/join");
 };
 
 // =========================================================
 // LEAVE VIBE
 // =========================================================
 
-export const leaveVibe = async (token: string): Promise<void> => {
-  await api.delete("/vibe/leave", {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+export const leaveVibe = async (): Promise<void> => {
+  await api.delete("/vibe/leave");
 };

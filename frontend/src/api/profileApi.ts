@@ -1,4 +1,3 @@
-import { useAuth } from "@clerk/react";
 import api from "./axios";
 
 interface CreateProfileData {
@@ -23,16 +22,8 @@ export interface UpdateProfileData {
 }
 
 export const useProfileApi = () => {
-  const { getToken } = useAuth();
-
   const getProfile = async () => {
-    const token = await getToken();
-
-    const response = await api.get("/user/profile", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.get("/user/profile");
 
     return response.data;
   };
@@ -41,8 +32,6 @@ export const useProfileApi = () => {
     data: CreateProfileData,
     profileImage?: File | null,
   ) => {
-    const token = await getToken();
-
     const formData = new FormData();
 
     formData.append("fullName", data.fullName);
@@ -66,11 +55,7 @@ export const useProfileApi = () => {
       formData.append("profileImage", profileImage);
     }
 
-    const response = await api.post("/user/profile", formData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.post("/user/profile", formData);
 
     return response.data;
   };
@@ -79,8 +64,6 @@ export const useProfileApi = () => {
     data: UpdateProfileData,
     profileImage?: File | null,
   ) => {
-    const token = await getToken();
-
     const formData = new FormData();
 
     formData.append("fullName", data.fullName);
@@ -110,23 +93,13 @@ export const useProfileApi = () => {
       formData.append("profileImage", profileImage);
     }
 
-    const response = await api.put("/user/profile", formData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.put("/user/profile", formData);
 
     return response.data;
   };
 
   const deleteProfileImage = async () => {
-    const token = await getToken();
-
-    const response = await api.delete("/user/image", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.delete("/user/image");
 
     return response.data;
   };

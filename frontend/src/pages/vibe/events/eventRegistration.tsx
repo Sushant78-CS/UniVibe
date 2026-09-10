@@ -53,8 +53,8 @@ const EventRegistration: React.FC = () => {
         }
 
         const [eventData, formData] = await Promise.all([
-          getEvent(token, id),
-          getRegistrationForm(token, id),
+          getEvent(id),
+          getRegistrationForm(id),
         ]);
 
         setEvent(eventData);
@@ -101,13 +101,7 @@ const EventRegistration: React.FC = () => {
     try {
       setSubmitting(true);
 
-      const token = await getToken();
-
-      if (!token) {
-        throw new Error("Authentication token not available.");
-      }
-
-      await registerForEvent(token, event.id, {
+      await registerForEvent(event.id, {
         answers: form.questions.map((question) => ({
           questionId: question.id,
           answer: answers[question.id] || null,

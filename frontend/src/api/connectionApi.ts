@@ -1,4 +1,3 @@
-import { useAuth } from "@clerk/react";
 import api from "./axios";
 
 export interface ConnectionRequest {
@@ -19,39 +18,17 @@ export interface ConnectedPerson {
 }
 
 export const useConnectionApi = () => {
-  const { getToken } = useAuth();
   const getRequests = async (): Promise<ConnectionRequest[]> => {
-    const token = await getToken();
-
-    const response = await api.get("/user/connections/requests", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.get("/user/connections/requests");
 
     return response.data;
   };
 
   const sendConnection = async (receiverId: number) => {
-    const token = await getToken();
-
-    if (!token) {
-      throw new Error("Authentication token not available");
-    }
-
     try {
-      const response = await api.post(
-        "/user/connections",
-        {
-          receiverId,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        },
-      );
+      const response = await api.post("/user/connections", {
+        receiverId,
+      });
 
       return response.data;
     } catch (error: any) {
@@ -68,29 +45,13 @@ export const useConnectionApi = () => {
   };
 
   const updateConnection = async (id: number, action: "ACCEPT" | "REJECT") => {
-    const token = await getToken();
-
-    const response = await api.put(
-      `/user/connections/${id}`,
-      { action },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-    );
+    const response = await api.put(`/user/connections/${id}`, { action });
 
     return response.data;
   };
 
   const getConnections = async (): Promise<ConnectedPerson[]> => {
-    const token = await getToken();
-
-    const response = await api.get("/user/connections", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.get("/user/connections");
 
     return response.data;
   };

@@ -32,65 +32,37 @@ export interface CreateEventRequest {
   registrationEnabled: boolean;
 }
 
-export const getEvents = async (token: string): Promise<Event[]> => {
-  const response = await api.get<Event[]>("/events", {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+export const getEvents = async (): Promise<Event[]> => {
+  const response = await api.get<Event[]>("/events");
 
   return response.data;
 };
 
-export const getEvent = async (
-  token: string,
-  eventId: number,
-): Promise<Event> => {
-  const response = await api.get<Event>(`/events/${eventId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+export const getEvent = async (eventId: number): Promise<Event> => {
+  const response = await api.get<Event>(`/events/${eventId}`);
 
   return response.data;
 };
 
 export const createEvent = async (
-  token: string,
   request: CreateEventRequest,
 ): Promise<Event> => {
-  const response = await api.post<Event>("/events", request, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await api.post<Event>("/events", request);
 
   return response.data;
 };
 
 export const updateEvent = async (
-  token: string,
   eventId: number,
   request: CreateEventRequest,
 ): Promise<Event> => {
-  const response = await api.put<Event>(`/events/${eventId}`, request, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await api.put<Event>(`/events/${eventId}`, request);
 
   return response.data;
 };
 
-export const deleteEvent = async (
-  token: string,
-  eventId: number,
-): Promise<void> => {
-  await api.delete(`/events/${eventId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+export const deleteEvent = async (eventId: number): Promise<void> => {
+  await api.delete(`/events/${eventId}`);
 };
 
 // -----------------------------
@@ -133,52 +105,34 @@ export interface RegistrationFormResponse {
 }
 
 export const createRegistrationForm = async (
-  token: string,
   eventId: number,
   request: RegistrationFormRequest,
 ): Promise<RegistrationFormResponse> => {
   const response = await api.post<RegistrationFormResponse>(
     `/events/${eventId}/registration-form`,
     request,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    },
   );
 
   return response.data;
 };
 
 export const getRegistrationForm = async (
-  token: string,
   eventId: number,
 ): Promise<RegistrationFormResponse> => {
   const response = await api.get<RegistrationFormResponse>(
     `/events/${eventId}/registration-form`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    },
   );
 
   return response.data;
 };
 
 export const updateRegistrationForm = async (
-  token: string,
   eventId: number,
   request: RegistrationFormRequest,
 ): Promise<RegistrationFormResponse> => {
   const response = await api.put<RegistrationFormResponse>(
     `/events/${eventId}/registration-form`,
     request,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    },
   );
 
   return response.data;
@@ -204,18 +158,12 @@ export interface EventRegistrationResponse {
 }
 
 export const registerForEvent = async (
-  token: string,
   eventId: number,
   request: EventRegistrationRequest,
 ): Promise<EventRegistrationResponse> => {
   const response = await api.post<EventRegistrationResponse>(
     `/events/${eventId}/register`,
     request,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    },
   );
 
   return response.data;
@@ -237,16 +185,10 @@ export interface EventRegistrationResponse {
 }
 
 export const getEventRegistrations = async (
-  token: string,
   eventId: number,
 ): Promise<EventRegistrationResponse[]> => {
   const response = await api.get<EventRegistrationResponse[]>(
     `/events/${eventId}/registrations`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    },
   );
 
   return response.data;

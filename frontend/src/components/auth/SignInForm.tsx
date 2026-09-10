@@ -1,27 +1,56 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 import AuthError from "./AuthError";
 import useClerkSignIn from "../../hooks/useClerkSignIn";
 
 const SignInForm = () => {
   const navigate = useNavigate();
-  const { signInUser, loading } = useClerkSignIn();
+  const { signInUser, signInWithGoogle } = useClerkSignIn();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loadingState, setLoadingState] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
-  const isSubmitting = loading || loadingState;
+  const emailLoading = loadingState;
+  const isAnyLoading = emailLoading || googleLoading;
+
+  const handleGoogleSignIn = async () => {
+    if (isAnyLoading) {
+      return;
+    }
+
+    setError(null);
+    setGoogleLoading(true);
+
+    try {
+      const result = await signInWithGoogle();
+
+      if (!result.success) {
+        setError(result.error ?? "Unable to sign in with Google.");
+      }
+    } catch (error) {
+      console.error("Google sign-in failed:", error);
+
+      setError("Unable to sign in with Google.");
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   // --------------------------------
   // EMAIL SIGN IN
   // --------------------------------
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (isAnyLoading) {
+      return;
+    }
 
     setError(null);
     setLoadingState(true);
@@ -30,6 +59,7 @@ const SignInForm = () => {
 
     if (!result.success) {
       setError(result.error ?? "Unable to sign in.");
+
       setLoadingState(false);
       return;
     }
@@ -37,8 +67,6 @@ const SignInForm = () => {
     navigate("/home", {
       replace: true,
     });
-
-    setLoadingState(false);
   };
 
   return (
@@ -69,6 +97,78 @@ const SignInForm = () => {
         >
           Connect with your campus community.
         </p>
+      </div>
+
+      {/* Google Sign In */}
+      <button
+        type="button"
+        onClick={handleGoogleSignIn}
+        disabled={isAnyLoading}
+        className="
+    flex
+    w-full
+    items-center
+    justify-center
+    gap-3
+    rounded-2xl
+    border
+    border-slate-200
+    bg-white
+    px-4
+    py-3.5
+    text-sm
+    font-semibold
+    text-slate-800
+    transition-all
+    duration-200
+    hover:border-slate-300
+    hover:bg-slate-50
+    disabled:cursor-not-allowed
+    disabled:opacity-60
+    dark:border-neutral-700
+    dark:bg-[#0f0f0f]
+    dark:text-white
+    dark:hover:border-neutral-600
+    dark:hover:bg-neutral-900
+  "
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            fill="#4285F4"
+            d="M21.35 12.23c0-.71-.06-1.4-.18-2.05H12v3.88h5.22a4.46 4.46 0 0 1-1.94 2.93v2.44h3.14c1.84-1.69 2.93-4.18 2.93-7.2Z"
+          />
+          <path
+            fill="#34A853"
+            d="M12 21.6c2.63 0 4.84-.87 6.45-2.36l-3.14-2.44c-.87.58-1.98.93-3.31.93-2.55 0-4.71-1.72-5.49-4.03H3.27v2.52A9.74 9.74 0 0 0 12 21.6Z"
+          />
+          <path
+            fill="#FBBC05"
+            d="M6.51 13.7A5.86 5.86 0 0 1 6.2 12c0-.59.11-1.16.31-1.7V7.78H3.27A9.75 9.75 0 0 0 2.25 12c0 1.57.38 3.05 1.02 4.22l3.24-2.52Z"
+          />
+          <path
+            fill="#EA4335"
+            d="M12 6.27c1.43 0 2.71.49 3.72 1.45l2.79-2.79C16.84 3.36 14.63 2.4 12 2.4a9.74 9.74 0 0 0-8.73 5.38L6.51 10.3C7.29 7.99 9.45 6.27 12 6.27Z"
+          />
+        </svg>
+        {googleLoading ? (
+          <span className="flex items-center justify-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Connecting to Google...
+          </span>
+        ) : (
+          "Continue with Google"
+        )}
+      </button>
+
+      {/* Divider */}
+      <div className="my-5 flex items-center gap-3">
+        <div className="h-px flex-1 bg-slate-200 dark:bg-neutral-800" />
+
+        <span className="text-xs font-medium text-slate-400 dark:text-neutral-500">
+          OR
+        </span>
+
+        <div className="h-px flex-1 bg-slate-200 dark:bg-neutral-800" />
       </div>
 
       {/* Form Card */}
@@ -111,7 +211,7 @@ const SignInForm = () => {
               onChange={(event) => setEmail(event.target.value)}
               placeholder="you@example.com"
               autoComplete="email"
-              disabled={isSubmitting}
+              disabled={isAnyLoading}
               required
               className="
                 w-full
@@ -180,7 +280,7 @@ const SignInForm = () => {
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="Enter your password"
                 autoComplete="current-password"
-                disabled={isSubmitting}
+                disabled={isAnyLoading}
                 required
                 className="
                   w-full
@@ -217,7 +317,7 @@ const SignInForm = () => {
               <button
                 type="button"
                 onClick={() => setShowPassword((previous) => !previous)}
-                disabled={isSubmitting}
+                disabled={isAnyLoading}
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 className="
                   absolute
@@ -250,7 +350,7 @@ const SignInForm = () => {
           {/* Submit */}
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isAnyLoading}
             className="
               w-full
               rounded-2xl
@@ -274,7 +374,14 @@ const SignInForm = () => {
               dark:hover:bg-violet-500
             "
           >
-            {isSubmitting ? "Signing you in..." : "Sign In"}
+            {emailLoading ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Signing you in...
+              </span>
+            ) : (
+              "Sign In"
+            )}
           </button>
 
           {/* Security note */}

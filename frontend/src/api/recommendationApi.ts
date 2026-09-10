@@ -1,4 +1,3 @@
-import { useAuth } from "@clerk/react";
 import api from "./axios";
 
 export type ConnectionStatus =
@@ -27,16 +26,8 @@ export interface RecommendationResponse {
 }
 
 export const useRecommendationApi = () => {
-  const { getToken } = useAuth();
-
   const getRecommendations = async () => {
-    const token = await getToken();
-
-    const response = await api.get<RecommendationResponse>("/recommendations", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await api.get<RecommendationResponse>("/recommendations");
 
     return response.data;
   };

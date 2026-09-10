@@ -1,4 +1,3 @@
-import { useAuth } from "@clerk/react";
 import api from "./axios";
 
 interface CloudinarySignature {
@@ -26,27 +25,15 @@ export interface CloudinaryUploadResponse {
 type MediaType = "IMAGE" | "VIDEO";
 
 export const useCloudinaryApi = () => {
-  const { getToken } = useAuth();
-
   const uploadPostMediaToCloudinary = async (
     file: File,
     mediaType: MediaType,
   ): Promise<CloudinaryUploadResponse> => {
-    const token = await getToken();
-
-    if (!token) {
-      throw new Error("Authentication token not available");
-    }
-
     const resourceType = mediaType === "VIDEO" ? "video" : "image";
 
     const { data } = await api.get<CloudinarySignature>(
       "/cloudinary/signature",
       {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-
         params: {
           resourceType,
         },
@@ -109,11 +96,6 @@ export const useCloudinaryApi = () => {
     /*
      * Get signed upload parameters from backend.
      */
-    const token = await getToken();
-
-    if (!token) {
-      throw new Error("Authentication token not available");
-    }
 
     const signatureResponse = await api.get<{
       timestamp: string;
@@ -122,9 +104,6 @@ export const useCloudinaryApi = () => {
     }>("/cloudinary/signature", {
       params: {
         resourceType,
-      },
-      headers: {
-        Authorization: `Bearer ${token}`,
       },
     });
 

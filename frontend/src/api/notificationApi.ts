@@ -1,4 +1,3 @@
-import { useAuth } from "@clerk/react";
 import api from "./axios";
 
 export type NotificationType =
@@ -24,53 +23,28 @@ export interface Notification {
 }
 
 export const useNotificationApi = () => {
-  const { getToken } = useAuth();
-
-  const getAuthHeaders = async () => {
-    const token = await getToken();
-
-    return {
-      Authorization: `Bearer ${token}`,
-    };
-  };
-
   const getNotifications = async (): Promise<Notification[]> => {
-    const headers = await getAuthHeaders();
-
-    const response = await api.get<Notification[]>("/notifications", {
-      headers,
-    });
+    const response = await api.get<Notification[]>("/notifications");
 
     return response.data;
   };
 
   const getUnreadCount = async (): Promise<number> => {
-    const headers = await getAuthHeaders();
-
     const response = await api.get<{ count: number }>(
       "/notifications/unread-count",
-      { headers },
     );
 
     return response.data.count;
   };
 
   const markAsRead = async (id: number) => {
-    const headers = await getAuthHeaders();
-
-    const response = await api.put(
-      `/notifications/${id}/read`,
-      {},
-      { headers },
-    );
+    const response = await api.put(`/notifications/${id}/read`, {});
 
     return response.data;
   };
 
   const markAllAsRead = async () => {
-    const headers = await getAuthHeaders();
-
-    const response = await api.put("/notifications/read-all", {}, { headers });
+    const response = await api.put("/notifications/read-all");
 
     return response.data;
   };
