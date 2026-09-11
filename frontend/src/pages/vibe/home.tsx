@@ -2,6 +2,7 @@ import {
   ArrowRight,
   CalendarDays,
   ChevronRight,
+  Fingerprint,
   MessageCircle,
   Users,
 } from "lucide-react";
@@ -314,6 +315,127 @@ const VibeHome = () => {
               <CalendarDays size={13} />
 
               <span>Explore upcoming events</span>
+
+              <ChevronRight size={12} />
+            </div>
+          </button>
+
+          {/* ===================================================
+    IMPOSTER
+=================================================== */}
+          <button
+            type="button"
+            onClick={() => navigate("/imposter")}
+            className="
+    group
+    w-full
+    rounded-2xl
+    border
+    border-slate-200
+    bg-white
+    p-4
+    text-left
+    shadow-sm
+    outline-none
+    transition-all
+    duration-150
+    hover:border-violet-300
+    hover:shadow-md
+    active:scale-[0.985]
+    dark:border-neutral-800
+    dark:bg-[#0d0d0d]
+    dark:hover:border-violet-800
+  "
+          >
+            <div className="flex items-center gap-3">
+              {/* Icon */}
+              <div
+                className="
+        flex
+        h-11
+        w-11
+        shrink-0
+        items-center
+        justify-center
+        rounded-xl
+        bg-violet-100
+        text-violet-600
+        dark:bg-violet-950/50
+        dark:text-violet-400
+      "
+              >
+                <Fingerprint size={21} strokeWidth={2} />
+              </div>
+
+              {/* Content */}
+              <div className="min-w-0 flex-1">
+                <h2
+                  className="
+          text-sm
+          font-semibold
+          text-slate-900
+          dark:text-white
+        "
+                >
+                  Imposter
+                </h2>
+
+                <p
+                  className="
+          mt-1
+          line-clamp-2
+          text-xs
+          leading-5
+          text-slate-500
+          dark:text-neutral-500
+        "
+                >
+                  One secret word, one hidden Imposter. Find out who is
+                  bluffing.
+                </p>
+              </div>
+
+              {/* Arrow */}
+              <div
+                className="
+        flex
+        h-8
+        w-8
+        shrink-0
+        items-center
+        justify-center
+        rounded-full
+        text-slate-400
+        transition-transform
+        duration-150
+        group-hover:translate-x-0.5
+        dark:text-neutral-600
+      "
+              >
+                <ArrowRight size={17} />
+              </div>
+            </div>
+
+            {/* Bottom action */}
+            <div
+              className="
+      mt-3
+      flex
+      items-center
+      gap-1.5
+      border-t
+      border-slate-100
+      pt-3
+      text-[10px]
+      font-medium
+      text-violet-600
+      dark:border-neutral-800
+      dark:text-violet-400
+    "
+            >
+              <Fingerprint size={13} />
+
+              <span>Play with your friends</span>
 
               <ChevronRight size={12} />
             </div>
