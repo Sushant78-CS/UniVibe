@@ -1,15 +1,15 @@
 package com.example.NotesRoom.service;
 
-import com.example.NotesRoom.dto.connection.ConnectedPersonDto;
-import com.example.NotesRoom.dto.connection.ConnectionRequestDto;
-import com.example.NotesRoom.dto.connection.ConnectionStatus;
-import com.example.NotesRoom.dto.connection.CreateConnectionDto;
+import com.example.NotesRoom.dto.connection.*;
 import com.example.NotesRoom.dto.notification.NotificationType;
 import com.example.NotesRoom.entity.*;
 import com.example.NotesRoom.repository.ConnectionRepository;
 import com.example.NotesRoom.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -216,31 +216,87 @@ public class ConnectionService {
                 .orElse("NONE");
     }
 
-    public List<ConnectedPersonDto> getConnections(String clerkId) {
+    @Transactional
+    public ConnectionPageResponse getConnections(
+            String clerkId,
+            int page,
+            int size
+    ) {
+
+        // Prevent invalid page
+        if (page < 0) {
+            page = 0;
+        }
+
+        // Default
+        if (size <= 0) {
+            size = 10;
+        }
+
+        // Never allow huge requests
+        size = Math.min(size, 50);
+
         Users currentUser = userRepository
                 .findByClerkId(clerkId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        List<Connection> connections =
-                connectionRepository.findAcceptedConnections(
-                        currentUser.getId(), ConnectionStatus.ACCEPTED
+                .orElseThrow(() ->
+                        new RuntimeException("User not found")
                 );
-        return connections.stream()
-                .map(connection -> {
-                    // Find the OTHER user
-                    Users otherUser;
-                    if (connection.getSender().getId()
-                            .equals(currentUser.getId())) {
-                        otherUser = connection.getReceiver();
-                    } else {
-                        otherUser = connection.getSender();
-                    }
-                    Profile profile = otherUser.getProfile();
-                    return new ConnectedPersonDto(
-                            connection.getId(),
-                            profile.getId(),
-                            profile.getFullName(),
-                            profile.getUsername(),
-                            profile.getProfileImage());
-                }).toList();
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size
+        );
+
+        Page<Connection> connectionPage =
+                connectionRepository.findAcceptedConnections(
+                        currentUser.getId(),
+                        ConnectionStatus.ACCEPTED,
+                        pageable
+                );
+
+        List<ConnectedPersonDto> connections =
+                connectionPage
+                        .getContent()
+                        .stream()
+                        .map(connection -> {
+
+                            Users otherUser;
+
+                            if (connection
+                                    .getSender()
+                                    .getId()
+                                    .equals(currentUser.getId())) {
+
+                                otherUser =
+                                        connection.getReceiver();
+
+                            } else {
+
+                                otherUser =
+                                        connection.getSender();
+                            }
+
+                            Profile profile =
+                                    otherUser.getProfile();
+
+                            return new ConnectedPersonDto(
+                                    connection.getId(),
+                                    profile.getId(),
+                                    profile.getFullName(),
+                                    profile.getUsername(),
+                                    profile.getProfileImage()
+                            );
+                        })
+                        .toList();
+
+        return new ConnectionPageResponse(
+                connections,
+                connectionPage.getNumber(),
+                connectionPage.getSize(),
+                connectionPage.getTotalElements(),
+                connectionPage.getTotalPages(),
+                connectionPage.isLast()
+        );
     }
-}
+
+    }

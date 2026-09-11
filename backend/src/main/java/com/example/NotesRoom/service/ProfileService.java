@@ -20,44 +20,67 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class ProfileService {
+
     private final ProfileRepository profileRepository;
     private final UserRepository userRepository;
     private final CloudinaryService cloudinaryService;
 
+
+    // ==========================================
+    // GET PROFILE
+    // ==========================================
+
+    @Transactional
     public ProfileDto getProfile(String clerkId) {
 
         Profile profile = profileRepository
                 .findByUser_ClerkId(clerkId)
-                .orElseThrow(() -> new ProfileNotFoundException("Profile not found"));
+                .orElseThrow(() ->
+                        new ProfileNotFoundException(
+                                "Profile not found"
+                        )
+                );
 
-        return new ProfileDto(
-                profile.getId(),
-                profile.getFullName(),
-                profile.getUsername(),
-                profile.getBio(),
-                profile.getProfileImage(),
-                profile.getCollege(),
-                profile.getDepartment(),
-                profile.getYear(),
-                profile.getInterests(),
-                profile.getProfileCompleted(),
-                profile.getUser().getRole()
-        );
+        /*
+         * Because this method is transactional,
+         * profile.getUser() can safely initialize
+         * the LAZY Users relationship.
+         */
+        return toProfileDto(profile);
     }
 
-    public Profile createProfile(String clerkId, CreateProfileDto dto, MultipartFile profileImage)
-            throws IOException {
-        Users user = userRepository.findByClerkId(clerkId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+
+    // ==========================================
+    // CREATE PROFILE
+    // ==========================================
+
+    public ProfileDto createProfile(
+            String clerkId,
+            CreateProfileDto dto,
+            MultipartFile profileImage
+    ) throws IOException {
+
+        Users user = userRepository
+                .findByClerkId(clerkId)
+                .orElseThrow(() ->
+                        new RuntimeException("User not found")
+                );
+
         if (profileRepository.existsByUser_ClerkId(clerkId)) {
-            throw new RuntimeException("Profile already exists");
+            throw new RuntimeException(
+                    "Profile already exists"
+            );
         }
 
         String imageUrl = null;
 
-        if (profileImage != null && !profileImage.isEmpty()) {
-            imageUrl = cloudinaryService.uploadProfileImage(
-                    profileImage);
+        if (profileImage != null
+                && !profileImage.isEmpty()) {
+
+            imageUrl =
+                    cloudinaryService.uploadProfileImage(
+                            profileImage
+                    );
         }
 
         Profile profile = Profile.builder()
@@ -73,8 +96,22 @@ public class ProfileService {
                 .profileCompleted(true)
                 .build();
 
-        return profileRepository.save(profile);
+        Profile savedProfile =
+                profileRepository.save(profile);
+
+        /*
+         * Return DTO instead of returning the JPA entity.
+         *
+         * This prevents Jackson from trying to serialize
+         * lazy-loaded relationships.
+         */
+        return toProfileDto(savedProfile);
     }
+
+
+    // ==========================================
+    // UPDATE PROFILE
+    // ==========================================
 
     @Transactional
     public ProfileDto updateProfile(
@@ -82,52 +119,7 @@ public class ProfileService {
             UpdateProfileDto dto,
             MultipartFile profileImage
     ) throws IOException {
-        Profile profile = profileRepository
-                .findByUser_ClerkId(clerkId)
-                .orElseThrow(() -> new ProfileNotFoundException("Profile not found"));
-        profile.setFullName(dto.fullName());
-        profile.setUsername(dto.username());
-        profile.setBio(dto.bio());
-        profile.setCollege(dto.college());
-        profile.setDepartment(dto.department());
-        profile.setYear(dto.year());
-        profile.setInterests(dto.interests());
-        // New image selected
-        if (profileImage != null && !profileImage.isEmpty()) {
-            // Delete old image from Cloudinary
-            if (profile.getProfileImage() != null &&
-                    !profile.getProfileImage().isBlank()) {
-                cloudinaryService.deleteProfileImage(
-                        profile.getProfileImage()
-                );
-            }
-            // Upload new image
-            String newImageUrl = cloudinaryService.uploadProfileImage(profileImage);
-            profile.setProfileImage(newImageUrl);
-        }
-        profile.setProfileCompleted(
-                dto.fullName() != null &&
-                        !dto.fullName().isBlank()
-        );
-        Profile savedProfile = profileRepository.save(profile);
 
-        return new ProfileDto(
-                savedProfile.getId(),
-                savedProfile.getFullName(),
-                savedProfile.getUsername(),
-                savedProfile.getBio(),
-                savedProfile.getProfileImage(),
-                savedProfile.getCollege(),
-                savedProfile.getDepartment(),
-                savedProfile.getYear(),
-                savedProfile.getInterests(),
-                savedProfile.getProfileCompleted(),
-                savedProfile.getUser().getRole()
-        );
-    }
-
-    @Transactional
-    public ProfileDto deleteProfileImage(String clerkId) throws IOException {
         Profile profile = profileRepository
                 .findByUser_ClerkId(clerkId)
                 .orElseThrow(() ->
@@ -135,27 +127,108 @@ public class ProfileService {
                                 "Profile not found"
                         )
                 );
-        String oldImageUrl = profile.getProfileImage();
-        // Delete from Cloudinary
-        if (oldImageUrl != null &&
-                !oldImageUrl.isBlank()) {
-            cloudinaryService.deleteProfileImage(oldImageUrl);
+
+        profile.setFullName(dto.fullName());
+        profile.setUsername(dto.username());
+        profile.setBio(dto.bio());
+        profile.setCollege(dto.college());
+        profile.setDepartment(dto.department());
+        profile.setYear(dto.year());
+        profile.setInterests(dto.interests());
+
+        // New image selected
+        if (profileImage != null
+                && !profileImage.isEmpty()) {
+
+            // Delete old image
+            if (profile.getProfileImage() != null
+                    && !profile.getProfileImage().isBlank()) {
+
+                cloudinaryService.deleteProfileImage(
+                        profile.getProfileImage()
+                );
+            }
+
+            // Upload new image
+            String newImageUrl =
+                    cloudinaryService.uploadProfileImage(
+                            profileImage
+                    );
+
+            profile.setProfileImage(newImageUrl);
         }
+
+        profile.setProfileCompleted(
+                dto.fullName() != null
+                        && !dto.fullName().isBlank()
+        );
+
+        Profile savedProfile =
+                profileRepository.save(profile);
+
+        return toProfileDto(savedProfile);
+    }
+
+
+    // ==========================================
+    // DELETE PROFILE IMAGE
+    // ==========================================
+
+    @Transactional
+    public ProfileDto deleteProfileImage(
+            String clerkId
+    ) throws IOException {
+
+        Profile profile = profileRepository
+                .findByUser_ClerkId(clerkId)
+                .orElseThrow(() ->
+                        new ProfileNotFoundException(
+                                "Profile not found"
+                        )
+                );
+
+        String oldImageUrl =
+                profile.getProfileImage();
+
+        // Delete from Cloudinary
+        if (oldImageUrl != null
+                && !oldImageUrl.isBlank()) {
+
+            cloudinaryService.deleteProfileImage(
+                    oldImageUrl
+            );
+        }
+
         // Remove URL from database
         profile.setProfileImage(null);
-        Profile savedProfile = profileRepository.save(profile);
+
+        Profile savedProfile =
+                profileRepository.save(profile);
+
+        return toProfileDto(savedProfile);
+    }
+
+
+    // ==========================================
+    // PROFILE → DTO
+    // ==========================================
+
+    private ProfileDto toProfileDto(
+            Profile profile
+    ) {
+
         return new ProfileDto(
-                savedProfile.getId(),
-                savedProfile.getFullName(),
-                savedProfile.getUsername(),
-                savedProfile.getBio(),
-                savedProfile.getProfileImage(),
-                savedProfile.getCollege(),
-                savedProfile.getDepartment(),
-                savedProfile.getYear(),
-                savedProfile.getInterests(),
-                savedProfile.getProfileCompleted(),
-                savedProfile.getUser().getRole()
+                profile.getId(),
+                profile.getFullName(),
+                profile.getUsername(),
+                profile.getBio(),
+                profile.getProfileImage(),
+                profile.getCollege(),
+                profile.getDepartment(),
+                profile.getYear(),
+                profile.getInterests(),
+                profile.getProfileCompleted(),
+                profile.getUser().getRole()
         );
     }
 }

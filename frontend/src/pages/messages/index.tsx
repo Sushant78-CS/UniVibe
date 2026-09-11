@@ -2,6 +2,8 @@ import { MessageCircle, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+
 import ConversationList from "../../components/messages/ConversationList";
 import ChatWindow from "../../components/messages/ChatWindow";
 
@@ -10,180 +12,304 @@ import {
   type Conversation,
   type Message,
 } from "../../api/messageApi";
+
 import { useProfileApi } from "../../api/profileApi";
 import { useMessageWebSocket } from "../../hooks/useMessageWebSocket";
 
 const MessagesPage = () => {
   const navigate = useNavigate();
   const { conversationId } = useParams();
-  // const { user } = useUser();
+
+  const queryClient = useQueryClient();
+
+  /* =========================================================
+     APIs
+     ========================================================= */
+
   const { getProfile } = useProfileApi();
-  const [profile, setProfile] = useState<any>(null);
 
-  useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const profile = await getProfile();
-        setProfile(profile);
-        console.log("Profile:", profile);
-      } catch (error) {
-        console.error("Failed to load profile:", error);
-      }
-    };
-    loadProfile();
-  }, []);
+  const { getConversations, getConversation, getMessages, markMessagesAsRead } =
+    useMessageApi();
 
-  const {
-    getConversations,
-    getConversation,
-    getMessages,
-    // sendMessage,
-    markMessagesAsRead,
-  } = useMessageApi();
+  /* =========================================================
+     CONVERSATION ID
+     ========================================================= */
 
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedConversation, setSelectedConversation] =
-    useState<Conversation | null>(null);
+  const selectedConversationId = conversationId ? Number(conversationId) : null;
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  const validConversationId =
+    selectedConversationId !== null && !Number.isNaN(selectedConversationId)
+      ? selectedConversationId
+      : null;
 
-  const [loadingConversations, setLoadingConversations] = useState(false);
-  const [loadingConversation, setLoadingConversation] = useState(false);
-  const [loadingMessages, setLoadingMessages] = useState(false);
+  /* =========================================================
+     UI STATE
+     ========================================================= */
 
   const [sending, setSending] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
 
-  /*
-   * ==========================================
-   * LOAD CONVERSATION LIST
-   * ==========================================
-   */
+  /* =========================================================
+     PROFILE QUERY
+     ========================================================= */
 
-  useEffect(() => {
-    if (conversationId) {
-      return;
-    }
+  const {
+    data: profile,
+    isLoading: loadingProfile,
+    isError: profileError,
+  } = useQuery({
+    queryKey: ["profile", "me"],
 
-    const loadConversations = async () => {
-      try {
-        setError(null);
-        setLoadingConversations(true);
+    queryFn: getProfile,
 
-        const data = await getConversations();
+    staleTime: 5 * 60 * 1000,
 
-        setConversations(data);
-      } catch (error) {
-        console.error("Failed to load conversations:", error);
-        setError("Unable to load your conversations.");
-      } finally {
-        setLoadingConversations(false);
+    gcTime: 30 * 60 * 1000,
+
+    refetchOnWindowFocus: false,
+
+    retry: 1,
+  });
+
+  /* =========================================================
+     CONVERSATIONS QUERY
+     ========================================================= */
+
+  const {
+    data: conversations = [],
+    isLoading: loadingConversations,
+    isError: conversationsError,
+  } = useQuery<Conversation[]>({
+    queryKey: ["conversations"],
+
+    queryFn: getConversations,
+
+    staleTime: 30 * 1000,
+
+    gcTime: 10 * 60 * 1000,
+
+    refetchOnWindowFocus: false,
+
+    retry: 1,
+
+    /*
+     * We don't need to load the conversation
+     * list while already inside a conversation
+     * on mobile.
+     *
+     * It remains cached from previous visits.
+     */
+    enabled: !conversationId,
+  });
+
+  /* =========================================================
+     SINGLE CONVERSATION QUERY
+     ========================================================= */
+
+  const {
+    data: selectedConversation = null,
+    isLoading: loadingConversation,
+    isError: conversationError,
+  } = useQuery<Conversation>({
+    queryKey: ["conversation", validConversationId],
+
+    queryFn: () => {
+      if (validConversationId === null) {
+        throw new Error("Invalid conversation ID");
       }
-    };
 
-    loadConversations();
-  }, [conversationId, getConversations]);
+      return getConversation(validConversationId);
+    },
 
-  /*
-   * ==========================================
-   * LOAD SINGLE CONVERSATION
-   * ==========================================
-   */
+    enabled: validConversationId !== null,
 
-  useEffect(() => {
-    if (!conversationId) {
-      setSelectedConversation(null);
-      setMessages([]);
-      setLoadingConversation(false);
-      setLoadingMessages(false);
-      return;
-    }
+    staleTime: 30 * 1000,
 
-    const id = Number(conversationId);
+    gcTime: 10 * 60 * 1000,
 
-    if (Number.isNaN(id)) {
-      setError("Invalid conversation.");
-      return;
-    }
+    refetchOnWindowFocus: false,
 
-    const loadConversation = async () => {
-      try {
-        setError(null);
+    retry: 1,
+  });
 
-        // Clear previous conversation/messages
-        setSelectedConversation(null);
-        setMessages([]);
+  /* =========================================================
+     MESSAGES QUERY
+     ========================================================= */
 
-        // ==========================================
-        // LOAD CONVERSATION
-        // ==========================================
+  const {
+    data: messages = [],
+    isLoading: loadingMessages,
+    isError: messagesError,
+  } = useQuery<Message[]>({
+    queryKey: ["messages", validConversationId],
 
-        setLoadingConversation(true);
+    queryFn: () => {
+      if (validConversationId === null) {
+        throw new Error("Invalid conversation ID");
+      }
 
-        const conversation = await getConversation(id);
+      return getMessages(validConversationId);
+    },
 
-        setSelectedConversation(conversation);
+    enabled: validConversationId !== null,
 
-        setLoadingConversation(false);
+    staleTime: 10 * 1000,
 
-        // ==========================================
-        // LOAD MESSAGES
-        // ==========================================
+    gcTime: 10 * 60 * 1000,
 
-        setLoadingMessages(true);
+    refetchOnWindowFocus: false,
 
-        try {
-          const data = await getMessages(id);
-          setMessages(data);
-        } finally {
-          setLoadingMessages(false);
+    retry: 1,
+  });
+
+  /* =========================================================
+     MARK AS READ MUTATION
+     ========================================================= */
+
+  const markReadMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return markMessagesAsRead(id);
+    },
+
+    onSuccess: (_, id) => {
+      /*
+       * Update conversation cache so
+       * unread state can disappear immediately.
+       */
+
+      queryClient.setQueryData<Conversation[]>(["conversations"], (old) => {
+        if (!old) {
+          return old;
         }
 
-        // ==========================================
-        // MARK AS READ
-        // ==========================================
+        return old.map((conversation) => {
+          if (conversation.id !== id) {
+            return conversation;
+          }
 
-        try {
-          await markMessagesAsRead(id);
-        } catch (error) {
-          console.error("Failed to mark messages as read:", error);
-        }
-      } catch (error) {
-        console.error("Failed to load conversation:", error);
+          return {
+            ...conversation,
+            unreadCount: 0,
+          };
+        });
+      });
+    },
+  });
 
-        setLoadingConversation(false);
-        setLoadingMessages(false);
+  /* =========================================================
+     MARK CURRENT CONVERSATION AS READ
+     ========================================================= */
 
-        setError("Unable to load this conversation.");
-      }
-    };
+  useEffect(() => {
+    if (validConversationId === null) {
+      return;
+    }
 
-    loadConversation();
-  }, [conversationId, getConversation, getMessages, markMessagesAsRead]);
+    markReadMutation.mutate(validConversationId);
+  }, [validConversationId]);
 
-  /*
-   * ==========================================
-   * SELECT CONVERSATION
-   * ==========================================
-   */
+  /* =========================================================
+     WEBSOCKET — INCOMING MESSAGE
+     ========================================================= */
 
-  const handleSelectConversation = (conversation: Conversation) => {
-    navigate(`/messages/${conversation.id}`);
-  };
+  const handleIncomingMessage = useCallback(
+    (message: Message) => {
+      /*
+       * Add message to the currently
+       * opened conversation.
+       */
 
-  /*
-   * ==========================================
-   * SEND MESSAGE
-   * ==========================================
-   */
+      queryClient.setQueryData<Message[]>(
+        ["messages", message.conversationId],
+        (old = []) => {
+          const alreadyExists = old.some(
+            (existingMessage) => existingMessage.id === message.id,
+          );
+
+          if (alreadyExists) {
+            return old;
+          }
+
+          return [...old, message];
+        },
+      );
+
+      /*
+       * Update selected conversation
+       * immediately.
+       */
+
+      queryClient.setQueryData<Conversation>(
+        ["conversation", message.conversationId],
+        (old) => {
+          if (!old) {
+            return old;
+          }
+
+          return {
+            ...old,
+
+            lastMessage: message.content,
+
+            lastMessageAt: message.createdAt,
+
+            updatedAt: message.createdAt,
+          };
+        },
+      );
+
+      /*
+       * Update conversation list cache.
+       */
+
+      queryClient.setQueryData<Conversation[]>(
+        ["conversations"],
+        (old = []) => {
+          return old.map((conversation) => {
+            if (conversation.id !== message.conversationId) {
+              return conversation;
+            }
+
+            return {
+              ...conversation,
+
+              lastMessage: message.content,
+
+              lastMessageAt: message.createdAt,
+
+              updatedAt: message.createdAt,
+            };
+          });
+        },
+      );
+    },
+    [queryClient],
+  );
+
+  /* =========================================================
+     WEBSOCKET
+     ========================================================= */
+
+  const { connected, sendMessage: sendWebSocketMessage } = useMessageWebSocket({
+    conversationId: selectedConversation?.id,
+
+    onMessage: handleIncomingMessage,
+  });
+
+  /* =========================================================
+     SEND MESSAGE
+     ========================================================= */
 
   const handleSendMessage = async (content: string) => {
     if (!selectedConversation) {
       return;
     }
+    console.log(error);
 
     if (!connected) {
       console.error("WebSocket is not connected.");
+
       return;
     }
 
@@ -198,53 +324,30 @@ const MessagesPage = () => {
     }
   };
 
-  const handleIncomingMessage = useCallback((message: Message) => {
-    setMessages((previous) => {
-      const alreadyExists = previous.some(
-        (existingMessage) => existingMessage.id === message.id,
-      );
+  /* =========================================================
+     SELECT CONVERSATION
+     ========================================================= */
 
-      if (alreadyExists) {
-        return previous;
-      }
+  const handleSelectConversation = (conversation: Conversation) => {
+    navigate(`/messages/${conversation.id}`);
+  };
 
-      return [...previous, message];
-    });
-
-    setSelectedConversation((previous) =>
-      previous
-        ? {
-            ...previous,
-            lastMessage: message.content,
-            lastMessageAt: message.createdAt,
-            updatedAt: message.createdAt,
-          }
-        : previous,
-    );
-  }, []);
-
-  const { connected, sendMessage: sendWebSocketMessage } = useMessageWebSocket({
-    conversationId: selectedConversation?.id,
-    onMessage: handleIncomingMessage,
-  });
-
-  /*
-   * ==========================================
-   * BACK
-   * ==========================================
-   */
+  /* =========================================================
+     BACK
+     ========================================================= */
 
   const handleBack = () => {
     navigate(-1);
   };
 
-  /*
-   * ==========================================
-   * ERROR
-   * ==========================================
-   */
+  /* =========================================================
+     ERROR
+     ========================================================= */
 
-  if (error) {
+  const hasError =
+    profileError || conversationsError || conversationError || messagesError;
+
+  if (hasError) {
     return (
       <div
         className="
@@ -266,7 +369,7 @@ const MessagesPage = () => {
               dark:text-white
             "
           >
-            {error}
+            Unable to load messages.
           </p>
 
           <button
@@ -274,8 +377,18 @@ const MessagesPage = () => {
             onClick={() => {
               setError(null);
 
-              if (conversationId) {
-                navigate(`/messages/${conversationId}`, { replace: true });
+              queryClient.invalidateQueries({
+                queryKey: ["conversations"],
+              });
+
+              if (validConversationId !== null) {
+                queryClient.invalidateQueries({
+                  queryKey: ["conversation", validConversationId],
+                });
+
+                queryClient.invalidateQueries({
+                  queryKey: ["messages", validConversationId],
+                });
               }
             }}
             className="
@@ -302,13 +415,48 @@ const MessagesPage = () => {
     );
   }
 
-  /*
-   * ==========================================
-   * RENDER
-   * ==========================================
-   */
+  /* =========================================================
+     LOADING PROFILE
+     ========================================================= */
 
-  const isConversationPage = Boolean(conversationId);
+  if (loadingProfile) {
+    return (
+      <div
+        className="
+          flex
+          min-h-screen
+          items-center
+          justify-center
+          bg-slate-50
+          dark:bg-slate-950
+        "
+      >
+        <div
+          className="
+            h-6
+            w-6
+            animate-spin
+            rounded-full
+            border-2
+            border-slate-200
+            border-t-violet-600
+            dark:border-slate-700
+            dark:border-t-violet-400
+          "
+        />
+      </div>
+    );
+  }
+
+  /* =========================================================
+     PAGE MODE
+     ========================================================= */
+
+  const isConversationPage = Boolean(validConversationId);
+
+  /* =========================================================
+     RENDER
+     ========================================================= */
 
   return (
     <div
@@ -329,9 +477,9 @@ const MessagesPage = () => {
           max-w-6xl
         "
       >
-        {/* ================================= */}
-        {/* CONVERSATION LIST */}
-        {/* ================================= */}
+        {/* =================================================
+            CONVERSATION LIST
+        ================================================= */}
 
         {!isConversationPage && (
           <aside
@@ -357,9 +505,21 @@ const MessagesPage = () => {
                 dark:border-slate-800
               "
             >
-              <MessageCircle size={21} className="text-violet-600" />
+              <MessageCircle
+                size={21}
+                className="
+                  text-violet-600
+                "
+              />
 
-              <h1 className="text-lg font-bold">Messages</h1>
+              <h1
+                className="
+                  text-lg
+                  font-bold
+                "
+              >
+                Messages
+              </h1>
             </div>
 
             <div
@@ -369,19 +529,26 @@ const MessagesPage = () => {
               "
             >
               {loadingConversations ? (
-                <div className="flex h-40 items-center justify-center">
+                <div
+                  className="
+                    flex
+                    h-40
+                    items-center
+                    justify-center
+                  "
+                >
                   <div
                     className="
-        h-6
-        w-6
-        animate-spin
-        rounded-full
-        border-2
-        border-slate-200
-        border-t-violet-600
-        dark:border-slate-700
-        dark:border-t-violet-400
-      "
+                      h-6
+                      w-6
+                      animate-spin
+                      rounded-full
+                      border-2
+                      border-slate-200
+                      border-t-violet-600
+                      dark:border-slate-700
+                      dark:border-t-violet-400
+                    "
                   />
                 </div>
               ) : (
@@ -394,49 +561,49 @@ const MessagesPage = () => {
           </aside>
         )}
 
-        {/* ================================= */}
-        {/* CHAT */}
-        {/* ================================= */}
+        {/* =================================================
+            CHAT
+        ================================================= */}
 
         <main
           className="
-    flex
-    min-w-0
-    flex-1
-    flex-col
-  "
+            flex
+            min-w-0
+            flex-1
+            flex-col
+          "
         >
           {isConversationPage ? (
             loadingConversation ? (
               <div
                 className="
-          flex
-          h-full
-          flex-1
-          items-center
-          justify-center
-          bg-slate-50
-          dark:bg-slate-950
-        "
+                  flex
+                  h-full
+                  flex-1
+                  items-center
+                  justify-center
+                  bg-slate-50
+                  dark:bg-slate-950
+                "
               >
                 <div
                   className="
-            h-7
-            w-7
-            animate-spin
-            rounded-full
-            border-2
-            border-slate-200
-            border-t-violet-600
-            dark:border-slate-700
-            dark:border-t-violet-400
-          "
+                    h-7
+                    w-7
+                    animate-spin
+                    rounded-full
+                    border-2
+                    border-slate-200
+                    border-t-violet-600
+                    dark:border-slate-700
+                    dark:border-t-violet-400
+                  "
                 />
               </div>
             ) : selectedConversation ? (
               <ChatWindow
                 conversation={selectedConversation}
-                currentUserId={profile?.id || 0}
+                currentUserId={profile?.id ?? 0}
                 messages={messages}
                 loading={loadingMessages}
                 sending={sending}
@@ -447,44 +614,52 @@ const MessagesPage = () => {
           ) : (
             <div
               className="
-        hidden
-        h-full
-        flex-1
-        flex-col
-        items-center
-        justify-center
-        px-6
-        text-center
-        md:flex
-      "
+                hidden
+                h-full
+                flex-1
+                flex-col
+                items-center
+                justify-center
+                px-6
+                text-center
+                md:flex
+              "
             >
               <div
                 className="
-          flex
-          h-16
-          w-16
-          items-center
-          justify-center
-          rounded-3xl
-          bg-violet-100
-          text-violet-600
-          dark:bg-violet-500/10
-          dark:text-violet-400
-        "
+                  flex
+                  h-16
+                  w-16
+                  items-center
+                  justify-center
+                  rounded-3xl
+                  bg-violet-100
+                  text-violet-600
+                  dark:bg-violet-500/10
+                  dark:text-violet-400
+                "
               >
                 <MessageCircle size={30} />
               </div>
 
-              <h2 className="mt-5 text-lg font-bold">Your messages</h2>
+              <h2
+                className="
+                  mt-5
+                  text-lg
+                  font-bold
+                "
+              >
+                Your messages
+              </h2>
 
               <p
                 className="
-          mt-1
-          max-w-sm
-          text-sm
-          text-slate-500
-          dark:text-slate-400
-        "
+                  mt-1
+                  max-w-sm
+                  text-sm
+                  text-slate-500
+                  dark:text-slate-400
+                "
               >
                 Select a conversation to start chatting.
               </p>

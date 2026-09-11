@@ -1,9 +1,9 @@
-package com.example.NotesRoom.dto.algo;
+package com.example.NotesRoom.dto.connection;
 
 import java.util.List;
 
-public record RecommendationResponse(
-        List<RecommendationResultDto> recommendations,
+public record ConnectionPageResponse(
+        List<ConnectedPersonDto> connections,
         int page,
         int size,
         long totalElements,

@@ -11,6 +11,8 @@ public record PersonProfileDto(
         String department,
         String year,
         String interests,
-        Long connectionsCount
+        Long connectionsCount,
+        String connectionStatus,
+        Long connectionId
 ) {
 }

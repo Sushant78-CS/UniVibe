@@ -17,6 +17,15 @@ export interface ConnectedPerson {
   profileImage?: string | null;
 }
 
+export interface ConnectionPageResponse {
+  connections: ConnectedPerson[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  last: boolean;
+}
+
 export const useConnectionApi = () => {
   const getRequests = async (): Promise<ConnectionRequest[]> => {
     const response = await api.get("/user/connections/requests");
@@ -32,9 +41,9 @@ export const useConnectionApi = () => {
 
       return response.data;
     } catch (error: any) {
-      console.error("SEND CONNECTION ERROR:", error.response?.data ?? error);
+      console.error("SEND CONNECTION ERROR:", error?.response?.data ?? error);
 
-      console.error("SEND CONNECTION STATUS:", error.response?.status);
+      console.error("SEND CONNECTION STATUS:", error?.response?.status);
 
       console.error("SEND CONNECTION REQUEST:", {
         receiverId,
@@ -50,8 +59,20 @@ export const useConnectionApi = () => {
     return response.data;
   };
 
-  const getConnections = async (): Promise<ConnectedPerson[]> => {
-    const response = await api.get("/user/connections");
+  // ==========================================
+  // PAGINATED CONNECTIONS
+  // ==========================================
+
+  const getConnections = async (
+    page = 0,
+    size = 10,
+  ): Promise<ConnectionPageResponse> => {
+    const response = await api.get("/user/connections", {
+      params: {
+        page,
+        size,
+      },
+    });
 
     return response.data;
   };

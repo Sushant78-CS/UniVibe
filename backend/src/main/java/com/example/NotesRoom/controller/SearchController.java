@@ -1,5 +1,8 @@
 package com.example.NotesRoom.controller;
 
+import com.example.NotesRoom.dto.algo.search.SearchResponse;
+import com.example.NotesRoom.service.SearchService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -8,32 +11,31 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.NotesRoom.dto.algo.RecommendationResponse;
-import com.example.NotesRoom.service.RecommendationService;
-
-import lombok.RequiredArgsConstructor;
-
 @RestController
-@RequestMapping("/recommendations")
+@RequestMapping("/discover")
 @RequiredArgsConstructor
-public class RecommendationController {
+public class SearchController {
 
-    private final RecommendationService recommendationService;
+    private final SearchService searchService;
 
-    @GetMapping
-    public ResponseEntity<RecommendationResponse> getRecommendations(
+    @GetMapping("/search")
+    public ResponseEntity<SearchResponse> searchPeople(
             @AuthenticationPrincipal Jwt jwt,
+            @RequestParam String query,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size
+    ) {
 
         String clerkId = jwt.getSubject();
 
-        return ResponseEntity.ok(
-                recommendationService.getRecommendations(
+        SearchResponse response =
+                searchService.searchPeople(
                         clerkId,
+                        query,
                         page,
                         size
-                )
-        );
+                );
+
+        return ResponseEntity.ok(response);
     }
 }

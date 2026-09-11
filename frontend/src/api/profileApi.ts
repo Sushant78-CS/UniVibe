@@ -21,12 +21,71 @@ export interface UpdateProfileData {
   profileImage?: string;
 }
 
+/* =========================================================
+   CONNECTION STATUS
+   ========================================================= */
+
+export type PublicConnectionStatus =
+  | "NONE"
+  | "PENDING_SENT"
+  | "PENDING_RECEIVED"
+  | "CONNECTED";
+
+/* =========================================================
+   PUBLIC PROFILE
+   ========================================================= */
+
+export interface PublicProfile {
+  id: number;
+  userId: number;
+
+  fullName: string;
+  username: string;
+
+  bio?: string;
+  profileImage?: string | null;
+
+  college?: string;
+  department?: string;
+  year?: string;
+  interests?: string;
+
+  connectionsCount: number;
+
+  connectionStatus: PublicConnectionStatus;
+  connectionId?: number | null;
+}
+
+/* =========================================================
+   PROFILE API
+   ========================================================= */
+
 export const useProfileApi = () => {
+  /* =======================================================
+     MY PROFILE
+     ======================================================= */
+
   const getProfile = async () => {
     const response = await api.get("/user/profile");
 
     return response.data;
   };
+
+  /* =======================================================
+     PUBLIC PROFILE
+     ======================================================= */
+
+  const getPublicProfile = async (
+    profileId: number,
+  ): Promise<PublicProfile> => {
+    const response = await api.get(`/discover/people/${profileId}`);
+
+    return response.data;
+  };
+
+  /* =======================================================
+     CREATE PROFILE
+     ======================================================= */
 
   const createProfile = async (
     data: CreateProfileData,
@@ -35,8 +94,11 @@ export const useProfileApi = () => {
     const formData = new FormData();
 
     formData.append("fullName", data.fullName);
+
     formData.append("username", data.username);
+
     formData.append("college", data.college);
+
     formData.append("year", data.year);
 
     if (data.bio) {
@@ -60,6 +122,10 @@ export const useProfileApi = () => {
     return response.data;
   };
 
+  /* =======================================================
+     UPDATE PROFILE
+     ======================================================= */
+
   const updateProfile = async (
     data: UpdateProfileData,
     profileImage?: File | null,
@@ -67,6 +133,7 @@ export const useProfileApi = () => {
     const formData = new FormData();
 
     formData.append("fullName", data.fullName);
+
     formData.append("username", data.username);
 
     if (data.bio) {
@@ -98,14 +165,23 @@ export const useProfileApi = () => {
     return response.data;
   };
 
+  /* =======================================================
+     DELETE PROFILE IMAGE
+     ======================================================= */
+
   const deleteProfileImage = async () => {
     const response = await api.delete("/user/image");
 
     return response.data;
   };
 
+  /* =======================================================
+     RETURN
+     ======================================================= */
+
   return {
     getProfile,
+    getPublicProfile,
     createProfile,
     updateProfile,
     deleteProfileImage,

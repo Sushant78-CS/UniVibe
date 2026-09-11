@@ -43,22 +43,17 @@ public class DiscoverController {
     @GetMapping("/people/{id}")
     public ResponseEntity<?> getPerson(
             @AuthenticationPrincipal Jwt jwt,
-            @PathVariable Long id
-    ) {
+            @PathVariable Long id) {
+        String clerkId = jwt.getSubject();
         try {
-            String clerkId = jwt.getSubject();
-
-            return ResponseEntity.ok(
-                    discoverService.getPerson(id, clerkId)
-            );
-
+            return ResponseEntity.ok(discoverService.getPerson(id, clerkId));
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                    Map.of(
-                            "success", false,
-                            "error", e.getMessage()
-                    )
-            );
+            System.err.println("Failed to load profile " + id + ": " + e.getMessage());
+
+            return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("success", false,
+                                    "error", e.getMessage()));
         }
     }
 }

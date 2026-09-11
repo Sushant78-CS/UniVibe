@@ -3,6 +3,8 @@ package com.example.NotesRoom.repository;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -29,7 +31,7 @@ public interface ProfileRepository extends JpaRepository<Profile, Long> {
                 JOIN p.user u
                 WHERE u.clerkId <> :clerkId
                 AND p.profileCompleted = true
-
+            
                 AND (
                     :query = ''
                     OR LOWER(p.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
@@ -38,22 +40,22 @@ public interface ProfileRepository extends JpaRepository<Profile, Long> {
                     OR LOWER(p.department) LIKE LOWER(CONCAT('%', :query, '%'))
                     OR LOWER(p.interests) LIKE LOWER(CONCAT('%', :query, '%'))
                 )
-
+            
                 AND (
                     :college = ''
                     OR LOWER(p.college) = LOWER(:college)
                 )
-
+            
                 AND (
                     :department = ''
                     OR LOWER(p.department) = LOWER(:department)
                 )
-
+            
                 AND (
                     :year = ''
                     OR p.year = :year
                 )
-
+            
                 ORDER BY p.fullName ASC
             """)
     List<Profile> discoverPeople(
@@ -67,4 +69,63 @@ public interface ProfileRepository extends JpaRepository<Profile, Long> {
 
     List<Profile> findByProfileCompletedTrueAndUser_ClerkIdNot(
             String clerkId);
+
+    @Query("""
+            SELECT p
+            FROM Profile p
+            JOIN p.user u
+            WHERE u.clerkId <> :clerkId
+            AND p.profileCompleted = true
+            """)
+    List<Profile> findRecommendationCandidates(
+            @Param("clerkId") String clerkId);
+
+    Page<Profile> findByProfileCompletedTrueAndUser_ClerkIdNot(
+            String clerkId,
+            Pageable pageable
+    );
+
+    @Query("""
+            SELECT p
+            FROM Profile p
+            JOIN p.user u
+            WHERE u.clerkId <> :clerkId
+            AND p.profileCompleted = true
+            
+            AND (
+                :query = ''
+                OR LOWER(p.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
+                OR LOWER(p.username) LIKE LOWER(CONCAT('%', :query, '%'))
+                OR LOWER(p.bio) LIKE LOWER(CONCAT('%', :query, '%'))
+                OR LOWER(p.college) LIKE LOWER(CONCAT('%', :query, '%'))
+                OR LOWER(p.department) LIKE LOWER(CONCAT('%', :query, '%'))
+                OR LOWER(p.year) LIKE LOWER(CONCAT('%', :query, '%'))
+                OR LOWER(p.interests) LIKE LOWER(CONCAT('%', :query, '%'))
+            )
+            
+            ORDER BY p.fullName ASC
+            """)
+    Page<Profile> findRecommendationCandidates(
+            @Param("clerkId") String clerkId,
+            @Param("query") String query,
+            Pageable pageable
+    );
+
+    @Query("""
+        SELECT p
+        FROM Profile p
+        JOIN p.user u
+        WHERE u.clerkId <> :clerkId
+        AND p.profileCompleted = true
+        AND (
+            LOWER(p.fullName) LIKE LOWER(CONCAT('%', :query, '%'))
+            OR LOWER(p.username) LIKE LOWER(CONCAT('%', :query, '%'))
+        )
+        ORDER BY p.fullName ASC
+        """)
+    Page<Profile> searchPeople(
+            @Param("clerkId") String clerkId,
+            @Param("query") String query,
+            Pageable pageable
+    );
 }

@@ -315,34 +315,25 @@ public class VibeMessageService {
         List<VibeMember> members =
                 vibeMemberRepository.findAll();
 
-        for (VibeMember member : members) {
+        List<Users> recipients =
+                members.stream()
+                        .map(VibeMember::getUser)
+                        // Never notify sender
+                        .filter(user ->
+                                !user.getId().equals(sender.getId())
+                        )
+                        // Users currently inside Vibe
+                        // already receive the message through WebSocket
+                        .filter(user ->
+                                !vibePresenceService.isActive(user.getId())
+                        )
+                        .toList();
 
-            Users recipient = member.getUser();
-
-            // Never notify sender
-            if (
-                    recipient.getId()
-                            .equals(sender.getId())
-            ) {
-                continue;
-            }
-
-            // User currently inside Vibe
-            // receives it through WebSocket instead
-            if (
-                    vibePresenceService.isActive(
-                            recipient.getId()
-                    )
-            ) {
-                continue;
-            }
-
-            notificationService.createVibeNotification(
-                    recipient,
-                    "Someone shared something in Vibe.",
-                    message.getId()
-            );
-        }
+        notificationService.createVibeNotifications(
+                recipients,
+                "Someone shared something in Vibe.",
+                message.getId()
+        );
     }
 
     // =========================================================

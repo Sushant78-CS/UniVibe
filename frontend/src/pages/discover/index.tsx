@@ -1,18 +1,18 @@
-import { useState } from "react";
-import { Search, X, Users, RefreshCw } from "lucide-react";
-
+import { Search, Users, RefreshCw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
-
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import FloatingTabs from "../../components/home/FloatingTabs";
 import PersonCard from "../../components/discover/PersonCard";
 
 import { useRecommendationApi } from "../../api/recommendationApi";
-
 import { useConnectionApi } from "../../api/connectionApi";
 
+import type { RecommendationPageResponse } from "../../api/recommendationApi";
 import type { DiscoverPerson } from "../../api/discoverApi";
+
+const PAGE_SIZE = 10;
 
 const DiscoverPage = () => {
   const navigate = useNavigate();
@@ -31,10 +31,11 @@ const DiscoverPage = () => {
   const [connectingId, setConnectingId] = useState<number | null>(null);
 
   /*
-   * Search is now completely local.
-   * No search button and no backend search request.
+   * Element at the bottom of the people list.
+   * IntersectionObserver watches this element.
    */
-  const [query, setQuery] = useState("");
+
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   /*
    * ============================================
@@ -43,48 +44,43 @@ const DiscoverPage = () => {
    */
 
   const {
-    data: people = [],
+    data,
     isLoading: loading,
     isError,
     refetch,
+    isFetchingNextPage,
+    hasNextPage,
     isFetching,
-  } = useQuery<DiscoverPerson[]>({
+    fetchNextPage,
+  } = useInfiniteQuery<RecommendationPageResponse>({
     queryKey: ["recommendations"],
 
-    queryFn: async (): Promise<DiscoverPerson[]> => {
-      const data = await getRecommendations();
+    /*
+     * First request:
+     *
+     * /recommendations?page=0&size=10
+     */
 
-      return data.recommendations.map(
-        (person): DiscoverPerson => ({
-          id: person.profileId,
-          userId: person.userId,
+    initialPageParam: 0,
 
-          fullName: person.fullName,
+    queryFn: ({ pageParam }) =>
+      getRecommendations(pageParam as number, PAGE_SIZE),
 
-          username: person.username,
+    /*
+     * Load the next page when available.
+     */
 
-          bio: person.bio,
+    getNextPageParam: (lastPage) => {
+      if (lastPage.last) {
+        return undefined;
+      }
 
-          profileImage: person.profileImage,
-
-          college: person.college || "",
-
-          department: person.department || "",
-
-          year: person.year || "",
-
-          interests: person.interests || "",
-
-          score: person.score,
-
-          connectionStatus: person.connectionStatus as
-            | "NONE"
-            | "PENDING_SENT"
-            | "PENDING_RECEIVED"
-            | "CONNECTED",
-        }),
-      );
+      return lastPage.page + 1;
     },
+
+    /*
+     * Cache recommendations for 5 minutes.
+     */
 
     staleTime: 1000 * 60 * 5,
 
@@ -97,34 +93,86 @@ const DiscoverPage = () => {
 
   /*
    * ============================================
-   * LOCAL SEARCH
+   * FLATTEN RESULTS
    * ============================================
-   *
-   * Results update while typing.
-   * No backend request is made.
    */
 
-  const searchText = query.trim().toLowerCase();
+  const people: DiscoverPerson[] =
+    data?.pages.flatMap((page) =>
+      page.recommendations.map(
+        (person): DiscoverPerson => ({
+          id: person.profileId,
 
-  const filteredPeople = people.filter((person) => {
-    if (!searchText) {
-      return true;
+          userId: person.userId,
+
+          fullName: person.fullName,
+
+          username: person.username,
+
+          bio: person.bio,
+
+          profileImage: person.profileImage || "",
+
+          college: person.college || "",
+
+          department: person.department || "",
+
+          year: person.year || "",
+
+          interests: person.interests || "",
+
+          score: person.score,
+
+          connectionStatus: person.connectionStatus,
+        }),
+      ),
+    ) ?? [];
+
+  /*
+   * ============================================
+   * INFINITE SCROLL
+   * ============================================
+   */
+
+  useEffect(() => {
+    const element = loadMoreRef.current;
+
+    if (!element) {
+      return;
     }
 
-    return (
-      person.fullName?.toLowerCase().includes(searchText) ||
-      person.username?.toLowerCase().includes(searchText) ||
-      person.bio?.toLowerCase().includes(searchText) ||
-      person.college?.toLowerCase().includes(searchText) ||
-      person.department?.toLowerCase().includes(searchText) ||
-      person.year?.toLowerCase().includes(searchText) ||
-      person.interests
-        ?.split(",")
-        .some((interest: string) =>
-          interest.trim().toLowerCase().includes(searchText),
-        )
+    /*
+     * No more pages.
+     */
+
+    if (!hasNextPage) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const firstEntry = entries[0];
+
+        if (firstEntry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      {
+        /*
+         * Start loading before reaching
+         * the absolute bottom.
+         */
+
+        rootMargin: "300px",
+      },
     );
-  });
+
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   /*
    * ============================================
@@ -139,22 +187,33 @@ const DiscoverPage = () => {
       await sendConnection(userId);
 
       /*
-       * Update only the person that was
-       * connected/requested.
+       * Immediately update the cached
+       * recommendation.
        */
 
-      queryClient.setQueryData<DiscoverPerson[]>(
-        ["recommendations"],
-        (currentPeople) =>
-          currentPeople?.map((person) =>
-            person.userId === userId
-              ? {
-                  ...person,
-                  connectionStatus: "PENDING_SENT",
-                }
-              : person,
-          ) ?? [],
-      );
+      queryClient.setQueryData(["recommendations"], (currentData: any) => {
+        if (!currentData) {
+          return currentData;
+        }
+
+        return {
+          ...currentData,
+
+          pages: currentData.pages.map((page: RecommendationPageResponse) => ({
+            ...page,
+
+            recommendations: page.recommendations.map((person) =>
+              person.userId === userId
+                ? {
+                    ...person,
+
+                    connectionStatus: "PENDING_SENT",
+                  }
+                : person,
+            ),
+          })),
+        };
+      });
     } catch (error) {
       console.error("Connection request failed:", error);
     } finally {
@@ -164,12 +223,12 @@ const DiscoverPage = () => {
 
   /*
    * ============================================
-   * CLEAR SEARCH
+   * SEARCH
    * ============================================
    */
 
-  const clearSearch = () => {
-    setQuery("");
+  const openSearch = () => {
+    navigate("/discover/search");
   };
 
   /*
@@ -185,6 +244,7 @@ const DiscoverPage = () => {
         bg-slate-50
         pb-28
         text-slate-900
+
         transition-colors
         duration-200
 
@@ -210,311 +270,106 @@ const DiscoverPage = () => {
             ====================================== */}
 
         <section>
-          <div
+          <p
             className="
-              flex
-              items-start
-              justify-between
-              gap-4
+              text-[11px]
+              font-semibold
+              uppercase
+              tracking-[0.16em]
+              text-violet-600
+
+              dark:text-violet-400
             "
           >
-            <div className="min-w-0">
-              <p
-                className="
-                  text-[11px]
-                  font-semibold
-                  uppercase
-                  tracking-[0.16em]
-                  text-violet-600
-                  dark:text-violet-400
-                "
-              >
-                Discover
-              </p>
+            Discover
+          </p>
 
-              <h1
-                className="
-                  mt-1.5
-                  text-2xl
-                  font-bold
-                  tracking-tight
-                  text-slate-950
-                  dark:text-white
-                "
-              >
-                Find your people
-              </h1>
+          <h1
+            className="
+              mt-1
+              text-xl
+              font-bold
+              tracking-tight
+              text-slate-950
 
-              <p
-                className="
-                  mt-1.5
-                  text-sm
-                  leading-6
-                  text-slate-500
-                  dark:text-neutral-500
-                "
-              >
-                Meet students who share your campus, course and interests.
-              </p>
-            </div>
-          </div>
+              dark:text-white
+            "
+          >
+            Find your people
+          </h1>
         </section>
 
         {/* ======================================
             SEARCH
             ====================================== */}
 
-        <div className="mt-5">
-          <div
+        <button
+          type="button"
+          onClick={openSearch}
+          aria-label="Search people"
+          className="
+            mt-4
+            flex
+            h-10.5
+            w-full
+            items-center
+            rounded-xl
+            border
+            border-slate-200
+            bg-white
+            text-left
+            outline-none
+
+            transition-all
+            duration-150
+
+            hover:border-slate-300
+
+            focus:border-violet-500
+            focus:ring-4
+            focus:ring-violet-500/10
+
+            dark:border-neutral-800
+            dark:bg-[#171717]
+            dark:hover:border-neutral-700
+          "
+        >
+          <Search
+            size={16}
+            strokeWidth={2}
             className="
-              relative
-              w-full
+              ml-3.5
+              shrink-0
+              text-slate-400
+
+              dark:text-neutral-500
+            "
+          />
+
+          <span
+            className="
+              ml-3
+              text-[13px]
+              font-medium
+              text-slate-400
+
+              dark:text-neutral-500
             "
           >
-            <Search
-              size={17}
-              strokeWidth={2}
-              className="
-                pointer-events-none
-                absolute
-                left-4
-                top-1/2
-                -translate-y-1/2
-                text-slate-400
-                dark:text-neutral-500
-              "
-            />
-
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search students..."
-              aria-label="Search students"
-              className="
-                h-11
-                w-full
-                rounded-xl
-                border
-                border-slate-200
-                bg-white
-                pl-11
-                pr-10
-                text-sm
-                text-slate-900
-                outline-none
-                transition-all
-
-                placeholder:text-slate-400
-
-                hover:border-slate-300
-
-                focus:border-violet-500
-                focus:ring-4
-                focus:ring-violet-500/10
-
-                dark:border-neutral-800
-                dark:bg-[#171717]
-                dark:text-white
-                dark:placeholder:text-neutral-600
-                dark:hover:border-neutral-700
-                dark:focus:border-violet-500
-              "
-            />
-
-            {query && (
-              <button
-                type="button"
-                onClick={clearSearch}
-                aria-label="Clear search"
-                className="
-                  absolute
-                  right-3
-                  top-1/2
-                  flex
-                  h-6
-                  w-6
-                  -translate-y-1/2
-                  items-center
-                  justify-center
-                  rounded-full
-                  text-slate-400
-                  transition-colors
-                  hover:bg-slate-100
-                  hover:text-slate-700
-
-                  dark:text-neutral-500
-                  dark:hover:bg-neutral-800
-                  dark:hover:text-neutral-200
-                "
-              >
-                <X size={13} />
-              </button>
-            )}
-          </div>
-        </div>
+            Search people...
+          </span>
+        </button>
 
         {/* ======================================
             RESULTS
             ====================================== */}
 
-        <section className="mt-6">
-          <div
-            className="
-              mb-3
-              flex
-              items-end
-              justify-between
-            "
-          >
-            <div>
-              <h2
-                className="
-                  text-base
-                  font-semibold
-                  text-slate-900
-                  dark:text-white
-                "
-              >
-                {query ? "Search results" : "People for you"}
-              </h2>
-
-              <p
-                className="
-                  mt-0.5
-                  text-[11px]
-                  text-slate-400
-                  dark:text-neutral-600
-                "
-              >
-                {query ? `Matches for "${query}"` : "Suggested connections"}
-              </p>
-            </div>
-
-            {!loading && !isError && (
-              <span
-                className="
-                    rounded-full
-                    bg-slate-100
-                    px-2.5
-                    py-1
-                    text-[10px]
-                    font-semibold
-                    text-slate-500
-
-                    dark:bg-neutral-900
-                    dark:text-neutral-500
-                  "
-              >
-                {filteredPeople.length}
-              </span>
-            )}
-          </div>
-
+        <section className="mt-5">
           {/* ====================================
-              LOADING SKELETON
+              INITIAL LOADING
               ==================================== */}
 
-          {loading && (
-            <div
-              className="
-                grid
-                grid-cols-1
-                gap-3
-                sm:grid-cols-2
-              "
-            >
-              {[1, 2, 3, 4, 5, 6].map((item) => (
-                <div
-                  key={item}
-                  className="
-                      flex
-                      min-h-[92px]
-                      items-center
-                      gap-3
-                      rounded-2xl
-                      border
-                      border-slate-200
-                      bg-white
-                      p-3
-                      dark:border-neutral-800
-                      dark:bg-[#171717]
-                    "
-                >
-                  {/* Avatar */}
-
-                  <div
-                    className="
-                        h-14
-                        w-14
-                        shrink-0
-                        animate-pulse
-                        rounded-full
-                        bg-slate-200
-                        dark:bg-neutral-800
-                      "
-                  />
-
-                  {/* Content */}
-
-                  <div
-                    className="
-                        min-w-0
-                        flex-1
-                      "
-                  >
-                    <div
-                      className="
-                          h-3.5
-                          w-28
-                          animate-pulse
-                          rounded
-                          bg-slate-200
-                          dark:bg-neutral-800
-                        "
-                    />
-
-                    <div
-                      className="
-                          mt-2
-                          h-2.5
-                          w-20
-                          animate-pulse
-                          rounded
-                          bg-slate-100
-                          dark:bg-neutral-900
-                        "
-                    />
-
-                    <div
-                      className="
-                          mt-2
-                          h-2.5
-                          w-32
-                          animate-pulse
-                          rounded
-                          bg-slate-100
-                          dark:bg-neutral-900
-                        "
-                    />
-                  </div>
-
-                  {/* Button */}
-
-                  <div
-                    className="
-                        h-8
-                        w-20
-                        shrink-0
-                        animate-pulse
-                        rounded-xl
-                        bg-slate-100
-                        dark:bg-neutral-900
-                      "
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+          {loading && <RecommendationSkeleton />}
 
           {/* ====================================
               ERROR
@@ -544,6 +399,7 @@ const DiscoverPage = () => {
                   items-center
                   justify-center
                   rounded-full
+
                   bg-red-50
                   text-red-500
 
@@ -560,10 +416,11 @@ const DiscoverPage = () => {
                   text-sm
                   font-semibold
                   text-slate-900
+
                   dark:text-white
                 "
               >
-                Couldn&apos;t load people
+                Couldn't load people
               </p>
 
               <p
@@ -571,6 +428,7 @@ const DiscoverPage = () => {
                   mt-1
                   text-xs
                   text-slate-500
+
                   dark:text-neutral-500
                 "
               >
@@ -593,9 +451,12 @@ const DiscoverPage = () => {
                   text-xs
                   font-semibold
                   text-white
+
                   transition
+
                   hover:bg-violet-700
                   disabled:opacity-60
+
                   dark:hover:bg-violet-500
                 "
               >
@@ -612,7 +473,7 @@ const DiscoverPage = () => {
               EMPTY
               ==================================== */}
 
-          {!loading && !isError && filteredPeople.length === 0 && (
+          {!loading && !isError && people.length === 0 && (
             <div
               className="
                   rounded-2xl
@@ -637,6 +498,7 @@ const DiscoverPage = () => {
                     items-center
                     justify-center
                     rounded-full
+
                     bg-slate-100
                     text-slate-500
 
@@ -653,10 +515,11 @@ const DiscoverPage = () => {
                     text-sm
                     font-semibold
                     text-slate-900
+
                     dark:text-white
                   "
               >
-                {query ? "No students found" : "No people available"}
+                No people available
               </h3>
 
               <p
@@ -667,30 +530,12 @@ const DiscoverPage = () => {
                     text-xs
                     leading-5
                     text-slate-500
+
                     dark:text-neutral-500
                   "
               >
-                {query
-                  ? "Try searching for another name, username, college or interest."
-                  : "There are no recommendations available right now."}
+                There are no recommendations available right now.
               </p>
-
-              {query && (
-                <button
-                  type="button"
-                  onClick={clearSearch}
-                  className="
-                      mt-4
-                      text-xs
-                      font-semibold
-                      text-violet-600
-                      hover:underline
-                      dark:text-violet-400
-                    "
-                >
-                  Clear search
-                </button>
-              )}
             </div>
           )}
 
@@ -698,29 +543,110 @@ const DiscoverPage = () => {
               PEOPLE
               ==================================== */}
 
-          {!loading && !isError && filteredPeople.length > 0 && (
-            <div
-              className="
-                  grid
-                  grid-cols-1
-                  gap-3
-                  sm:grid-cols-2
-                "
-            >
-              {filteredPeople.map((person) => (
-                <PersonCard
-                  key={person.id}
-                  person={person}
-                  onClick={() => navigate(`/profile/${person.id}`)}
-                  onConnect={() => handleConnect(person.userId)}
-                  connectionStatus={person.connectionStatus}
-                  connecting={connectingId === person.userId}
-                />
-              ))}
-            </div>
+          {!loading && !isError && people.length > 0 && (
+            <>
+              {/*
+               * Instagram-style vertical list.
+               *
+               * No cards.
+               * No grid.
+               * PersonCard handles its own
+               * bottom divider.
+               */}
+
+              <div className="w-full">
+                {people.map((person) => (
+                  <PersonCard
+                    key={person.id}
+                    person={person}
+                    onClick={() => navigate(`/profile/${person.id}`)}
+                    onConnect={() => handleConnect(person.userId)}
+                    connectionStatus={person.connectionStatus}
+                    connecting={connectingId === person.userId}
+                  />
+                ))}
+              </div>
+
+              {/* ==================================
+                    INFINITE SCROLL
+                    ================================== */}
+
+              <div
+                ref={loadMoreRef}
+                className="
+                    flex
+                    min-h-[80px]
+                    items-center
+                    justify-center
+                  "
+              >
+                {/* Loading */}
+
+                {isFetchingNextPage && (
+                  <div
+                    className="
+                        flex
+                        items-center
+                        justify-center
+                        gap-2.5
+                        py-4
+                      "
+                    aria-label="Loading more"
+                  >
+                    <div
+                      className="
+                          h-4
+                          w-4
+                          animate-spin
+                          rounded-full
+                          border-2
+                          border-slate-300
+                          border-t-violet-600
+
+                          dark:border-neutral-700
+                          dark:border-t-violet-400
+                        "
+                    />
+
+                    <span
+                      className="
+                          text-xs
+                          font-bold
+                          tracking-wide
+                          text-slate-600
+
+                          dark:text-neutral-300
+                        "
+                    >
+                      Loading more...
+                    </span>
+                  </div>
+                )}
+
+                {/* Finished */}
+
+                {!hasNextPage && people.length > 0 && (
+                  <span
+                    className="
+                          text-[11px]
+                          font-medium
+                          text-slate-400
+
+                          dark:text-neutral-600
+                        "
+                  >
+                    No more people
+                  </span>
+                )}
+              </div>
+            </>
           )}
         </section>
       </main>
+
+      {/* ========================================
+          BOTTOM NAVIGATION
+          ======================================== */}
 
       <FloatingTabs />
     </div>
@@ -728,3 +654,96 @@ const DiscoverPage = () => {
 };
 
 export default DiscoverPage;
+
+/*
+ * =====================================================
+ * RECOMMENDATION SKELETON
+ * =====================================================
+ *
+ * Matches the Instagram-style person rows.
+ * No cards or large rounded containers.
+ */
+
+const RecommendationSkeleton = () => {
+  return (
+    <div className="w-full">
+      {[1, 2, 3, 4, 5, 6].map((item) => (
+        <div
+          key={item}
+          className="
+              flex
+              min-h-[72px]
+              w-full
+              items-center
+              gap-3.5
+              border-b
+              border-slate-200/80
+              px-1
+              py-3
+
+              dark:border-neutral-800/80
+            "
+        >
+          {/* Avatar */}
+
+          <div
+            className="
+                h-14
+                w-14
+                shrink-0
+                animate-pulse
+                rounded-full
+                bg-slate-200
+
+                dark:bg-neutral-800
+              "
+          />
+
+          {/* User information */}
+
+          <div className="min-w-0 flex-1">
+            <div
+              className="
+                  h-3.5
+                  w-32
+                  animate-pulse
+                  rounded
+                  bg-slate-200
+
+                  dark:bg-neutral-800
+                "
+            />
+
+            <div
+              className="
+                  mt-2
+                  h-2.5
+                  w-20
+                  animate-pulse
+                  rounded
+                  bg-slate-100
+
+                  dark:bg-neutral-900
+                "
+            />
+          </div>
+
+          {/* Connect button */}
+
+          <div
+            className="
+                h-8
+                w-[68px]
+                shrink-0
+                animate-pulse
+                rounded-lg
+                bg-slate-100
+
+                dark:bg-neutral-900
+              "
+          />
+        </div>
+      ))}
+    </div>
+  );
+};

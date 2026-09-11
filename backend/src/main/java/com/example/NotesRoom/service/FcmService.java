@@ -1,5 +1,6 @@
 package com.example.NotesRoom.service;
 
+import com.example.NotesRoom.config.FirebaseConfig;
 import com.example.NotesRoom.entity.FcmInstallation;
 import com.example.NotesRoom.entity.Users;
 import com.example.NotesRoom.repository.FcmInstallationRepository;
@@ -21,6 +22,8 @@ import java.util.List;
 public class FcmService {
 
     private final FcmInstallationRepository fcmInstallationRepository;
+//    private final FirebaseConfig firebaseConfig;
+    private final FirebaseMessaging firebaseMessaging;
 
     // =========================================================
     // SEND TO SINGLE USER
@@ -138,7 +141,6 @@ public class FcmService {
 
             return;
         }
-
         try {
 
             Message message =
@@ -159,9 +161,7 @@ public class FcmService {
                             .build();
 
             String response =
-                    FirebaseMessaging
-                            .getInstance()
-                            .send(message);
+                    firebaseMessaging.send(message);
 
             log.info(
                     "FCM push sent successfully. userId={}, response={}",
@@ -180,10 +180,6 @@ public class FcmService {
                     errorCode,
                     e
             );
-
-            // -----------------------------------------------
-            // REMOVE INVALID / EXPIRED TOKEN
-            // -----------------------------------------------
 
             if (
                     errorCode == MessagingErrorCode.UNREGISTERED ||
@@ -216,6 +212,7 @@ public class FcmService {
                     installation.getUser().getId(),
                     e
             );
-        }
-    }
+        }}
+
+
 }

@@ -105,30 +105,47 @@ public class NotificationService {
                 .toList();
     }
 
-    @Transactional
-    public Notification createVibeNotification(
-            Users recipient,
-            String message,
-            Long referenceId
-    ) {
-
-        Notification notification =
-                Notification.builder()
-                        .user(recipient)
-                        .actor(null)
-                        .type(
-                                NotificationType.VIBE_MESSAGE
-                        )
-                        .message(message)
-                        .referenceId(referenceId)
-                        .read(false)
-                        .createdAt(Instant.now())
-                        .build();
-
-        return notificationRepository.save(
-                notification
-        );
-    }
+//    @Transactional
+//    public Notification createVibeNotification(
+//            Users recipient,
+//            String message,
+//            Long referenceId
+//    ) {
+//
+//        Notification notification =
+//                Notification.builder()
+//                        .user(recipient)
+//                        .actor(null)
+//                        .type(NotificationType.VIBE_MESSAGE)
+//                        .message(message)
+//                        .referenceId(referenceId)
+//                        .read(false)
+//                        .createdAt(Instant.now())
+//                        .build();
+//
+//        Notification saved =
+//                notificationRepository.save(notification);
+//
+//        try {
+//
+//            fcmService.sendToUser(
+//                    recipient,
+//                    "New Vibe message",
+//                    message,
+//                    "/vibe"
+//            );
+//
+//        } catch (Exception e) {
+//
+//            log.error(
+//                    "Failed to send Vibe push notification. userId={}",
+//                    recipient.getId(),
+//                    e
+//            );
+//        }
+//
+//        return saved;
+//    }
 
     @Transactional
     public void createVibeNotifications(

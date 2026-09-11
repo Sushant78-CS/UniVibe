@@ -4,13 +4,9 @@ import type { DiscoverPerson } from "../../api/discoverApi";
 
 interface PersonCardProps {
   person: DiscoverPerson;
-
   onClick?: () => void;
-
   onConnect?: () => void;
-
   connectionStatus?: "NONE" | "PENDING_SENT" | "PENDING_RECEIVED" | "CONNECTED";
-
   connecting?: boolean;
 }
 
@@ -61,34 +57,29 @@ const PersonCard = ({
       className="
         group
         flex
-        min-h-[88px]
+        min-h-[72px]
         w-full
         items-center
-        gap-3
-        rounded-2xl
-        border
-        border-slate-200
-        bg-white
-        p-3
+        gap-3.5
+        border-b
+        border-slate-200/80
+        px-1
+        py-3
         text-left
-        shadow-[0_1px_3px_rgba(15,23,42,0.04)]
         outline-none
-        transition-all
+
+        transition-colors
         duration-150
 
-        hover:border-slate-300
-        hover:shadow-[0_3px_10px_rgba(15,23,42,0.06)]
+        hover:bg-slate-50/70
 
-        active:scale-[0.995]
+        focus-visible:bg-slate-50
+        focus-visible:ring-1
+        focus-visible:ring-violet-500/20
 
-        focus-visible:ring-2
-        focus-visible:ring-violet-500/30
-
-        dark:border-neutral-800
-        dark:bg-[#171717]
-        dark:shadow-none
-        dark:hover:border-neutral-700
-        dark:hover:bg-[#1b1b1b]
+        dark:border-neutral-800/80
+        dark:hover:bg-white/[0.025]
+        dark:focus-visible:bg-white/[0.025]
       "
     >
       {/* ========================================
@@ -102,27 +93,27 @@ const PersonCard = ({
             alt={person.fullName}
             draggable={false}
             className="
-              h-12
-              w-12
+              h-14
+              w-14
               rounded-full
               object-cover
               ring-1
               ring-slate-200
-              transition-all
+
+              transition-transform
               duration-150
-              group-hover:ring-2
-              group-hover:ring-violet-500
+
+              group-hover:scale-[1.02]
 
               dark:ring-neutral-700
-              dark:group-hover:ring-violet-500
             "
           />
         ) : (
           <div
             className="
               flex
-              h-12
-              w-12
+              h-14
+              w-14
               items-center
               justify-center
               rounded-full
@@ -130,18 +121,13 @@ const PersonCard = ({
               text-slate-500
               ring-1
               ring-slate-200
-              transition-all
-              duration-150
-              group-hover:ring-2
-              group-hover:ring-violet-500
 
               dark:bg-neutral-900
               dark:text-neutral-400
               dark:ring-neutral-700
-              dark:group-hover:ring-violet-500
             "
           >
-            <UserRound size={19} strokeWidth={1.8} />
+            <UserRound size={21} strokeWidth={1.7} />
           </div>
         )}
       </div>
@@ -150,55 +136,32 @@ const PersonCard = ({
           USER INFO
           ======================================== */}
 
-      <div
-        className="
-          min-w-0
-          flex-1
-        "
-      >
+      <div className="min-w-0 flex-1">
         <h3
           className="
             truncate
             text-[13px]
             font-semibold
-            leading-5
-            text-slate-900
-
+            leading-[18px]
+            text-slate-950
             dark:text-white
           "
         >
           {person.fullName}
         </h3>
 
-        <p
-          className="
-            mt-0.5
-            truncate
-            text-[11px]
-            leading-4
-            text-slate-500
-
-            dark:text-neutral-500
-          "
-        >
-          @{person.username}
-        </p>
-
-        {/* Optional profile context */}
-
-        {(person.college || person.year) && (
+        {person.username && (
           <p
             className="
               mt-0.5
               truncate
-              text-[10px]
-              leading-4
-              text-slate-400
-
-              dark:text-neutral-600
+              text-[11px]
+              leading-[16px]
+              text-slate-500
+              dark:text-neutral-500
             "
           >
-            {person.college || person.year}
+            @{person.username}
           </p>
         )}
       </div>
@@ -220,12 +183,13 @@ const PersonCard = ({
           items-center
           justify-center
           gap-1.5
-          rounded-xl
+          rounded-lg
           px-3
           text-[10px]
           font-semibold
           transition-all
           duration-150
+
           active:scale-95
 
           disabled:cursor-default
@@ -233,14 +197,16 @@ const PersonCard = ({
           ${
             connecting
               ? `
+                min-w-[68px]
                 bg-violet-600
                 text-white
               `
               : isConnected
                 ? `
+                  min-w-[76px]
                   border
-                  border-violet-200
-                  bg-violet-50
+                  border-violet-500/20
+                  bg-violet-500/10
                   text-violet-600
 
                   dark:border-violet-500/20
@@ -249,6 +215,7 @@ const PersonCard = ({
                 `
                 : isPendingSent
                   ? `
+                    min-w-[78px]
                     border
                     border-slate-200
                     bg-slate-100
@@ -260,9 +227,10 @@ const PersonCard = ({
                   `
                   : isPendingReceived
                     ? `
+                      min-w-[68px]
                       border
-                      border-violet-200
-                      bg-violet-50
+                      border-violet-500/20
+                      bg-violet-500/10
                       text-violet-600
 
                       dark:border-violet-500/20
@@ -270,9 +238,10 @@ const PersonCard = ({
                       dark:text-violet-400
                     `
                     : `
+                      min-w-[68px]
                       bg-violet-600
                       text-white
-                      shadow-sm
+
                       hover:bg-violet-700
 
                       dark:bg-violet-600
@@ -281,7 +250,7 @@ const PersonCard = ({
           }
         `}
       >
-        {/* Sending */}
+        {/* SENDING */}
 
         {connecting && (
           <>
@@ -301,7 +270,7 @@ const PersonCard = ({
           </>
         )}
 
-        {/* Connected */}
+        {/* CONNECTED */}
 
         {!connecting && isConnected && (
           <>
@@ -311,17 +280,17 @@ const PersonCard = ({
           </>
         )}
 
-        {/* Request Sent */}
+        {/* REQUEST SENT */}
 
         {!connecting && isPendingSent && (
           <>
             <Clock3 size={12} strokeWidth={2} />
 
-            <span>Request sent</span>
+            <span>Requested</span>
           </>
         )}
 
-        {/* Pending Received */}
+        {/* PENDING RECEIVED */}
 
         {!connecting && isPendingReceived && (
           <>
@@ -331,7 +300,7 @@ const PersonCard = ({
           </>
         )}
 
-        {/* Connect */}
+        {/* CONNECT */}
 
         {!connecting &&
           !isConnected &&

@@ -3,7 +3,8 @@ package com.example.NotesRoom.config;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
-import jakarta.annotation.PostConstruct;
+import com.google.firebase.messaging.FirebaseMessaging;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.io.FileInputStream;
@@ -12,71 +13,99 @@ import java.io.InputStream;
 @Configuration
 public class FirebaseConfig {
 
-    @PostConstruct
-    public void initializeFirebase() {
+    @Bean
+    public FirebaseApp firebaseApp() {
 
-        try {
-            if (!FirebaseApp.getApps().isEmpty()) {
-                return;
-            }
+        if (!FirebaseApp.getApps().isEmpty()) {
+            System.out.println(
+                    "Firebase Admin SDK already initialized"
+            );
 
-            InputStream serviceAccount;
+            return FirebaseApp.getInstance();
+        }
 
-            // Render Secret File
-            String renderPath =
-                    "/etc/secrets/service-account.json";
+        String renderPath =
+                "/etc/secrets/service-account.json";
 
-            // Local development file
-            String localPath =
-                    "firebase/service-account.json";
+        String localPath =
+                "firebase/service-account.json";
 
-            try {
-                serviceAccount =
-                        new FileInputStream(renderPath);
-
-                System.out.println(
-                        "Using Render Firebase credentials: "
-                                + renderPath
-                );
-
-            } catch (Exception renderException) {
-
-                serviceAccount =
-                        new FileInputStream(localPath);
-
-                System.out.println(
-                        "Using local Firebase credentials: "
-                                + localPath
-                );
-            }
+        try (InputStream serviceAccount =
+                     openCredentials(renderPath, localPath)) {
 
             FirebaseOptions options =
                     FirebaseOptions.builder()
                             .setCredentials(
-                                    GoogleCredentials
-                                            .fromStream(serviceAccount)
+                                    GoogleCredentials.fromStream(
+                                            serviceAccount
+                                    )
                             )
                             .setProjectId("univibe-b70bc")
                             .build();
 
-            FirebaseApp.initializeApp(options);
-
-            serviceAccount.close();
+            FirebaseApp app =
+                    FirebaseApp.initializeApp(options);
 
             System.out.println(
                     "Firebase Admin SDK initialized successfully"
             );
 
+            return app;
+
         } catch (Exception e) {
 
             System.err.println(
-                    "Firebase initialization failed"
+                    "Firebase initialization failed: "
+                            + e.getMessage()
             );
 
             throw new RuntimeException(
                     "Firebase initialization failed",
                     e
             );
+        }
+    }
+
+    @Bean
+    public FirebaseMessaging firebaseMessaging(
+            FirebaseApp firebaseApp
+    ) {
+
+        System.out.println(
+                "Firebase Messaging bean created"
+        );
+
+        return FirebaseMessaging.getInstance(firebaseApp);
+    }
+
+    private InputStream openCredentials(
+            String renderPath,
+            String localPath
+    ) throws Exception {
+
+        try {
+
+            InputStream inputStream =
+                    new FileInputStream(renderPath);
+
+            System.out.println(
+                    "Using Render Firebase credentials: "
+                            + renderPath
+            );
+
+            return inputStream;
+
+        } catch (Exception ignored) {
+
+            InputStream inputStream =
+                    new FileInputStream(localPath);
+
+            System.out.println(
+                    "Using local Firebase credentials: "
+                            + localPath
+            );
+
+            return inputStream;
         }
     }
 }

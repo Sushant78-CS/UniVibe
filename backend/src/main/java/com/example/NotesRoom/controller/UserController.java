@@ -2,6 +2,7 @@ package com.example.NotesRoom.controller;
 
 import com.example.NotesRoom.dto.connection.ConnectedPersonDto;
 import com.example.NotesRoom.dto.connection.ConnectionActionDto;
+import com.example.NotesRoom.dto.connection.ConnectionPageResponse;
 import com.example.NotesRoom.dto.connection.CreateConnectionDto;
 import com.example.NotesRoom.dto.profile.CreateProfileDto;
 import com.example.NotesRoom.dto.profile.ProfileDto;
@@ -50,32 +51,27 @@ public class UserController {
             @ModelAttribute CreateProfileDto dto,
             @RequestParam(
                     value = "profileImage",
-                    required = false
-            )
+                    required = false)
             MultipartFile profileImage) {
         try {
             String clerkId = jwt.getSubject();
-            Profile profile = profileService.createProfile(
-                    clerkId,
-                    dto,
-                    profileImage
-            );
+            ProfileDto profile =
+                    profileService.createProfile(clerkId,
+                            dto,
+                            profileImage);
+
             return ResponseEntity.ok(profile);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "error", e.getMessage()
-            ));
+            return ResponseEntity.badRequest().body(
+                    Map.of("success", false,
+                            "error", e.getMessage()));
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "error", e.getMessage()
-            ));
+            return ResponseEntity
+                    .badRequest().body(Map.of("success", false, "error", e.getMessage()));
         } catch (IOException e) {
-            return ResponseEntity.internalServerError().body(Map.of(
-                    "success", false,
-                    "error", "Profile image upload failed"
-            ));
+            return ResponseEntity.internalServerError().body(
+                    Map.of("success", false,
+                            "error", "Profile image upload failed"));
         }
     }
 
@@ -201,19 +197,26 @@ public class UserController {
 
     @GetMapping("/connections")
     public ResponseEntity<?> getConnections(
-            @AuthenticationPrincipal Jwt jwt) {
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         try {
             String clerkId = jwt.getSubject();
-            List<ConnectedPersonDto> connections =
-                    connectionService.getConnections(clerkId);
+
+            ConnectionPageResponse connections =
+                    connectionService.getConnections(
+                            clerkId,
+                            page,
+                            size
+                    );
+
             return ResponseEntity.ok(connections);
         } catch (RuntimeException e) {
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of(
-                            "success", false,
-                            "error", "Failed to load connections"
-                    ));
+                    .body(Map.of("success", false,
+                            "error",
+                            "Failed to load connections"));
         }
     }
 }

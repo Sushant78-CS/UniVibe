@@ -49,6 +49,7 @@ import EditEvent from "./pages/vibe/events/editEvent";
 import EventResponses from "./pages/vibe/events/eventResponses";
 import NotificationRedirect from "./components/common/NotificationRedirect";
 import { setClerkTokenGetter } from "./api/axios";
+import SearchPage from "./pages/discover/search";
 
 function App() {
   const { getToken } = useAuth();
@@ -145,6 +146,8 @@ function App() {
               path="/vibe/events/:eventId/responses"
               element={<EventResponses />}
             />
+
+            <Route path="/discover/search" element={<SearchPage />} />
 
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/vibe" element={<VibeHome />} />

@@ -1,24 +1,33 @@
 import api from "./axios";
 
-export interface SearchProfile {
+export interface SearchPerson {
   profileId: number;
+  userId: number;
   fullName: string;
-  username: string;
-  college?: string;
-  department?: string;
+  username: string | null;
+  profileImage: string | null;
 }
 
 export interface SearchResponse {
-  results: SearchProfile[];
-  algorithm: string;
-  timeComplexity: string;
+  results: SearchPerson[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  last: boolean;
 }
 
 export const useSearchApi = () => {
-  const searchProfiles = async (query: string): Promise<SearchResponse> => {
-    const response = await api.get<SearchResponse>("/search", {
+  const searchPeople = async (
+    query: string,
+    page: number = 0,
+    size: number = 10,
+  ): Promise<SearchResponse> => {
+    const response = await api.get<SearchResponse>("/discover/search", {
       params: {
         query,
+        page,
+        size,
       },
     });
 
@@ -26,6 +35,6 @@ export const useSearchApi = () => {
   };
 
   return {
-    searchProfiles,
+    searchPeople,
   };
 };

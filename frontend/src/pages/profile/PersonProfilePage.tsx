@@ -1,102 +1,53 @@
 import { useState } from "react";
-
 import { useNavigate, useParams } from "react-router";
 
 import { useAuth } from "@clerk/react";
-
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-
 import { UserRound } from "lucide-react";
 
 import PersonProfileHeader from "../../components/person-profile/PersonProfileHeader";
-
 import PersonProfileInfo from "../../components/person-profile/PersonProfileInfo";
-
 import PersonProfileActions, {
   type ConnectionStatus,
 } from "../../components/person-profile/PersonProfileActions";
-
 import PersonProfileDetails from "../../components/person-profile/PersonProfileDetails";
-
 import ProfileImageModal from "../../components/profile/ProfileImageModal";
 
-import { useDiscoverApi } from "../../api/discoverApi";
+import { useProfileApi, type PublicProfile } from "../../api/profileApi";
 
 import { useMessageApi } from "../../api/messageApi";
-
 import { useConnectionApi } from "../../api/connectionApi";
 
-import { useProfileApi } from "../../api/profileApi";
-
-/* ==========================================
-   PROFILE
-========================================== */
-
-interface Profile {
-  id: number;
-  userId: number;
-
-  fullName: string;
-  username: string;
-
-  bio?: string;
-  profileImage?: string | null;
-
-  college?: string;
-  department?: string;
-  year?: string;
-  interests?: string;
-
-  profileCompleted: boolean;
-
-  connectionStatus?: ConnectionStatus;
-  connectionId?: number;
-
-  postsCount?: number;
-  connectionsCount?: number;
-  clubsCount?: number;
-}
-
-/* ==========================================
-   CONNECTION INFO
-========================================== */
-
-interface ConnectionInfo {
-  status: ConnectionStatus;
-  connectionId?: number;
-}
-
-/* ==========================================
-   PAGE
-========================================== */
+/* =========================================================
+   PERSON PROFILE PAGE
+   ========================================================= */
 
 const PersonProfilePage = () => {
   const { id } = useParams();
-
   const navigate = useNavigate();
 
   const { isLoaded } = useAuth();
+  const queryClient = useQueryClient();
 
-  const { getPersonProfile, getPeople } = useDiscoverApi();
+  /* =======================================================
+     APIs
+     ======================================================= */
+
+  const { getPublicProfile, getProfile } = useProfileApi();
 
   const { getOrCreateConversation } = useMessageApi();
 
-  const { sendConnection, updateConnection, getRequests, getConnections } =
-    useConnectionApi();
+  const { sendConnection, updateConnection } = useConnectionApi();
 
-  const { getProfile } = useProfileApi();
-
-  const queryClient = useQueryClient();
-
-  /* ==========================================
+  /* =======================================================
      PROFILE ID
-  ========================================== */
+     ======================================================= */
 
   const profileId = id && !Number.isNaN(Number(id)) ? Number(id) : null;
 
-  /* ==========================================
+  /* =======================================================
      UI STATE
-  ========================================== */
+     ======================================================= */
 
   const [showImageModal, setShowImageModal] = useState(false);
 
@@ -106,15 +57,15 @@ const PersonProfilePage = () => {
 
   const [rejectLoading, setRejectLoading] = useState(false);
 
-  /* ==========================================
-     PROFILE QUERY
-  ========================================== */
+  /* =======================================================
+     PUBLIC PROFILE
+     ======================================================= */
 
   const {
     data: profile,
     isPending: profileLoading,
     isError,
-  } = useQuery<Profile>({
+  } = useQuery<PublicProfile>({
     queryKey: ["person-profile", profileId],
 
     queryFn: async () => {
@@ -122,39 +73,39 @@ const PersonProfilePage = () => {
         throw new Error("Invalid profile ID");
       }
 
-      const data = await getPersonProfile(profileId);
-
-      return data as Profile;
+      return getPublicProfile(profileId);
     },
 
     enabled: isLoaded && profileId !== null,
 
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
 
-    gcTime: 30 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
 
     refetchOnWindowFocus: false,
 
     retry: 1,
   });
 
-  /* ==========================================
-     MY PROFILE QUERY
-     
-     Used only to determine whether the
-     profile being viewed belongs to me.
-  ========================================== */
+  /* =======================================================
+     MY PROFILE
 
-  const { data: myProfile, isPending: myProfileLoading } = useQuery<Profile>({
+     Used only to prevent showing connection actions
+     on the user's own profile.
+     ======================================================= */
+
+  const { data: myProfile, isPending: myProfileLoading } = useQuery<{
+    id: number;
+  }>({
     queryKey: ["profile", "me"],
 
     queryFn: async () => {
       const data = await getProfile();
 
-      return data as Profile;
+      return data as { id: number };
     },
 
-    enabled: isLoaded && profileId !== null,
+    enabled: isLoaded,
 
     staleTime: 5 * 60 * 1000,
 
@@ -165,137 +116,28 @@ const PersonProfilePage = () => {
     retry: 1,
   });
 
-  /* ==========================================
-     IS THIS MY PROFILE?
-  ========================================== */
+  /* =======================================================
+     OWN PROFILE
+     ======================================================= */
 
   const isOwnProfile = !!profile && !!myProfile && profile.id === myProfile.id;
 
-  /* ==========================================
-     CONNECTION QUERY
-  ========================================== */
+  /* =======================================================
+     CONNECTION STATE
 
-  const { data: connectionInfo, isPending: connectionInfoLoading } =
-    useQuery<ConnectionInfo>({
-      queryKey: ["person-connection", profileId],
+     Backend is now the single source of truth.
+     ======================================================= */
 
-      queryFn: async () => {
-        /*
-         * If this is the user's own profile,
-         * there is no connection action.
-         */
+  const connectionStatus: ConnectionStatus =
+    profile?.connectionStatus ?? "NONE";
 
-        if (isOwnProfile) {
-          return {
-            status: "SELF",
-          };
-        }
+  const connectionId = profile?.connectionId ?? null;
 
-        /* --------------------------------------
-         Fetch everything in parallel
-      -------------------------------------- */
-
-        const [people, requests, connections] = await Promise.all([
-          getPeople(),
-          getRequests(),
-          getConnections(),
-        ]);
-
-        /* --------------------------------------
-         1. INCOMING REQUEST
-         
-         Most important to check first.
-      -------------------------------------- */
-
-        const incomingRequest = requests.find(
-          (request) =>
-            request.profileId === profileId && request.status === "PENDING",
-        );
-
-        if (incomingRequest) {
-          return {
-            status: "PENDING_RECEIVED",
-
-            connectionId: incomingRequest.id,
-          };
-        }
-
-        /* --------------------------------------
-         2. ALREADY CONNECTED
-         
-         Connected users may not appear in
-         Discover anymore, so use
-         getConnections().
-      -------------------------------------- */
-
-        const connectedPerson = connections.find(
-          (person) => person.profileId === profileId,
-        );
-
-        if (connectedPerson) {
-          return {
-            status: "CONNECTED",
-
-            connectionId: connectedPerson.connectionId,
-          };
-        }
-
-        /* --------------------------------------
-         3. PENDING SENT
-         
-         Discover API already exposes this.
-      -------------------------------------- */
-
-        const discoverPerson = people.find((person) => person.id === profileId);
-
-        if (discoverPerson?.connectionStatus === "PENDING_SENT") {
-          return {
-            status: "PENDING_SENT",
-          };
-        }
-
-        /* --------------------------------------
-         4. FALLBACK
-         
-         No relationship exists.
-      -------------------------------------- */
-
-        return {
-          status: "NONE",
-        };
-      },
-
-      enabled: isLoaded && profileId !== null && !!profile && !myProfileLoading,
-
-      staleTime: 30 * 1000,
-
-      gcTime: 5 * 60 * 1000,
-
-      refetchOnWindowFocus: false,
-
-      retry: 1,
-    });
-
-  /* ==========================================
-     FINAL CONNECTION STATUS
-  ========================================== */
-
-  const connectionStatus = isOwnProfile
-    ? "SELF"
-    : (connectionInfo?.status ?? profile?.connectionStatus ?? "NONE");
-
-  const connectionId = connectionInfo?.connectionId ?? profile?.connectionId;
-
-  /* ==========================================
+  /* =======================================================
      MESSAGE
-  ========================================== */
+     ======================================================= */
 
   const handleMessage = async () => {
-    /*
-     * Message is only allowed when
-     * users are connected.
-     */
-
     if (!profile || connectionStatus !== "CONNECTED" || messageLoading) {
       return;
     }
@@ -313,9 +155,9 @@ const PersonProfilePage = () => {
     }
   };
 
-  /* ==========================================
+  /* =======================================================
      CONNECT
-  ========================================== */
+     ======================================================= */
 
   const handleConnect = async () => {
     if (!profile || connectionStatus !== "NONE" || connectionLoading) {
@@ -327,20 +169,43 @@ const PersonProfilePage = () => {
 
       await sendConnection(profile.userId);
 
-      /* ------------------------------------
-           Instant UI update
-        ------------------------------------ */
+      /*
+       * Update profile immediately.
+       * No need to make another API request.
+       */
 
-      queryClient.setQueryData(["person-connection", profileId], {
-        status: "PENDING_SENT",
-      });
+      queryClient.setQueryData<PublicProfile>(
+        ["person-profile", profileId],
+        (current) => {
+          if (!current) {
+            return current;
+          }
 
-      /* ------------------------------------
-           Invalidate Discover cache
-        ------------------------------------ */
+          return {
+            ...current,
+
+            connectionStatus: "PENDING_SENT",
+
+            /*
+             * The connection ID is not returned
+             * by sendConnection in the current API,
+             * so leave it unchanged here.
+             */
+            connectionId: current.connectionId,
+          };
+        },
+      );
+
+      /*
+       * Refresh Discover recommendations.
+       */
 
       queryClient.invalidateQueries({
         queryKey: ["people"],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["recommendations"],
       });
     } catch (error) {
       console.error("Connection request failed:", error);
@@ -349,12 +214,13 @@ const PersonProfilePage = () => {
     }
   };
 
-  /* ==========================================
+  /* =======================================================
      ACCEPT
-  ========================================== */
+     ======================================================= */
 
   const handleAccept = async () => {
     if (
+      !profile ||
       !connectionId ||
       connectionStatus !== "PENDING_RECEIVED" ||
       connectionLoading
@@ -367,18 +233,33 @@ const PersonProfilePage = () => {
 
       await updateConnection(connectionId, "ACCEPT");
 
-      /* ------------------------------------
-           Instant UI update
-        ------------------------------------ */
+      /*
+       * Instantly update the profile.
+       */
 
-      queryClient.setQueryData(["person-connection", profileId], {
-        status: "CONNECTED",
+      queryClient.setQueryData<PublicProfile>(
+        ["person-profile", profileId],
+        (current) => {
+          if (!current) {
+            return current;
+          }
 
-        connectionId,
-      });
+          return {
+            ...current,
+
+            connectionStatus: "CONNECTED",
+
+            connectionId,
+          };
+        },
+      );
 
       queryClient.invalidateQueries({
         queryKey: ["people"],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["recommendations"],
       });
 
       queryClient.invalidateQueries({
@@ -395,12 +276,13 @@ const PersonProfilePage = () => {
     }
   };
 
-  /* ==========================================
+  /* =======================================================
      REJECT
-  ========================================== */
+     ======================================================= */
 
   const handleReject = async () => {
     if (
+      !profile ||
       !connectionId ||
       connectionStatus !== "PENDING_RECEIVED" ||
       rejectLoading
@@ -413,17 +295,33 @@ const PersonProfilePage = () => {
 
       await updateConnection(connectionId, "REJECT");
 
-      /* ------------------------------------
-           Instant UI update
-        ------------------------------------ */
+      /*
+       * Instantly update the profile.
+       */
 
-      queryClient.setQueryData(["person-connection", profileId], {
-        status: "NONE",
-        connectionId: undefined,
-      });
+      queryClient.setQueryData<PublicProfile>(
+        ["person-profile", profileId],
+        (current) => {
+          if (!current) {
+            return current;
+          }
+
+          return {
+            ...current,
+
+            connectionStatus: "NONE",
+
+            connectionId: null,
+          };
+        },
+      );
 
       queryClient.invalidateQueries({
         queryKey: ["people"],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["recommendations"],
       });
 
       queryClient.invalidateQueries({
@@ -436,25 +334,25 @@ const PersonProfilePage = () => {
     }
   };
 
-  /* ==========================================
+  /* =======================================================
      AUTH LOADING
-  ========================================== */
+     ======================================================= */
 
   if (!isLoaded) {
     return <ProfilePageSkeleton />;
   }
 
-  /* ==========================================
+  /* =======================================================
      PROFILE LOADING
-  ========================================== */
+     ======================================================= */
 
   if (profileLoading || myProfileLoading) {
     return <ProfilePageSkeleton />;
   }
 
-  /* ==========================================
+  /* =======================================================
      PROFILE ERROR
-  ========================================== */
+     ======================================================= */
 
   if (isError || !profile) {
     return (
@@ -548,9 +446,9 @@ const PersonProfilePage = () => {
     );
   }
 
-  /* ==========================================
+  /* =======================================================
      INTERESTS
-  ========================================== */
+     ======================================================= */
 
   const interests =
     profile.interests
@@ -558,9 +456,9 @@ const PersonProfilePage = () => {
       .map((item) => item.trim())
       .filter(Boolean) ?? [];
 
-  /* ==========================================
+  /* =======================================================
      PAGE
-  ========================================== */
+     ======================================================= */
 
   return (
     <div
@@ -579,9 +477,9 @@ const PersonProfilePage = () => {
           max-w-2xl
         "
       >
-        {/* ==================================
+        {/* ================================================
             HEADER
-        ================================== */}
+        ================================================= */}
 
         <PersonProfileHeader
           fullName={profile.fullName.toLowerCase()}
@@ -589,28 +487,28 @@ const PersonProfilePage = () => {
         />
 
         <main className="pb-10">
-          {/* ==================================
+          {/* ==============================================
               PROFILE
-          ================================== */}
+          =============================================== */}
 
           <PersonProfileInfo
             profileImage={profile.profileImage}
             fullName={profile.fullName}
             username={profile.username}
-            posts={profile.postsCount ?? 0}
+            posts={0}
             connections={profile.connectionsCount ?? 0}
-            clubs={profile.clubsCount ?? 0}
+            clubs={0}
             onImageClick={() => setShowImageModal(true)}
           />
 
-          {/* ==================================
+          {/* ==============================================
               ACTIONS
-              
-              For own profile this component
-              returns null.
-          ================================== */}
 
-          {!connectionInfoLoading && (
+              Don't show connection actions on
+              your own profile.
+          =============================================== */}
+
+          {!isOwnProfile && (
             <PersonProfileActions
               connectionStatus={connectionStatus}
               messageLoading={messageLoading}
@@ -623,9 +521,9 @@ const PersonProfilePage = () => {
             />
           )}
 
-          {/* ==================================
+          {/* ==============================================
               DETAILS
-          ================================== */}
+          =============================================== */}
 
           <PersonProfileDetails
             bio={profile.bio}
@@ -635,9 +533,9 @@ const PersonProfilePage = () => {
             interests={interests}
           />
 
-          {/* ==================================
+          {/* ==============================================
               FOOTER
-          ================================== */}
+          =============================================== */}
 
           <p
             className="
@@ -658,9 +556,9 @@ const PersonProfilePage = () => {
         </main>
       </div>
 
-      {/* ======================================
+      {/* ==================================================
           IMAGE MODAL
-      ====================================== */}
+      ================================================== */}
 
       <ProfileImageModal
         open={showImageModal}
@@ -672,71 +570,71 @@ const PersonProfilePage = () => {
   );
 };
 
-/* ============================================
-   SKELETON
-============================================ */
+/* =========================================================
+   PROFILE PAGE SKELETON
+   ========================================================= */
 
 const ProfilePageSkeleton = () => {
   return (
     <div
       className="
-          min-h-screen
-          bg-white
-          dark:bg-black
-        "
+        min-h-screen
+        bg-white
+        dark:bg-black
+      "
     >
       <div
         className="
-            mx-auto
-            w-full
-            max-w-2xl
-          "
+          mx-auto
+          w-full
+          max-w-2xl
+        "
       >
         {/* HEADER */}
 
         <div
           className="
-              flex
-              h-14
-              items-center
-              justify-between
-              border-b
-              border-neutral-200
-              px-4
-              dark:border-neutral-800
-            "
+            flex
+            h-14
+            items-center
+            justify-between
+            border-b
+            border-neutral-200
+            px-4
+            dark:border-neutral-800
+          "
         >
           <div
             className="
-                h-9
-                w-9
-                animate-pulse
-                rounded-full
-                bg-neutral-100
-                dark:bg-neutral-900
-              "
+              h-9
+              w-9
+              animate-pulse
+              rounded-full
+              bg-neutral-100
+              dark:bg-neutral-900
+            "
           />
 
           <div
             className="
-                h-4
-                w-24
-                animate-pulse
-                rounded
-                bg-neutral-100
-                dark:bg-neutral-900
-              "
+              h-4
+              w-24
+              animate-pulse
+              rounded
+              bg-neutral-100
+              dark:bg-neutral-900
+            "
           />
 
           <div
             className="
-                h-9
-                w-9
-                animate-pulse
-                rounded-full
-                bg-neutral-100
-                dark:bg-neutral-900
-              "
+              h-9
+              w-9
+              animate-pulse
+              rounded-full
+              bg-neutral-100
+              dark:bg-neutral-900
+            "
           />
         </div>
 
@@ -746,51 +644,51 @@ const ProfilePageSkeleton = () => {
           <div className="flex items-center gap-5">
             <div
               className="
-                  h-20
-                  w-20
-                  animate-pulse
-                  rounded-full
-                  bg-neutral-100
-                  dark:bg-neutral-900
-                "
+                h-20
+                w-20
+                animate-pulse
+                rounded-full
+                bg-neutral-100
+                dark:bg-neutral-900
+              "
             />
 
             <div
               className="
-                  grid
-                  flex-1
-                  grid-cols-3
-                  gap-4
-                "
+                grid
+                flex-1
+                grid-cols-3
+                gap-4
+              "
             >
               <div
                 className="
-                    h-10
-                    animate-pulse
-                    rounded
-                    bg-neutral-100
-                    dark:bg-neutral-900
-                  "
+                  h-10
+                  animate-pulse
+                  rounded
+                  bg-neutral-100
+                  dark:bg-neutral-900
+                "
               />
 
               <div
                 className="
-                    h-10
-                    animate-pulse
-                    rounded
-                    bg-neutral-100
-                    dark:bg-neutral-900
-                  "
+                  h-10
+                  animate-pulse
+                  rounded
+                  bg-neutral-100
+                  dark:bg-neutral-900
+                "
               />
 
               <div
                 className="
-                    h-10
-                    animate-pulse
-                    rounded
-                    bg-neutral-100
-                    dark:bg-neutral-900
-                  "
+                  h-10
+                  animate-pulse
+                  rounded
+                  bg-neutral-100
+                  dark:bg-neutral-900
+                "
               />
             </div>
           </div>
@@ -798,59 +696,59 @@ const ProfilePageSkeleton = () => {
           <div className="mt-5 space-y-2">
             <div
               className="
-                  h-4
-                  w-32
-                  animate-pulse
-                  rounded
-                  bg-neutral-100
-                  dark:bg-neutral-900
-                "
+                h-4
+                w-32
+                animate-pulse
+                rounded
+                bg-neutral-100
+                dark:bg-neutral-900
+              "
             />
 
             <div
               className="
-                  h-3
-                  w-20
-                  animate-pulse
-                  rounded
-                  bg-neutral-100
-                  dark:bg-neutral-900
-                "
+                h-3
+                w-20
+                animate-pulse
+                rounded
+                bg-neutral-100
+                dark:bg-neutral-900
+              "
             />
           </div>
 
           <div
             className="
-                mt-5
-                h-11
-                animate-pulse
-                rounded-xl
-                bg-neutral-100
-                dark:bg-neutral-900
-              "
+              mt-5
+              h-11
+              animate-pulse
+              rounded-xl
+              bg-neutral-100
+              dark:bg-neutral-900
+            "
           />
 
           <div className="mt-7 space-y-4">
             <div
               className="
-                  h-4
-                  w-20
-                  animate-pulse
-                  rounded
-                  bg-neutral-100
-                  dark:bg-neutral-900
-                "
+                h-4
+                w-20
+                animate-pulse
+                rounded
+                bg-neutral-100
+                dark:bg-neutral-900
+              "
             />
 
             <div
               className="
-                  h-4
-                  w-40
-                  animate-pulse
-                  rounded
-                  bg-neutral-100
-                  dark:bg-neutral-900
-                "
+                h-4
+                w-40
+                animate-pulse
+                rounded
+                bg-neutral-100
+                dark:bg-neutral-900
+              "
             />
           </div>
         </main>
