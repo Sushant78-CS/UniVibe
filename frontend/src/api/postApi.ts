@@ -7,19 +7,31 @@ export type PostCategory =
   | "ACHIEVEMENT"
   | "GENERAL";
 
+export type MediaType = "IMAGE" | "VIDEO";
+
+export interface PostMedia {
+  mediaUrl: string;
+  mediaType: MediaType;
+  displayOrder: number;
+}
+
 export interface Post {
   id: number;
   userId: number;
   profileId: number | null;
+
   fullName: string | null;
   username: string | null;
   profileImage: string | null;
+
   description: string;
   category: PostCategory;
-  mediaUrl: string | null;
-  mediaType: "IMAGE" | "VIDEO" | null;
+
+  media: PostMedia[];
+
   createdAt: string;
   updatedAt: string | null;
+
   likeCount: number;
   likedByMe: boolean;
   commentCount: number;
@@ -28,38 +40,48 @@ export interface Post {
 export interface Comment {
   id: number;
   userId: number;
+
   fullName: string | null;
   username: string | null;
   profileImage?: string | null;
+
   content: string;
+
   createdAt: string;
   updatedAt?: string | null;
+
   isOwner?: boolean;
 }
 
 export interface PageResponse<T> {
   content: T[];
+
   totalElements: number;
   totalPages: number;
   size: number;
   number: number;
+
   first: boolean;
   last: boolean;
+}
+
+export interface CreatePostMediaData {
+  mediaUrl: string;
+  mediaType: MediaType;
+  displayOrder: number;
 }
 
 export interface CreatePostData {
   description: string;
   category: PostCategory;
-  mediaUrl?: string | null;
-  mediaType?: "IMAGE" | "VIDEO" | null;
+  media: CreatePostMediaData[];
 }
 
 export const usePostApi = () => {
-  /*
-   * ================================
-   * GET POSTS
-   * ================================
-   */
+  // =========================================================
+  // GET POSTS
+  // =========================================================
+
   const getPosts = async (page = 0, size = 10): Promise<PageResponse<Post>> => {
     const response = await api.get<PageResponse<Post>>("/posts", {
       params: {
@@ -71,11 +93,10 @@ export const usePostApi = () => {
     return response.data;
   };
 
-  /*
-   * ================================
-   * GET MY POSTS
-   * ================================
-   */
+  // =========================================================
+  // GET MY POSTS
+  // =========================================================
+
   const getMyPosts = async (
     page = 0,
     size = 10,
@@ -90,11 +111,10 @@ export const usePostApi = () => {
     return response.data;
   };
 
-  /*
-   * ================================
-   * CREATE POST
-   * ================================
-   */
+  // =========================================================
+  // CREATE POST
+  // =========================================================
+
   const createPost = async (data: CreatePostData): Promise<Post> => {
     const response = await api.post<Post>("/posts", data, {
       headers: {
@@ -105,22 +125,10 @@ export const usePostApi = () => {
     return response.data;
   };
 
-  /*
-   * ================================
-   * UPDATE POST
-   * ================================
-   *
-   * Media is already uploaded directly to
-   * Cloudinary by EditPostModal.
-   *
-   * Spring Boot receives:
-   * - description
-   * - category
-   * - mediaUrl
-   * - mediaType
-   *
-   * removeMedia is sent as a query parameter.
-   */
+  // =========================================================
+  // UPDATE POST
+  // =========================================================
+
   const updatePost = async (
     postId: number,
     data: CreatePostData,
@@ -131,8 +139,7 @@ export const usePostApi = () => {
       {
         description: data.description,
         category: data.category,
-        mediaUrl: data.mediaUrl,
-        mediaType: data.mediaType,
+        media: data.media,
       },
       {
         headers: {
@@ -147,49 +154,44 @@ export const usePostApi = () => {
     return response.data;
   };
 
-  /*
-   * ================================
-   * DELETE POST
-   * ================================
-   */
+  // =========================================================
+  // DELETE POST
+  // =========================================================
+
   const deletePost = async (id: number): Promise<void> => {
     await api.delete(`/posts/${id}`);
   };
 
-  /*
-   * ================================
-   * LIKE POST
-   * ================================
-   */
+  // =========================================================
+  // LIKE POST
+  // =========================================================
+
   const likePost = async (postId: number): Promise<void> => {
     await api.post(`/posts/${postId}/like`, null);
   };
 
-  /*
-   * ================================
-   * UNLIKE POST
-   * ================================
-   */
+  // =========================================================
+  // UNLIKE POST
+  // =========================================================
+
   const unlikePost = async (postId: number): Promise<void> => {
     await api.delete(`/posts/${postId}/like`);
   };
 
-  /*
-   * ================================
-   * GET COMMENTS
-   * ================================
-   */
+  // =========================================================
+  // GET COMMENTS
+  // =========================================================
+
   const getComments = async (postId: number): Promise<Comment[]> => {
     const response = await api.get<Comment[]>(`/posts/${postId}/comments`);
 
     return response.data;
   };
 
-  /*
-   * ================================
-   * ADD COMMENT
-   * ================================
-   */
+  // =========================================================
+  // ADD COMMENT
+  // =========================================================
+
   const addComment = async (
     postId: number,
     content: string,
@@ -201,20 +203,14 @@ export const usePostApi = () => {
     return response.data;
   };
 
-  /*
-   * ================================
-   * DELETE COMMENT
-   * ================================
-   */
+  // =========================================================
+  // DELETE COMMENT
+  // =========================================================
+
   const deleteComment = async (commentId: number): Promise<void> => {
     await api.delete(`/posts/comments/${commentId}`);
   };
 
-  /*
-   * ================================
-   * RETURN API
-   * ================================
-   */
   return {
     getPosts,
     getMyPosts,

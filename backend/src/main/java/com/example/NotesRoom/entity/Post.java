@@ -60,4 +60,14 @@ public class Post {
     )
     @Builder.Default
     private List<PostComment> comments = new ArrayList<>();
+
+    @OneToMany(
+            mappedBy = "post",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    @OrderBy("displayOrder ASC")
+    @Builder.Default
+    private List<PostMedia> media = new ArrayList<>();
+
 }

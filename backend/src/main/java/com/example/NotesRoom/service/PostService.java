@@ -11,11 +11,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -28,74 +28,84 @@ public class PostService {
     private final PostCommentRepository postCommentRepository;
     private final PostLikeRepository postLikeRepository;
 
+
+    // =========================================================
+    // CREATE POST
+    // =========================================================
+
     @Transactional
     public PostDto createPost(
             String clerkId,
             CreatePostDto dto
     ) throws IOException {
+
         Users user = userRepository
                 .findByClerkId(clerkId)
                 .orElseThrow(() ->
                         new RuntimeException("User not found"));
-        if (dto.description() == null ||
-                dto.description().isBlank()) {
-            throw new IllegalArgumentException("Post description cannot be empty");
-        }
-        if (dto.category() == null) {
-            throw new IllegalArgumentException("Post category is required");
-        }
 
-        MediaType mediaType = null;
-        if (dto.mediaType() != null && !dto.mediaType().isBlank()) {
-            try {
-                mediaType = MediaType.valueOf(
-                        dto.mediaType().toUpperCase()
-                );
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException(
-                        "Invalid media type. Use IMAGE or VIDEO"
-                );
-            }
-        }
-
+        validatePost(dto);
 
         Post post = Post.builder()
                 .user(user)
                 .description(dto.description().trim())
                 .category(dto.category())
-                .mediaUrl(dto.mediaUrl())
-                .mediaType(mediaType)
                 .createdAt(Instant.now())
                 .build();
+
+        addMediaToPost(post, dto.media());
+
         Post savedPost = postRepository.save(post);
 
         return toDto(savedPost, user);
     }
 
+
+    // =========================================================
+    // GET ALL POSTS
+    // =========================================================
+
     @Transactional
-    public Page<PostDto> getPosts(String clerkId, Pageable pageable) {
+    public Page<PostDto> getPosts(
+            String clerkId,
+            Pageable pageable
+    ) {
+
         Users user = userRepository
                 .findByClerkId(clerkId)
                 .orElseThrow(() ->
                         new RuntimeException("User not found"));
+
         return postRepository
                 .findAllByOrderByCreatedAtDesc(pageable)
                 .map(post -> toDto(post, user));
     }
+
+
+    // =========================================================
+    // GET MY POSTS
+    // =========================================================
 
     @Transactional
     public Page<PostDto> getMyPosts(
             String clerkId,
             Pageable pageable
     ) {
+
         Users user = userRepository
                 .findByClerkId(clerkId)
                 .orElseThrow(() ->
                         new RuntimeException("User not found"));
+
         return postRepository
                 .findByUserOrderByCreatedAtDesc(user, pageable)
                 .map(post -> toDto(post, user));
     }
+
+
+    // =========================================================
+    // UPDATE POST
+    // =========================================================
 
     @Transactional
     public PostDto updatePost(
@@ -117,119 +127,46 @@ public class PostService {
 
         // Only owner can edit
         if (!post.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("You cannot edit this post");
-        }
-
-        // Validate description
-        if (dto.description() == null ||
-                dto.description().isBlank()) {
-
-            throw new IllegalArgumentException(
-                    "Post description cannot be empty"
+            throw new RuntimeException(
+                    "You cannot edit this post"
             );
         }
 
-        // Validate category
-        if (dto.category() == null) {
-            throw new IllegalArgumentException(
-                    "Post category is required"
-            );
-        }
+        validatePost(dto);
 
-        /*
-         * Update text/category.
-         */
+        // Update text/category
         post.setDescription(dto.description().trim());
         post.setCategory(dto.category());
 
-        /*
-         * Existing media.
-         */
-        String oldMediaUrl = post.getMediaUrl();
-        MediaType oldMediaType = post.getMediaType();
 
-        /*
-         * ==========================================
-         * NEW MEDIA
-         * ==========================================
-         *
-         * Frontend already uploaded the new media
-         * directly to Cloudinary and gives us the URL.
-         */
-        if (dto.mediaUrl() != null &&
-                !dto.mediaUrl().isBlank()) {
+        // =====================================================
+        // REPLACE MEDIA
+        // =====================================================
 
-            MediaType newMediaType = null;
+        if (dto.media() != null && !dto.media().isEmpty()) {
 
-            if (dto.mediaType() != null &&
-                    !dto.mediaType().isBlank()) {
+            // Delete existing Cloudinary media
+            deletePostMediaFromCloudinary(post);
 
-                try {
-                    newMediaType = MediaType.valueOf(
-                            dto.mediaType().toUpperCase()
-                    );
-                } catch (IllegalArgumentException e) {
-                    throw new IllegalArgumentException(
-                            "Invalid media type. Use IMAGE or VIDEO"
-                    );
-                }
-            }
+            // orphanRemoval will remove old PostMedia rows
+            post.getMedia().clear();
 
-            if (newMediaType == null) {
-                throw new IllegalArgumentException(
-                        "Media type is required when media URL is provided"
-                );
-            }
-
-            /*
-             * Replace media URL/type.
-             */
-            post.setMediaUrl(dto.mediaUrl());
-            post.setMediaType(newMediaType);
-
-            /*
-             * Delete old Cloudinary media.
-             */
-            if (oldMediaUrl != null &&
-                    !oldMediaUrl.isBlank()) {
-
-                cloudinaryService.deletePostMedia(
-                        oldMediaUrl,
-                        oldMediaType != null
-                                ? oldMediaType.name()
-                                : "IMAGE"
-                );
-            }
+            // Add new media
+            addMediaToPost(post, dto.media());
         }
 
-        /*
-         * ==========================================
-         * REMOVE MEDIA
-         * ==========================================
-         */
+
+        // =====================================================
+        // REMOVE MEDIA
+        // =====================================================
 
         else if (removeMedia) {
 
-            post.setMediaUrl(null);
-            post.setMediaType(null);
+            deletePostMediaFromCloudinary(post);
 
-            if (oldMediaUrl != null &&
-                    !oldMediaUrl.isBlank()) {
-
-                cloudinaryService.deletePostMedia(
-                        oldMediaUrl,
-                        oldMediaType != null
-                                ? oldMediaType.name()
-                                : "IMAGE"
-                );
-            }
+            post.getMedia().clear();
         }
 
-        /*
-         * ==========================================
-         * UPDATED TIME
-         * ==========================================
-         */
 
         post.setUpdatedAt(Instant.now());
 
@@ -238,51 +175,55 @@ public class PostService {
         return toDto(savedPost, user);
     }
 
+
+    // =========================================================
+    // DELETE POST
+    // =========================================================
+
     @Transactional
     public void deletePost(
             String clerkId,
             Long postId
     ) {
+
         Users user = userRepository
                 .findByClerkId(clerkId)
                 .orElseThrow(() ->
                         new RuntimeException("User not found"));
+
         Post post = postRepository
                 .findById(postId)
                 .orElseThrow(() ->
                         new RuntimeException("Post not found"));
+
         if (!post.getUser().getId()
                 .equals(user.getId())) {
-            throw new RuntimeException("You cannot delete this post");
+
+            throw new RuntimeException(
+                    "You cannot delete this post"
+            );
         }
 
-        // Delete post image from Cloudinary
-        if (post.getMediaUrl() != null &&
-                !post.getMediaUrl().isBlank()) {
 
-            try {
-                cloudinaryService.deletePostMedia(
-                        post.getMediaUrl(),
-                        post.getMediaType() != null
-                                ? post.getMediaType().name()
-                                : "IMAGE"
-                );
-            } catch (IOException e) {
-                throw new RuntimeException(
-                        "Failed to delete post media",
-                        e
-                );
-            }
-        }
+        // Delete ALL media from Cloudinary
+        deletePostMediaFromCloudinary(post);
 
+        // Cascade + orphanRemoval handles PostMedia,
+        // likes and comments.
         postRepository.delete(post);
     }
+
+
+    // =========================================================
+    // LIKE POST
+    // =========================================================
 
     @Transactional
     public void likePost(
             String clerkId,
             Long postId
     ) {
+
         Users user = userRepository
                 .findByClerkId(clerkId)
                 .orElseThrow(() ->
@@ -312,11 +253,17 @@ public class PostService {
         postLikeRepository.save(like);
     }
 
+
+    // =========================================================
+    // UNLIKE POST
+    // =========================================================
+
     @Transactional
     public void unlikePost(
             String clerkId,
             Long postId
     ) {
+
         Users user = userRepository
                 .findByClerkId(clerkId)
                 .orElseThrow(() ->
@@ -333,12 +280,18 @@ public class PostService {
         );
     }
 
+
+    // =========================================================
+    // ADD COMMENT
+    // =========================================================
+
     @Transactional
     public CommentDto addComment(
             String clerkId,
             Long postId,
             CreateCommentDto dto
     ) {
+
         Users user = userRepository
                 .findByClerkId(clerkId)
                 .orElseThrow(() ->
@@ -370,11 +323,17 @@ public class PostService {
         return toCommentDto(saved, user);
     }
 
-    @Transactional()
+
+    // =========================================================
+    // GET COMMENTS
+    // =========================================================
+
+    @Transactional
     public List<CommentDto> getComments(
             String clerkId,
             Long postId
     ) {
+
         Users currentUser = userRepository
                 .findByClerkId(clerkId)
                 .orElseThrow(() ->
@@ -389,16 +348,25 @@ public class PostService {
                 .findByPostOrderByCreatedAtAsc(post)
                 .stream()
                 .map(comment ->
-                        toCommentDto(comment, currentUser)
+                        toCommentDto(
+                                comment,
+                                currentUser
+                        )
                 )
                 .toList();
     }
+
+
+    // =========================================================
+    // DELETE COMMENT
+    // =========================================================
 
     @Transactional
     public void deleteComment(
             String clerkId,
             Long commentId
     ) {
+
         Users user = userRepository
                 .findByClerkId(clerkId)
                 .orElseThrow(() ->
@@ -423,30 +391,198 @@ public class PostService {
         postCommentRepository.delete(comment);
     }
 
+
+    // =========================================================
+    // ADD MEDIA TO POST
+    // =========================================================
+
+    private void addMediaToPost(
+            Post post,
+            List<PostMediaDto> mediaDtos
+    ) {
+
+        if (mediaDtos == null ||
+                mediaDtos.isEmpty()) {
+            return;
+        }
+
+        List<PostMedia> mediaList =
+                new ArrayList<>();
+
+        int order = 0;
+
+        for (PostMediaDto mediaDto : mediaDtos) {
+
+            if (mediaDto == null) {
+                continue;
+            }
+
+            if (mediaDto.mediaUrl() == null ||
+                    mediaDto.mediaUrl().isBlank()) {
+
+                continue;
+            }
+
+            if (mediaDto.mediaType() == null) {
+
+                throw new IllegalArgumentException(
+                        "Media type is required"
+                );
+            }
+
+            PostMedia media = PostMedia.builder()
+                    .post(post)
+                    .mediaUrl(
+                            mediaDto.mediaUrl().trim()
+                    )
+                    .mediaType(
+                            mediaDto.mediaType()
+                    )
+                    .displayOrder(order++)
+                    .build();
+
+            mediaList.add(media);
+        }
+
+        post.setMedia(mediaList);
+    }
+
+
+    // =========================================================
+    // DELETE MEDIA FROM CLOUDINARY
+    // =========================================================
+
+    private void deletePostMediaFromCloudinary(
+            Post post
+    ) {
+
+        if (post.getMedia() == null ||
+                post.getMedia().isEmpty()) {
+
+            return;
+        }
+
+        for (PostMedia media : post.getMedia()) {
+
+            if (media.getMediaUrl() == null ||
+                    media.getMediaUrl().isBlank()) {
+
+                continue;
+            }
+
+            try {
+
+                cloudinaryService.deletePostMedia(
+                        media.getMediaUrl(),
+                        media.getMediaType() != null
+                                ? media.getMediaType().name()
+                                : "IMAGE"
+                );
+
+            } catch (IOException e) {
+
+                throw new RuntimeException(
+                        "Failed to delete post media",
+                        e
+                );
+            }
+        }
+    }
+
+
+    // =========================================================
+    // VALIDATE POST
+    // =========================================================
+
+    private void validatePost(
+            CreatePostDto dto
+    ) {
+
+        if (dto == null) {
+            throw new IllegalArgumentException(
+                    "Post data is required"
+            );
+        }
+
+        if (dto.description() == null ||
+                dto.description().isBlank()) {
+
+            throw new IllegalArgumentException(
+                    "Post description cannot be empty"
+            );
+        }
+
+        if (dto.category() == null) {
+
+            throw new IllegalArgumentException(
+                    "Post category is required"
+            );
+        }
+
+        if (dto.media() == null ||
+                dto.media().isEmpty()) {
+
+            return;
+        }
+
+        for (PostMediaDto media : dto.media()) {
+
+            if (media == null) {
+                continue;
+            }
+
+            if (media.mediaUrl() == null ||
+                    media.mediaUrl().isBlank()) {
+
+                throw new IllegalArgumentException(
+                        "Media URL cannot be empty"
+                );
+            }
+
+            if (media.mediaType() == null) {
+
+                throw new IllegalArgumentException(
+                        "Media type is required"
+                );
+            }
+        }
+    }
+
+
+    // =========================================================
+    // COMMENT DTO
+    // =========================================================
+
     private CommentDto toCommentDto(
             PostComment comment,
             Users currentUser
     ) {
+
         Users user = comment.getUser();
 
         Profile profile = user.getProfile();
 
         boolean isOwner =
                 currentUser != null &&
-                        user.getId().equals(currentUser.getId());
+                        user.getId()
+                                .equals(currentUser.getId());
 
         return new CommentDto(
                 comment.getId(),
                 user.getId(),
+
                 profile != null
                         ? profile.getFullName()
                         : null,
+
                 profile != null
                         ? profile.getUsername()
                         : null,
+
                 profile != null
                         ? profile.getProfileImage()
                         : null,
+
                 comment.getContent(),
                 comment.getCreatedAt(),
                 comment.getUpdatedAt(),
@@ -454,16 +590,24 @@ public class PostService {
         );
     }
 
+
+    // =========================================================
+    // POST DTO
+    // =========================================================
+
     private PostDto toDto(
             Post post,
             Users currentUser
     ) {
+
         Users user = post.getUser();
 
         Profile profile = user.getProfile();
 
+
         long likeCount =
                 postLikeRepository.countByPost(post);
+
 
         boolean likedByMe =
                 currentUser != null &&
@@ -472,8 +616,23 @@ public class PostService {
                                 currentUser
                         );
 
+
         long commentCount =
                 postCommentRepository.countByPost(post);
+
+
+        List<PostMediaDto> media =
+                post.getMedia()
+                        .stream()
+                        .map(postMedia ->
+                                new PostMediaDto(
+                                        postMedia.getMediaUrl(),
+                                        postMedia.getMediaType(),
+                                        postMedia.getDisplayOrder()
+                                )
+                        )
+                        .toList();
+
 
         return new PostDto(
                 post.getId(),
@@ -497,8 +656,7 @@ public class PostService {
 
                 post.getDescription(),
                 post.getCategory(),
-                post.getMediaUrl(),
-                post.getMediaType(),
+                media,
                 post.getCreatedAt(),
                 post.getUpdatedAt(),
 

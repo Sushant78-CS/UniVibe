@@ -1,5 +1,4 @@
 import { ArrowLeft } from "lucide-react";
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 
 import CreatePostForm from "../../components/posts/create/CreatePostForm";
@@ -8,24 +7,40 @@ import { compressImage } from "../../services/compressImage";
 import { compressVideo } from "../../services/compressVideo";
 
 import { useCreatePostDraftStore } from "../../store/createPostDraftStore";
-import { usePostApi } from "../../api/postApi";
+
+import { usePostApi, type MediaType } from "../../api/postApi";
+
 import { useCloudinaryApi } from "../../api/cloudinary";
+
 import { usePublishingStore } from "../../store/publishingStore";
+import { useState } from "react";
+
+const MAX_IMAGES = 10;
 
 export default function CreatePostPage() {
   const navigate = useNavigate();
 
+  // =========================================================
+  // DRAFT STORE
+  // =========================================================
+
   const {
     description,
     category,
-    selectedFile,
-    mediaType,
+
+    selectedFiles,
+    mediaTypes,
+
     setDescription,
     setCategory,
     setMedia,
     clearMedia,
     resetDraft,
   } = useCreatePostDraftStore();
+
+  // =========================================================
+  // PUBLISHING STORE
+  // =========================================================
 
   const {
     startCompressing,
@@ -36,67 +51,96 @@ export default function CreatePostPage() {
     fail,
   } = usePublishingStore();
 
+  // =========================================================
+  // APIs
+  // =========================================================
+
   const { createPost } = usePostApi();
 
   const { uploadPostMediaToCloudinaryWithProgress } = useCloudinaryApi();
 
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // =========================================================
+  // LOCAL STATE
+  // =========================================================
+
   const [processingMedia, setProcessingMedia] = useState(false);
+
   const [posting, setPosting] = useState(false);
+
   const [error, setError] = useState("");
 
-  /*
-   * ==========================================
-   * PREVIEW URL
-   * ==========================================
-   */
-
-  useEffect(() => {
-    if (!selectedFile) {
-      setPreviewUrl(null);
-      return;
-    }
-    console.log(setProcessingMedia);
-
-    const url = URL.createObjectURL(selectedFile);
-
-    setPreviewUrl(url);
-
-    return () => {
-      URL.revokeObjectURL(url);
-    };
-  }, [selectedFile]);
-
-  /*
-   * ==========================================
-   * IMAGE PICKER
-   * ==========================================
-   */
+  // =========================================================
+  // IMAGE PICKER
+  // =========================================================
 
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const files = Array.from(event.target.files ?? []);
 
     event.target.value = "";
 
-    if (!file) {
+    if (files.length === 0) {
       return;
     }
 
-    if (!file.type.startsWith("image/")) {
-      setError("Please select a valid image.");
+    // -------------------------------------------------------
+    // Validate every file
+    // -------------------------------------------------------
+
+    const invalidFile = files.find((file) => !file.type.startsWith("image/"));
+
+    if (invalidFile) {
+      setError("Please select valid image files only.");
+
       return;
     }
 
-    setError("");
+    // -------------------------------------------------------
+    // Don't allow images with a video
+    // -------------------------------------------------------
 
-    setMedia(file, "IMAGE");
+    if (selectedFiles.some((_, index) => mediaTypes[index] === "VIDEO")) {
+      setError("A post can contain either photos or one video, not both.");
+
+      return;
+    }
+
+    // -------------------------------------------------------
+    // Maximum 10 images
+    // -------------------------------------------------------
+
+    const remainingSlots = MAX_IMAGES - selectedFiles.length;
+
+    if (remainingSlots <= 0) {
+      setError(`You can add a maximum of ${MAX_IMAGES} photos.`);
+
+      return;
+    }
+
+    const filesToAdd = files.slice(0, remainingSlots);
+
+    if (files.length > remainingSlots) {
+      setError(
+        `Only ${remainingSlots} more photo${
+          remainingSlots === 1 ? "" : "s"
+        } can be added.`,
+      );
+    } else {
+      setError("");
+    }
+
+    // -------------------------------------------------------
+    // Add files
+    // -------------------------------------------------------
+
+    setMedia(
+      [...selectedFiles, ...filesToAdd],
+      [...mediaTypes, ...filesToAdd.map(() => "IMAGE" as MediaType)],
+    );
   };
 
-  /*
-   * ==========================================
-   * VIDEO PICKER
-   * ==========================================
-   */
+  // =========================================================
+  // VIDEO PICKER
+  // =========================================================
 
   const handleVideoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -107,26 +151,44 @@ export default function CreatePostPage() {
       return;
     }
 
+    // -------------------------------------------------------
+    // Validate type
+    // -------------------------------------------------------
+
     if (!file.type.startsWith("video/")) {
       setError("Please select a valid video.");
+
       return;
     }
 
+    // -------------------------------------------------------
+    // Don't allow video with photos
+    // -------------------------------------------------------
+
+    if (selectedFiles.length > 0) {
+      setError("A post can contain either photos or one video, not both.");
+
+      return;
+    }
+
+    // -------------------------------------------------------
+    // Maximum video size
+    // -------------------------------------------------------
+
     if (file.size > 100 * 1024 * 1024) {
       setError("Video must be smaller than 100 MB.");
+
       return;
     }
 
     setError("");
 
-    setMedia(file, "VIDEO");
+    setMedia([file], ["VIDEO"]);
   };
 
-  /*
-   * ==========================================
-   * TAKE PHOTO
-   * ==========================================
-   */
+  // =========================================================
+  // TAKE PHOTO
+  // =========================================================
 
   const handleTakePhoto = () => {
     setError("");
@@ -134,11 +196,9 @@ export default function CreatePostPage() {
     navigate("/posts/create/camera?mode=photo");
   };
 
-  /*
-   * ==========================================
-   * RECORD VIDEO
-   * ==========================================
-   */
+  // =========================================================
+  // RECORD VIDEO
+  // =========================================================
 
   const handleRecordVideo = () => {
     setError("");
@@ -146,137 +206,210 @@ export default function CreatePostPage() {
     navigate("/posts/create/camera?mode=video");
   };
 
-  /*
-   * ==========================================
-   * REMOVE MEDIA
-   * ==========================================
-   */
+  // =========================================================
+  // REMOVE MEDIA
+  // =========================================================
 
-  const handleRemoveMedia = () => {
-    clearMedia();
+  const handleRemoveMedia = (index?: number) => {
+    // -------------------------------------------------------
+    // Remove everything
+    // -------------------------------------------------------
+
+    if (index === undefined) {
+      clearMedia();
+
+      setError("");
+
+      return;
+    }
+
+    // -------------------------------------------------------
+    // Remove one item
+    // -------------------------------------------------------
+
+    const newFiles = selectedFiles.filter(
+      (_, fileIndex) => fileIndex !== index,
+    );
+
+    const newMediaTypes = mediaTypes.filter(
+      (_, mediaIndex) => mediaIndex !== index,
+    );
+
+    setMedia(newFiles, newMediaTypes);
+
     setError("");
   };
 
-  /*
-   * ==========================================
-   * PUBLISH POST
-   * ==========================================
-   */
+  // =========================================================
+  // PUBLISH POST
+  // =========================================================
 
   const handleSubmit = async () => {
+    // -------------------------------------------------------
+    // Validate description
+    // -------------------------------------------------------
+
     if (!description.trim()) {
       setError("Please write something about your post.");
+
       return;
     }
 
     if (description.trim().length > 5000) {
       setError("Description cannot exceed 5000 characters.");
+
       return;
     }
+
+    // -------------------------------------------------------
+    // Prevent duplicate publishing
+    // -------------------------------------------------------
 
     if (posting) {
       return;
     }
 
     setError("");
+
     setPosting(true);
 
-    /*
-     * Save everything BEFORE navigating away.
-     */
+    // =======================================================
+    // SAVE DATA BEFORE NAVIGATION
+    // =======================================================
 
     const postDescription = description.trim();
-    const postCategory = category;
-    const postFile = selectedFile;
-    const postMediaType = mediaType;
 
-    /*
-     * Navigate immediately.
-     *
-     * Publishing continues in the background.
-     */
+    const postCategory = category;
+
+    const postFiles = [...selectedFiles];
+
+    const postMediaTypes = [...mediaTypes];
+
+    // =======================================================
+    // NAVIGATE IMMEDIATELY
+    // =======================================================
 
     navigate("/home", {
       replace: true,
     });
 
-    /*
-     * ==========================================
-     * BACKGROUND PUBLISHING
-     * ==========================================
-     */
+    // =======================================================
+    // BACKGROUND PUBLISHING
+    // =======================================================
 
     try {
-      let uploadFile = postFile;
+      // -----------------------------------------------------
+      // STEP 1 — COMPRESS MEDIA
+      // -----------------------------------------------------
 
-      /*
-       * ========================================
-       * STEP 1 — COMPRESS MEDIA
-       * ========================================
-       */
+      const compressedFiles: File[] = [];
 
-      if (uploadFile && postMediaType) {
+      if (postFiles.length > 0) {
         startCompressing();
 
-        if (postMediaType === "IMAGE") {
-          uploadFile = await compressImage(uploadFile);
+        setProcessingMedia(true);
+
+        for (let index = 0; index < postFiles.length; index++) {
+          const file = postFiles[index];
+
+          const mediaType = postMediaTypes[index];
+
+          if (!file || !mediaType) {
+            continue;
+          }
+
+          let compressedFile = file;
+
+          if (mediaType === "IMAGE") {
+            compressedFile = await compressImage(file);
+          }
+
+          if (mediaType === "VIDEO") {
+            compressedFile = await compressVideo(file);
+          }
+
+          compressedFiles.push(compressedFile);
         }
 
-        if (postMediaType === "VIDEO") {
-          uploadFile = await compressVideo(uploadFile);
-        }
+        setProcessingMedia(false);
       }
 
-      /*
-       * ========================================
-       * STEP 2 — CLOUDINARY UPLOAD
-       * ========================================
-       */
+      // -----------------------------------------------------
+      // STEP 2 — UPLOAD MEDIA
+      // -----------------------------------------------------
 
-      let mediaUrl: string | null = null;
-      let finalMediaType: "IMAGE" | "VIDEO" | null = null;
+      const uploadedMedia: {
+        mediaUrl: string;
+        mediaType: MediaType;
+        displayOrder: number;
+      }[] = [];
 
-      if (uploadFile && postMediaType) {
+      if (compressedFiles.length > 0) {
         startUploading();
 
-        const uploaded = await uploadPostMediaToCloudinaryWithProgress(
-          uploadFile,
-          postMediaType,
-          (progress) => {
-            setUploadProgress(progress);
-          },
-        );
+        setUploadProgress(0);
 
-        mediaUrl = uploaded.secure_url;
-        finalMediaType = postMediaType;
+        const totalFiles = compressedFiles.length;
+
+        for (let index = 0; index < totalFiles; index++) {
+          const file = compressedFiles[index];
+
+          const mediaType = postMediaTypes[index];
+
+          if (!file || !mediaType) {
+            continue;
+          }
+
+          const baseProgress = (index / totalFiles) * 100;
+
+          const fileProgressWeight = 100 / totalFiles;
+
+          const uploaded = await uploadPostMediaToCloudinaryWithProgress(
+            file,
+            mediaType,
+            (progress) => {
+              const overallProgress =
+                baseProgress + (progress / 100) * fileProgressWeight;
+
+              setUploadProgress(Math.round(overallProgress));
+            },
+          );
+
+          uploadedMedia.push({
+            mediaUrl: uploaded.secure_url,
+
+            mediaType,
+
+            displayOrder: index,
+          });
+
+          setUploadProgress(Math.round(((index + 1) / totalFiles) * 100));
+        }
       }
 
-      /*
-       * ========================================
-       * STEP 3 — CREATE DATABASE POST
-       * ========================================
-       */
+      // =====================================================
+      // STEP 3 — CREATE DATABASE POST
+      // =====================================================
 
       startCreating();
 
       await createPost({
         description: postDescription,
+
         category: postCategory,
-        mediaUrl,
-        mediaType: finalMediaType,
+
+        media: uploadedMedia,
       });
 
-      /*
-       * ========================================
-       * STEP 4 — SUCCESS
-       * ========================================
-       */
+      // =====================================================
+      // STEP 4 — SUCCESS
+      // =====================================================
 
       success();
 
-      /*
-       * Clear draft only after successful publishing.
-       */
+      // -----------------------------------------------------
+      // Clear local draft only after successful publishing
+      // -----------------------------------------------------
 
       resetDraft();
     } catch (err) {
@@ -289,15 +422,15 @@ export default function CreatePostPage() {
 
       fail(message);
     } finally {
+      setProcessingMedia(false);
+
       setPosting(false);
     }
   };
 
-  /*
-   * ==========================================
-   * RENDER
-   * ==========================================
-   */
+  // =========================================================
+  // RENDER
+  // =========================================================
 
   return (
     <div
@@ -310,9 +443,9 @@ export default function CreatePostPage() {
         dark:text-white
       "
     >
-      {/* ======================================
+      {/* =====================================================
           HEADER
-          ====================================== */}
+          ===================================================== */}
 
       <header
         className="
@@ -341,7 +474,7 @@ export default function CreatePostPage() {
             sm:px-6
           "
         >
-          {/* Back button */}
+          {/* BACK */}
 
           <button
             type="button"
@@ -367,7 +500,7 @@ export default function CreatePostPage() {
             <ArrowLeft className="h-5 w-5" strokeWidth={2} />
           </button>
 
-          {/* Title */}
+          {/* TITLE */}
 
           <div>
             <h1
@@ -394,9 +527,9 @@ export default function CreatePostPage() {
         </div>
       </header>
 
-      {/* ======================================
+      {/* =====================================================
           MAIN
-          ====================================== */}
+          ===================================================== */}
 
       <main
         className="
@@ -412,9 +545,8 @@ export default function CreatePostPage() {
         <CreatePostForm
           description={description}
           category={category}
-          selectedFile={selectedFile}
-          mediaType={mediaType}
-          previewUrl={previewUrl}
+          selectedFiles={selectedFiles}
+          mediaTypes={mediaTypes}
           processingMedia={processingMedia}
           posting={posting}
           error={error}

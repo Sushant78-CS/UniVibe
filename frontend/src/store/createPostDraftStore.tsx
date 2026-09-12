@@ -1,46 +1,55 @@
 import { create } from "zustand";
-import type { PostCategory } from "../api/postApi";
+import type { PostCategory, MediaType } from "../api/postApi";
 
 interface CreatePostDraftState {
   description: string;
   category: PostCategory;
 
-  selectedFile: File | null;
-  mediaType: "IMAGE" | "VIDEO" | null;
+  selectedFiles: File[];
+  mediaTypes: MediaType[];
 
   setDescription: (description: string) => void;
+
   setCategory: (category: PostCategory) => void;
 
-  setMedia: (file: File | null, mediaType: "IMAGE" | "VIDEO" | null) => void;
+  setMedia: (files: File[], mediaTypes: MediaType[]) => void;
 
   clearMedia: () => void;
+
   resetDraft: () => void;
 }
 
 const initialState = {
   description: "",
   category: "GENERAL" as PostCategory,
-  selectedFile: null,
-  mediaType: null as "IMAGE" | "VIDEO" | null,
+
+  selectedFiles: [] as File[],
+  mediaTypes: [] as MediaType[],
 };
 
 export const useCreatePostDraftStore = create<CreatePostDraftState>((set) => ({
   ...initialState,
 
-  setDescription: (description) => set({ description }),
-
-  setCategory: (category) => set({ category }),
-
-  setMedia: (selectedFile, mediaType) =>
+  setDescription: (description) =>
     set({
-      selectedFile,
-      mediaType,
+      description,
+    }),
+
+  setCategory: (category) =>
+    set({
+      category,
+    }),
+
+  setMedia: (files, mediaTypes) =>
+    set({
+      selectedFiles: files,
+      mediaTypes,
     }),
 
   clearMedia: () =>
     set({
-      selectedFile: null,
-      mediaType: null,
+      selectedFiles: [],
+      mediaTypes: [],
     }),
 
   resetDraft: () =>

@@ -1,15 +1,18 @@
-import { Camera, ImagePlus, Send, Video } from "lucide-react";
+import { Camera, ImagePlus, Send, Video, X } from "lucide-react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 
-import { useRef, type ChangeEvent } from "react";
-
-import type { CreatePostData, PostCategory } from "../../../api/postApi";
+import type {
+  CreatePostData,
+  MediaType,
+  PostCategory,
+} from "../../../api/postApi";
 
 interface CreatePostFormProps {
   description: string;
   category: PostCategory;
-  selectedFile: File | null;
-  mediaType: "IMAGE" | "VIDEO" | null;
-  previewUrl: string | null;
+
+  selectedFiles: File[];
+  mediaTypes: MediaType[];
 
   processingMedia: boolean;
   posting: boolean;
@@ -20,13 +23,12 @@ interface CreatePostFormProps {
   onCategoryChange: (value: PostCategory) => void;
 
   onImageSelect: (event: ChangeEvent<HTMLInputElement>) => void;
-
   onVideoSelect: (event: ChangeEvent<HTMLInputElement>) => void;
 
   onTakePhoto: () => void;
   onRecordVideo: () => void;
 
-  onRemoveMedia: () => void;
+  onRemoveMedia: (index?: number) => void;
 
   onSubmit: (data: CreatePostData) => void;
 }
@@ -57,12 +59,13 @@ const categories: {
   },
 ];
 
+const MAX_IMAGES = 10;
+
 const CreatePostForm = ({
   description,
   category,
-  selectedFile,
-  mediaType,
-  previewUrl,
+  selectedFiles,
+  mediaTypes,
   processingMedia,
   posting,
   error,
@@ -76,25 +79,62 @@ const CreatePostForm = ({
   onSubmit,
 }: CreatePostFormProps) => {
   const imageInputRef = useRef<HTMLInputElement | null>(null);
-
   const videoInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+
+  /*
+   * =========================================================
+   * CREATE PREVIEW URLS
+   * =========================================================
+   */
+
+  useEffect(() => {
+    if (selectedFiles.length === 0) {
+      setPreviewUrls([]);
+      return;
+    }
+
+    const urls = selectedFiles.map((file) => URL.createObjectURL(file));
+
+    setPreviewUrls(urls);
+
+    return () => {
+      urls.forEach((url) => {
+        URL.revokeObjectURL(url);
+      });
+    };
+  }, [selectedFiles]);
+
+  /*
+   * =========================================================
+   * SUBMIT
+   * =========================================================
+   */
 
   const handleSubmit = () => {
     onSubmit({
       description: description.trim(),
       category,
-      mediaUrl: null,
-      mediaType,
+      media: [],
     });
   };
 
   const mediaDisabled = posting || processingMedia;
 
+  const imageCount = selectedFiles.filter(
+    (_, index) => mediaTypes[index] === "IMAGE",
+  ).length;
+
+  const hasVideo = selectedFiles.some(
+    (_, index) => mediaTypes[index] === "VIDEO",
+  );
+
   return (
     <div className="space-y-6">
-      {/* ==========================================
+      {/* =====================================================
           DESCRIPTION
-          ========================================== */}
+          ===================================================== */}
 
       <section
         className="
@@ -181,9 +221,9 @@ const CreatePostForm = ({
         </div>
       </section>
 
-      {/* ==========================================
+      {/* =====================================================
           CATEGORY
-          ========================================== */}
+          ===================================================== */}
 
       <section
         className="
@@ -268,9 +308,9 @@ const CreatePostForm = ({
         </select>
       </section>
 
-      {/* ==========================================
+      {/* =====================================================
           MEDIA
-          ========================================== */}
+          ===================================================== */}
 
       <section
         className="
@@ -306,16 +346,19 @@ const CreatePostForm = ({
               dark:text-slate-400
             "
           >
-            Add a photo or video from your device, or use your camera.
+            Add up to {MAX_IMAGES} photos or one video.
           </p>
         </div>
 
-        {/* Hidden inputs */}
+        {/* ===================================================
+            HIDDEN INPUTS
+            =================================================== */}
 
         <input
           ref={imageInputRef}
           type="file"
           accept="image/*"
+          multiple
           className="hidden"
           onChange={onImageSelect}
         />
@@ -328,7 +371,9 @@ const CreatePostForm = ({
           onChange={onVideoSelect}
         />
 
-        {/* Media buttons */}
+        {/* ===================================================
+            MEDIA BUTTONS
+            =================================================== */}
 
         <div
           className="
@@ -342,7 +387,7 @@ const CreatePostForm = ({
 
           <button
             type="button"
-            disabled={mediaDisabled}
+            disabled={mediaDisabled || hasVideo || imageCount >= MAX_IMAGES}
             onClick={() => imageInputRef.current?.click()}
             className="
               group
@@ -388,7 +433,7 @@ const CreatePostForm = ({
                 dark:text-white
               "
             >
-              Select Photo
+              Select Photos
             </span>
           </button>
 
@@ -396,7 +441,7 @@ const CreatePostForm = ({
 
           <button
             type="button"
-            disabled={mediaDisabled}
+            disabled={mediaDisabled || selectedFiles.length > 0}
             onClick={() => videoInputRef.current?.click()}
             className="
               group
@@ -450,7 +495,7 @@ const CreatePostForm = ({
 
           <button
             type="button"
-            disabled={mediaDisabled}
+            disabled={mediaDisabled || hasVideo}
             onClick={onTakePhoto}
             className="
               group
@@ -504,7 +549,7 @@ const CreatePostForm = ({
 
           <button
             type="button"
-            disabled={mediaDisabled}
+            disabled={mediaDisabled || selectedFiles.length > 0}
             onClick={onRecordVideo}
             className="
               group
@@ -555,123 +600,252 @@ const CreatePostForm = ({
           </button>
         </div>
 
-        {/* ========================================
-            MEDIA PREVIEW
-            ======================================== */}
+        {/* ===================================================
+            MEDIA COUNT
+            =================================================== */}
 
-        {selectedFile && previewUrl && mediaType && (
-          <div
-            className="
-                mt-6
-                overflow-hidden
-                rounded-2xl
-                border
-                border-slate-200
-                bg-white
-                dark:border-slate-800
-                dark:bg-slate-950
-              "
-          >
-            <div
-              className="
-                  relative
-                  aspect-video
-                  bg-black
-                "
-            >
-              {mediaType === "IMAGE" ? (
-                <img
-                  src={previewUrl}
-                  alt="Post preview"
-                  className="
-                      h-full
-                      w-full
-                      object-contain
-                    "
-                />
-              ) : (
-                <video
-                  src={previewUrl}
-                  controls
-                  playsInline
-                  preload="metadata"
-                  className="
-                      h-full
-                      w-full
-                      object-contain
-                    "
-                />
-              )}
-            </div>
+        {selectedFiles.length > 0 && (
+          <div className="mt-4 flex items-center justify-between">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {hasVideo
+                ? "1 video selected"
+                : `${imageCount}/${MAX_IMAGES} photos selected`}
+            </p>
 
-            <div
-              className="
-                  flex
-                  items-center
-                  justify-between
-                  gap-4
-                  border-t
-                  border-slate-200
-                  px-4
-                  py-3
-                  dark:border-slate-800
-                "
-            >
-              <div className="min-w-0">
-                <p
-                  className="
-                      truncate
-                      text-sm
-                      font-medium
-                      text-slate-900
-                      dark:text-white
-                    "
-                >
-                  {selectedFile.name}
-                </p>
-
-                <p
-                  className="
-                      text-xs
-                      text-slate-500
-                      dark:text-slate-400
-                    "
-                >
-                  {mediaType === "IMAGE" ? "Photo" : "Video"} •{" "}
-                  {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                </p>
-              </div>
-
+            {selectedFiles.length < MAX_IMAGES && !hasVideo && (
               <button
                 type="button"
                 disabled={mediaDisabled}
-                onClick={onRemoveMedia}
+                onClick={() => imageInputRef.current?.click()}
                 className="
-                    shrink-0
-                    rounded-lg
-                    px-3
-                    py-2
-                    text-sm
-                    font-medium
-                    text-red-600
-                    transition
-                    hover:bg-red-50
-                    disabled:cursor-not-allowed
-                    disabled:opacity-50
-                    dark:text-red-400
-                    dark:hover:bg-red-500/10
+                    text-xs
+                    font-semibold
+                    text-violet-600
+                    hover:text-violet-700
+                    dark:text-violet-400
                   "
               >
-                Remove
+                Add more
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ===================================================
+            MEDIA PREVIEW
+            =================================================== */}
+
+        {selectedFiles.length > 0 && (
+          <div className="mt-6">
+            <div
+              className="
+                grid
+                grid-cols-2
+                gap-3
+                sm:grid-cols-3
+              "
+            >
+              {selectedFiles.map((file, index) => {
+                const previewUrl = previewUrls[index];
+                const type = mediaTypes[index];
+
+                if (!previewUrl || !type) {
+                  return null;
+                }
+
+                return (
+                  <div
+                    key={`${file.name}-${file.lastModified}-${index}`}
+                    className="
+                      group
+                      relative
+                      overflow-hidden
+                      rounded-xl
+                      border
+                      border-slate-200
+                      bg-black
+                      dark:border-slate-800
+                    "
+                  >
+                    <div
+                      className="  relative
+    flex
+    aspect-square
+    items-center
+    justify-center
+    overflow-hidden
+    bg-slate-100
+    dark:bg-slate-950"
+                    >
+                      {type === "IMAGE" ? (
+                        <img
+                          src={previewUrl}
+                          alt={`Post preview ${index + 1}`}
+                          className="
+                            block
+  h-full
+  w-full
+  object-contain
+                          "
+                        />
+                      ) : (
+                        <video
+                          src={previewUrl}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          className="
+                            h-full
+                            w-full
+                            object-contain
+                          "
+                        />
+                      )}
+                    </div>
+
+                    {/* ORDER */}
+
+                    <div
+                      className="
+                        absolute
+                        left-2
+                        top-2
+                        flex
+                        h-7
+                        min-w-7
+                        items-center
+                        justify-center
+                        rounded-full
+                        bg-black/70
+                        px-2
+                        text-xs
+                        font-semibold
+                        text-white
+                        backdrop-blur-sm
+                      "
+                    >
+                      {index + 1}
+                    </div>
+
+                    {/* REMOVE */}
+
+                    <button
+                      type="button"
+                      disabled={mediaDisabled}
+                      onClick={() => onRemoveMedia(index)}
+                      aria-label={`Remove media ${index + 1}`}
+                      className="
+                        absolute
+                        right-2
+                        top-2
+                        flex
+                        h-8
+                        w-8
+                        items-center
+                        justify-center
+                        rounded-full
+                        bg-black/70
+                        text-white
+                        opacity-100
+                        backdrop-blur-sm
+                        transition
+                        hover:bg-red-600
+                        disabled:cursor-not-allowed
+                        disabled:opacity-50
+                      "
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* FILE INFORMATION */}
+
+            <div
+              className="
+                mt-3
+                rounded-xl
+                border
+                border-slate-200
+                bg-slate-50
+                px-4
+                py-3
+                dark:border-slate-800
+                dark:bg-slate-950
+              "
+            >
+              {selectedFiles.map((file, index) => (
+                <div
+                  key={`${file.name}-${file.lastModified}-info`}
+                  className="
+                    flex
+                    items-center
+                    justify-between
+                    gap-3
+                    py-1
+                  "
+                >
+                  <p
+                    className="
+                      min-w-0
+                      truncate
+                      text-xs
+                      font-medium
+                      text-slate-700
+                      dark:text-slate-300
+                    "
+                  >
+                    {index + 1}. {file.name}
+                  </p>
+
+                  <span
+                    className="
+                      shrink-0
+                      text-xs
+                      text-slate-400
+                      dark:text-slate-500
+                    "
+                  >
+                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* REMOVE ALL */}
+
+            <div className="mt-3 flex justify-end">
+              <button
+                type="button"
+                disabled={mediaDisabled}
+                onClick={() => onRemoveMedia()}
+                className="
+                  rounded-lg
+                  px-3
+                  py-2
+                  text-sm
+                  font-medium
+                  text-red-600
+                  transition
+                  hover:bg-red-50
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
+                  dark:text-red-400
+                  dark:hover:bg-red-500/10
+                "
+              >
+                Remove all
               </button>
             </div>
           </div>
         )}
       </section>
 
-      {/* ==========================================
+      {/* =====================================================
           ERROR
-          ========================================== */}
+          ===================================================== */}
 
       {error && (
         <div
@@ -693,9 +867,9 @@ const CreatePostForm = ({
         </div>
       )}
 
-      {/* ==========================================
+      {/* =====================================================
           PUBLISH
-          ========================================== */}
+          ===================================================== */}
 
       <div className="flex justify-end pb-8">
         <button

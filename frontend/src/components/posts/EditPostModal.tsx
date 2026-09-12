@@ -1,14 +1,36 @@
-import { X, Save, ImagePlus, Video, Trash2, RotateCcw } from "lucide-react";
+import {
+  X,
+  Save,
+  ImagePlus,
+  Trash2,
+  RotateCcw,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
 
-import { usePostApi, type Post, type CreatePostData } from "../../api/postApi";
+import {
+  usePostApi,
+  type Post,
+  type CreatePostData,
+  type PostMedia,
+  type MediaType,
+} from "../../api/postApi";
 
 import { compressImage } from "../../services/compressImage";
-
 import { compressVideo } from "../../services/compressVideo";
-
 import { useCloudinaryApi } from "../../api/cloudinary";
+
+/* ============================================
+   PROPS
+============================================ */
 
 interface EditPostModalProps {
   open: boolean;
@@ -17,9 +39,17 @@ interface EditPostModalProps {
   onUpdated: (post: Post) => void;
 }
 
-type MediaType = "IMAGE" | "VIDEO";
+/* ============================================
+   CONSTANTS
+============================================ */
+
+const MAX_IMAGES = 10;
 
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
+
+/* ============================================
+   COMPONENT
+============================================ */
 
 const EditPostModal = ({
   open,
@@ -33,38 +63,53 @@ const EditPostModal = ({
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  /*
-   * ==========================================
-   * FORM
-   * ==========================================
-   */
+  /* ==========================================
+     FORM
+  ========================================== */
 
   const [description, setDescription] = useState("");
 
   const [category, setCategory] =
     useState<CreatePostData["category"]>("GENERAL");
 
+  /* ==========================================
+     EXISTING MEDIA
+  ========================================== */
+
+  const [existingMedia, setExistingMedia] = useState<PostMedia[]>([]);
+
   /*
-   * ==========================================
-   * MEDIA
-   * ==========================================
+   * Media selected by the user to replace
+   * the existing media.
    */
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedMediaTypes, setSelectedMediaTypes] = useState<MediaType[]>([]);
 
-  const [mediaType, setMediaType] = useState<MediaType | null>(null);
+  /*
+   * Local preview URLs for newly selected files.
+   */
+  const [selectedPreviews, setSelectedPreviews] = useState<string[]>([]);
 
-  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
-
+  /*
+   * Existing media is removed only when
+   * the user explicitly chooses remove.
+   */
   const [removeMedia, setRemoveMedia] = useState(false);
 
-  const [uploadProgress, setUploadProgress] = useState(0);
+  /* ==========================================
+     CAROUSEL
+  ========================================== */
 
-  /*
-   * ==========================================
-   * UI STATE
-   * ==========================================
-   */
+  const [existingIndex, setExistingIndex] = useState(0);
+
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  /* ==========================================
+     UI STATE
+  ========================================== */
+
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const [saving, setSaving] = useState(false);
 
@@ -72,11 +117,9 @@ const EditPostModal = ({
 
   const [error, setError] = useState("");
 
-  /*
-   * ==========================================
-   * LOAD POST
-   * ==========================================
-   */
+  /* ==========================================
+     LOAD POST
+  ========================================== */
 
   useEffect(() => {
     if (!post) {
@@ -87,117 +130,238 @@ const EditPostModal = ({
 
     setCategory(post.category);
 
-    setSelectedFile(null);
+    /*
+     * Load new media structure.
+     *
+     * This works for:
+     *
+     * old migrated posts
+     * new single image posts
+     * multiple image posts
+     * videos
+     */
+    const media = [...(post.media ?? [])].sort(
+      (a, b) => a.displayOrder - b.displayOrder,
+    );
+
+    setExistingMedia(media);
+
+    setSelectedFiles([]);
+    setSelectedMediaTypes([]);
+    setSelectedPreviews([]);
+
+    setExistingIndex(0);
+    setSelectedIndex(0);
 
     setRemoveMedia(false);
-
-    setMediaPreview(post.mediaUrl ?? null);
-
-    setMediaType(post.mediaType ?? null);
 
     setUploadProgress(0);
 
     setError("");
   }, [post]);
 
-  /*
-   * ==========================================
-   * CREATE LOCAL PREVIEW
-   * ==========================================
-   */
+  /* ==========================================
+     CLEANUP LOCAL PREVIEWS
+  ========================================== */
 
   useEffect(() => {
-    if (!selectedFile) {
-      return;
-    }
-
-    const previewUrl = URL.createObjectURL(selectedFile);
-
-    setMediaPreview(previewUrl);
-
     return () => {
-      URL.revokeObjectURL(previewUrl);
+      selectedPreviews.forEach((url) => {
+        URL.revokeObjectURL(url);
+      });
     };
-  }, [selectedFile]);
+  }, [selectedPreviews]);
 
-  /*
-   * ==========================================
-   * SELECT MEDIA
-   * ==========================================
-   */
+  /* ==========================================
+     SELECT MEDIA
+  ========================================== */
 
-  const handleMediaSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleMediaSelect = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
 
+    /*
+     * Allow selecting the same file again.
+     */
     event.target.value = "";
 
-    if (!file) {
+    if (files.length === 0) {
       return;
     }
 
     /*
-     * IMAGE
+     * ========================================
+     * CHECK VIDEO
+     * ========================================
      */
 
-    if (file.type.startsWith("image/")) {
-      setError("");
-      setSelectedFile(file);
-      setMediaType("IMAGE");
-      setRemoveMedia(false);
-      setUploadProgress(0);
+    const videoFiles = files.filter((file) => file.type.startsWith("video/"));
+
+    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+
+    /*
+     * Only image OR video.
+     */
+    if (videoFiles.length > 0 && imageFiles.length > 0) {
+      setError("Please select images or one video, not both.");
       return;
     }
 
     /*
+     * ========================================
      * VIDEO
+     * ========================================
      */
 
-    if (file.type.startsWith("video/")) {
-      if (file.size > MAX_VIDEO_SIZE) {
+    if (videoFiles.length > 0) {
+      if (videoFiles.length > 1) {
+        setError("You can select only one video.");
+        return;
+      }
+
+      const video = videoFiles[0];
+
+      if (video.size > MAX_VIDEO_SIZE) {
         setError("Video must be smaller than 100 MB.");
         return;
       }
 
-      setError("");
-      setSelectedFile(file);
-      setMediaType("VIDEO");
+      /*
+       * Revoke old previews.
+       */
+      selectedPreviews.forEach((url) => URL.revokeObjectURL(url));
+
+      setSelectedFiles([video]);
+
+      setSelectedMediaTypes(["VIDEO"]);
+
+      setSelectedPreviews([URL.createObjectURL(video)]);
+
+      setSelectedIndex(0);
+
       setRemoveMedia(false);
+
       setUploadProgress(0);
+
+      setError("");
 
       return;
     }
 
-    setError("Please select an image or video.");
+    /*
+     * ========================================
+     * IMAGES
+     * ========================================
+     */
+
+    if (imageFiles.length > MAX_IMAGES) {
+      setError(`You can select a maximum of ${MAX_IMAGES} images.`);
+      return;
+    }
+
+    if (imageFiles.length === 0) {
+      setError("Please select an image or video.");
+      return;
+    }
+
+    /*
+     * Revoke old previews.
+     */
+    selectedPreviews.forEach((url) => URL.revokeObjectURL(url));
+
+    setSelectedFiles(imageFiles);
+
+    setSelectedMediaTypes(imageFiles.map(() => "IMAGE"));
+
+    setSelectedPreviews(imageFiles.map((file) => URL.createObjectURL(file)));
+
+    setSelectedIndex(0);
+
+    setRemoveMedia(false);
+
+    setUploadProgress(0);
+
+    setError("");
   };
 
-  /*
-   * ==========================================
-   * REMOVE MEDIA
-   * ==========================================
-   */
+  /* ==========================================
+     REMOVE SELECTED FILE
+  ========================================== */
 
-  const handleRemoveMedia = () => {
+  const handleRemoveSelectedFile = (index: number) => {
     if (saving) {
       return;
     }
 
-    setSelectedFile(null);
-    setMediaPreview(null);
-    setMediaType(null);
-    setRemoveMedia(true);
-    setUploadProgress(0);
-    setError("");
+    const preview = selectedPreviews[index];
 
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+    if (preview) {
+      URL.revokeObjectURL(preview);
     }
+
+    const nextFiles = selectedFiles.filter((_, i) => i !== index);
+
+    const nextTypes = selectedMediaTypes.filter((_, i) => i !== index);
+
+    const nextPreviews = selectedPreviews.filter((_, i) => i !== index);
+
+    setSelectedFiles(nextFiles);
+
+    setSelectedMediaTypes(nextTypes);
+
+    setSelectedPreviews(nextPreviews);
+
+    if (selectedIndex >= nextFiles.length) {
+      setSelectedIndex(Math.max(0, nextFiles.length - 1));
+    }
+
+    setUploadProgress(0);
+
+    setError("");
   };
 
-  /*
-   * ==========================================
-   * CHANGE MEDIA
-   * ==========================================
-   */
+  /* ==========================================
+     REMOVE ALL SELECTED MEDIA
+  ========================================== */
+
+  const handleClearSelectedMedia = () => {
+    if (saving) {
+      return;
+    }
+
+    selectedPreviews.forEach((url) => URL.revokeObjectURL(url));
+
+    setSelectedFiles([]);
+    setSelectedMediaTypes([]);
+    setSelectedPreviews([]);
+
+    setSelectedIndex(0);
+
+    setUploadProgress(0);
+
+    setError("");
+  };
+
+  /* ==========================================
+     REMOVE EXISTING MEDIA
+  ========================================== */
+
+  const handleRemoveExistingMedia = () => {
+    if (saving) {
+      return;
+    }
+
+    handleClearSelectedMedia();
+
+    setRemoveMedia(true);
+
+    setExistingIndex(0);
+
+    setError("");
+  };
+
+  /* ==========================================
+     CHANGE MEDIA
+  ========================================== */
 
   const handleChangeMedia = () => {
     if (saving) {
@@ -207,18 +371,68 @@ const EditPostModal = ({
     fileInputRef.current?.click();
   };
 
-  /*
-   * ==========================================
-   * SUBMIT
-   * ==========================================
-   */
+  /* ==========================================
+     EXISTING MEDIA NAVIGATION
+  ========================================== */
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const showPreviousExisting = () => {
+    if (existingMedia.length <= 1) {
+      return;
+    }
+
+    setExistingIndex((current) =>
+      current === 0 ? existingMedia.length - 1 : current - 1,
+    );
+  };
+
+  const showNextExisting = () => {
+    if (existingMedia.length <= 1) {
+      return;
+    }
+
+    setExistingIndex((current) =>
+      current === existingMedia.length - 1 ? 0 : current + 1,
+    );
+  };
+
+  /* ==========================================
+     SELECTED MEDIA NAVIGATION
+  ========================================== */
+
+  const showPreviousSelected = () => {
+    if (selectedFiles.length <= 1) {
+      return;
+    }
+
+    setSelectedIndex((current) =>
+      current === 0 ? selectedFiles.length - 1 : current - 1,
+    );
+  };
+
+  const showNextSelected = () => {
+    if (selectedFiles.length <= 1) {
+      return;
+    }
+
+    setSelectedIndex((current) =>
+      current === selectedFiles.length - 1 ? 0 : current + 1,
+    );
+  };
+
+  /* ==========================================
+     SUBMIT
+  ========================================== */
+
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
 
     if (!post) {
       return;
     }
+
+    /* ========================================
+       VALIDATION
+    ======================================== */
 
     if (!description.trim()) {
       setError("Post description cannot be empty.");
@@ -239,86 +453,144 @@ const EditPostModal = ({
       setError("");
       setUploadProgress(0);
 
-      let mediaUrl: string | null | undefined = undefined;
-
-      let finalMediaType: MediaType | null | undefined = undefined;
+      let finalMedia: PostMedia[] = [];
 
       /*
-       * ========================================
-       * NEW MEDIA
-       * ========================================
+       * ======================================
+       * CASE 1:
+       * REMOVE MEDIA
+       * ======================================
        */
 
-      if (selectedFile && mediaType) {
+      if (removeMedia && selectedFiles.length === 0) {
+        finalMedia = [];
+      } else if (selectedFiles.length > 0) {
+        /*
+         * ======================================
+         * CASE 2:
+         * NEW MEDIA SELECTED
+         *
+         * Replace existing media completely.
+         * ======================================
+         */
         setProcessingMedia(true);
 
-        let processedFile = selectedFile;
+        const totalFiles = selectedFiles.length;
 
-        /*
-         * IMAGE
-         */
+        const uploadedMedia: PostMedia[] = [];
 
-        if (mediaType === "IMAGE") {
-          processedFile = await compressImage(selectedFile);
-        }
+        for (let index = 0; index < totalFiles; index++) {
+          const file = selectedFiles[index];
 
-        /*
-         * VIDEO
-         */
+          const mediaType = selectedMediaTypes[index];
 
-        if (mediaType === "VIDEO") {
-          processedFile = await compressVideo(selectedFile);
+          if (!file || !mediaType) {
+            continue;
+          }
+
+          /*
+           * ==================================
+           * COMPRESS
+           * ==================================
+           */
+
+          let processedFile = file;
+
+          if (mediaType === "IMAGE") {
+            processedFile = await compressImage(file);
+          }
+
+          if (mediaType === "VIDEO") {
+            processedFile = await compressVideo(file);
+          }
+
+          /*
+           * ==================================
+           * UPLOAD
+           * ==================================
+           */
+
+          const fileWeight = 100 / totalFiles;
+
+          const baseProgress = index * fileWeight;
+
+          const uploaded = await uploadPostMediaToCloudinaryWithProgress(
+            processedFile,
+            mediaType,
+            (progress) => {
+              const overallProgress =
+                baseProgress + (progress / 100) * fileWeight;
+
+              setUploadProgress(Math.round(overallProgress));
+            },
+          );
+
+          uploadedMedia.push({
+            mediaUrl: uploaded.secure_url,
+            mediaType,
+            displayOrder: index,
+          });
         }
 
         setProcessingMedia(false);
 
+        finalMedia = uploadedMedia;
+      } else {
         /*
          * ======================================
-         * CLOUDINARY
+         * CASE 3:
+         * MEDIA UNCHANGED
+         *
+         * Preserve current media.
          * ======================================
          */
-
-        const uploaded = await uploadPostMediaToCloudinaryWithProgress(
-          processedFile,
-          mediaType,
-          (progress) => {
-            setUploadProgress(progress);
-          },
-        );
-
-        mediaUrl = uploaded.secure_url;
-
-        finalMediaType = mediaType;
+        finalMedia = existingMedia.map((item, index) => ({
+          mediaUrl: item.mediaUrl,
+          mediaType: item.mediaType,
+          displayOrder: index,
+        }));
       }
 
       /*
-       * ========================================
-       * UPDATE DATA
-       * ========================================
+       * ======================================
+       * CREATE UPDATE DATA
+       * ======================================
        */
 
       const data: CreatePostData = {
         description: description.trim(),
+
         category,
-        mediaUrl,
-        mediaType: finalMediaType,
+
+        media: finalMedia.map((item) => ({
+          mediaUrl: item.mediaUrl,
+          mediaType: item.mediaType,
+          displayOrder: item.displayOrder,
+        })),
       };
 
       /*
-       * ========================================
-       * SAVE
-       * ========================================
+       * ======================================
+       * UPDATE BACKEND
+       *
+       * ONE REQUEST ONLY
+       * ======================================
        */
 
-      const updatedPost = await updatePost(post.id, data, removeMedia);
+      const updatedPost = await updatePost(
+        post.id,
+        data,
+        removeMedia && selectedFiles.length === 0,
+      );
 
       /*
-       * ========================================
+       * ======================================
        * SUCCESS
-       * ========================================
+       * ======================================
        */
 
       onUpdated(updatedPost);
+
       onClose();
     } catch (err) {
       console.error("Failed to update post:", err);
@@ -334,21 +606,27 @@ const EditPostModal = ({
     }
   };
 
-  /*
-   * ==========================================
-   * CLOSED
-   * ==========================================
-   */
+  /* ==========================================
+     CLOSED
+  ========================================== */
 
   if (!open || !post) {
     return null;
   }
 
-  /*
-   * ==========================================
-   * RENDER
-   * ==========================================
-   */
+  /* ==========================================
+     CURRENT EXISTING MEDIA
+  ========================================== */
+
+  const currentExistingMedia = existingMedia[existingIndex];
+
+  const currentSelectedPreview = selectedPreviews[selectedIndex];
+
+  const selectedIsVideo = selectedMediaTypes[selectedIndex] === "VIDEO";
+
+  /* ==========================================
+     RENDER
+  ========================================== */
 
   return (
     <div
@@ -360,8 +638,9 @@ const EditPostModal = ({
         items-center
         justify-center
         bg-black/60
-        p-4
+        p-3
         backdrop-blur-sm
+        sm:p-4
       "
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) {
@@ -373,7 +652,7 @@ const EditPostModal = ({
     >
       <div
         className="
-          max-h-[90vh]
+          max-h-[94vh]
           w-full
           max-w-lg
           overflow-y-auto
@@ -382,20 +661,19 @@ const EditPostModal = ({
           border-slate-200
           bg-white
           shadow-2xl
-          transition-colors
           dark:border-slate-800
           dark:bg-slate-900
         "
       >
         {/* =====================================
             HEADER
-            ===================================== */}
+        ===================================== */}
 
         <div
           className="
             sticky
             top-0
-            z-10
+            z-20
             flex
             items-center
             justify-between
@@ -459,12 +737,12 @@ const EditPostModal = ({
 
         {/* =====================================
             FORM
-            ===================================== */}
+        ===================================== */}
 
         <form onSubmit={handleSubmit} className="space-y-5 p-4">
           {/* ===================================
               DESCRIPTION
-              =================================== */}
+          =================================== */}
 
           <div>
             <label
@@ -528,7 +806,7 @@ const EditPostModal = ({
 
           {/* ===================================
               CATEGORY
-              =================================== */}
+          =================================== */}
 
           <div>
             <label
@@ -584,21 +862,32 @@ const EditPostModal = ({
 
           {/* ===================================
               MEDIA
-              =================================== */}
+          =================================== */}
 
           <div>
-            <label
-              className="
-                mb-1.5
-                block
-                text-xs
-                font-semibold
-                text-slate-900
-                dark:text-white
-              "
-            >
-              Post Media
-            </label>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label
+                className="
+                  block
+                  text-xs
+                  font-semibold
+                  text-slate-900
+                  dark:text-white
+                "
+              >
+                Post Media
+              </label>
+
+              <span
+                className="
+                  text-[10px]
+                  text-slate-400
+                  dark:text-slate-500
+                "
+              >
+                Up to {MAX_IMAGES} images
+              </span>
+            </div>
 
             {/* FILE INPUT */}
 
@@ -606,143 +895,529 @@ const EditPostModal = ({
               ref={fileInputRef}
               type="file"
               accept="image/*,video/*"
+              multiple
               onChange={handleMediaSelect}
               className="hidden"
             />
 
             {/* =================================
-                PREVIEW
-                ================================= */}
+                NEW SELECTED MEDIA
+            ================================= */}
 
-            {mediaPreview && mediaType && (
-              <div
-                className="
-                    relative
-                    overflow-hidden
-                    rounded-xl
-                    border
-                    border-slate-200
-                    bg-black
-                    dark:border-slate-700
-                  "
-              >
-                {mediaType === "IMAGE" ? (
-                  <img
-                    src={mediaPreview}
-                    alt="Post preview"
+            {selectedFiles.length > 0 && !removeMedia && (
+              <div>
+                <div
+                  className="
+                      relative
+                      overflow-hidden
+                      rounded-xl
+                      border
+                      border-slate-200
+                      bg-black
+                      dark:border-slate-700
+                    "
+                >
+                  {/* IMAGE */}
+
+                  {!selectedIsVideo && currentSelectedPreview ? (
+                    <div className="relative">
+                      <img
+                        src={currentSelectedPreview}
+                        alt={`Selected image ${selectedIndex + 1}`}
+                        className="
+                            h-[280px]
+                            w-full
+                            object-contain
+                            bg-black
+                            sm:h-[320px]
+                          "
+                      />
+                    </div>
+                  ) : currentSelectedPreview ? (
+                    <video
+                      src={currentSelectedPreview}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      className="
+                          h-[280px]
+                          w-full
+                          object-contain
+                          bg-black
+                          sm:h-[320px]
+                        "
+                    />
+                  ) : null}
+
+                  {/* REMOVE CURRENT */}
+
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveSelectedFile(selectedIndex)}
+                    disabled={saving}
                     className="
-                        max-h-80
-                        w-full
-                        object-contain
+                        absolute
+                        right-2
+                        top-2
+                        z-10
+                        flex
+                        h-8
+                        w-8
+                        items-center
+                        justify-center
+                        rounded-full
+                        bg-black/65
+                        text-white
+                        backdrop-blur-sm
+                        transition
+                        hover:bg-red-600
+                        disabled:opacity-50
                       "
-                  />
-                ) : (
-                  <video
-                    src={mediaPreview}
-                    controls
-                    playsInline
-                    preload="metadata"
-                    className="
-                        max-h-80
-                        w-full
-                        object-contain
-                        bg-black
-                      "
-                  />
+                    aria-label="Remove selected media"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+
+                  {/* PREVIOUS */}
+
+                  {selectedFiles.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={showPreviousSelected}
+                      className="
+                          absolute
+                          left-2
+                          top-1/2
+                          flex
+                          h-8
+                          w-8
+                          -translate-y-1/2
+                          items-center
+                          justify-center
+                          rounded-full
+                          bg-white/90
+                          text-black
+                          shadow
+                          sm:hidden
+                        "
+                      aria-label="Previous selected media"
+                    >
+                      <ChevronLeft size={17} />
+                    </button>
+                  )}
+
+                  {/* NEXT */}
+
+                  {selectedFiles.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={showNextSelected}
+                      className="
+                          absolute
+                          right-2
+                          top-1/2
+                          flex
+                          h-8
+                          w-8
+                          -translate-y-1/2
+                          items-center
+                          justify-center
+                          rounded-full
+                          bg-white/90
+                          text-black
+                          shadow
+                          sm:hidden
+                        "
+                      aria-label="Next selected media"
+                    >
+                      <ChevronRight size={17} />
+                    </button>
+                  )}
+
+                  {/* COUNTER */}
+
+                  {selectedFiles.length > 1 && (
+                    <div
+                      className="
+                          absolute
+                          right-12
+                          top-3
+                          rounded-full
+                          bg-black/65
+                          px-2.5
+                          py-1
+                          text-[10px]
+                          font-medium
+                          text-white
+                        "
+                    >
+                      {selectedIndex + 1}/{selectedFiles.length}
+                    </div>
+                  )}
+                </div>
+
+                {/* SELECTED DOTS */}
+
+                {selectedFiles.length > 1 && (
+                  <div className="mt-2 flex justify-center gap-1.5">
+                    {selectedFiles.map((_, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => setSelectedIndex(index)}
+                        className={`
+                              h-1.5
+                              rounded-full
+                              transition-all
+                              ${
+                                selectedIndex === index
+                                  ? "w-4 bg-violet-500"
+                                  : "w-1.5 bg-slate-300 dark:bg-slate-700"
+                              }
+                            `}
+                        aria-label={`Show selected media ${index + 1}`}
+                      />
+                    ))}
+                  </div>
                 )}
 
-                <button
-                  type="button"
-                  onClick={handleRemoveMedia}
-                  disabled={saving}
-                  className="
-                      absolute
-                      right-2
-                      top-2
-                      flex
-                      h-8
-                      w-8
-                      items-center
-                      justify-center
-                      rounded-full
-                      bg-black/60
-                      text-white
-                      transition
-                      hover:bg-red-600
-                      disabled:opacity-50
+                <div className="mt-2 flex items-center justify-between">
+                  <span
+                    className="
+                        text-[10px]
+                        text-slate-400
+                        dark:text-slate-500
+                      "
+                  >
+                    {selectedFiles.length}{" "}
+                    {selectedFiles.length === 1 ? "item" : "items"} selected
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={handleClearSelectedMedia}
+                    disabled={saving}
+                    className="
+                        text-[10px]
+                        font-medium
+                        text-red-500
+                        hover:text-red-600
+                        disabled:opacity-50
+                      "
+                  >
+                    Remove all
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* =================================
+                EXISTING MEDIA
+            ================================= */}
+
+            {selectedFiles.length === 0 &&
+              !removeMedia &&
+              existingMedia.length > 0 &&
+              currentExistingMedia && (
+                <div>
+                  <div
+                    className="
+                      relative
+                      overflow-hidden
+                      rounded-xl
+                      border
+                      border-slate-200
+                      bg-black
+                      dark:border-slate-700
                     "
-                  aria-label="Remove media"
+                  >
+                    {currentExistingMedia.mediaType === "IMAGE" ? (
+                      <img
+                        src={currentExistingMedia.mediaUrl}
+                        alt={`Existing post image ${existingIndex + 1}`}
+                        className="
+                          h-[280px]
+                          w-full
+                          object-contain
+                          bg-black
+                          sm:h-[320px]
+                        "
+                      />
+                    ) : (
+                      <video
+                        src={currentExistingMedia.mediaUrl}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        className="
+                          h-[280px]
+                          w-full
+                          object-contain
+                          bg-black
+                          sm:h-[320px]
+                        "
+                      />
+                    )}
+
+                    {/* PREVIOUS */}
+
+                    {existingMedia.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={showPreviousExisting}
+                        className="
+                          absolute
+                          left-2
+                          top-1/2
+                          flex
+                          h-8
+                          w-8
+                          -translate-y-1/2
+                          items-center
+                          justify-center
+                          rounded-full
+                          bg-white/90
+                          text-black
+                          shadow
+                          sm:hidden
+                        "
+                        aria-label="Previous existing media"
+                      >
+                        <ChevronLeft size={17} />
+                      </button>
+                    )}
+
+                    {/* NEXT */}
+
+                    {existingMedia.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={showNextExisting}
+                        className="
+                          absolute
+                          right-2
+                          top-1/2
+                          flex
+                          h-8
+                          w-8
+                          -translate-y-1/2
+                          items-center
+                          justify-center
+                          rounded-full
+                          bg-white/90
+                          text-black
+                          shadow
+                          sm:hidden
+                        "
+                        aria-label="Next existing media"
+                      >
+                        <ChevronRight size={17} />
+                      </button>
+                    )}
+
+                    {/* COUNTER */}
+
+                    {existingMedia.length > 1 && (
+                      <div
+                        className="
+                          absolute
+                          right-3
+                          top-3
+                          rounded-full
+                          bg-black/65
+                          px-2.5
+                          py-1
+                          text-[10px]
+                          font-medium
+                          text-white
+                        "
+                      >
+                        {existingIndex + 1}/{existingMedia.length}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* EXISTING DOTS */}
+
+                  {existingMedia.length > 1 && (
+                    <div className="mt-2 flex justify-center gap-1.5">
+                      {existingMedia.map((_, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => setExistingIndex(index)}
+                          className={`
+                              h-1.5
+                              rounded-full
+                              transition-all
+                              ${
+                                existingIndex === index
+                                  ? "w-4 bg-violet-500"
+                                  : "w-1.5 bg-slate-300 dark:bg-slate-700"
+                              }
+                            `}
+                          aria-label={`Show existing media ${index + 1}`}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-2 flex items-center justify-between">
+                    <span
+                      className="
+                        text-[10px]
+                        text-slate-400
+                        dark:text-slate-500
+                      "
+                    >
+                      Existing media
+                      {existingMedia.length > 1
+                        ? ` • ${existingMedia.length} items`
+                        : ""}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={handleRemoveExistingMedia}
+                      disabled={saving}
+                      className="
+                        flex
+                        items-center
+                        gap-1
+                        text-[10px]
+                        font-medium
+                        text-red-500
+                        hover:text-red-600
+                        disabled:opacity-50
+                      "
+                    >
+                      <Trash2 size={12} />
+                      Remove media
+                    </button>
+                  </div>
+                </div>
+              )}
+
+            {/* =================================
+                MEDIA REMOVED
+            ================================= */}
+
+            {removeMedia && selectedFiles.length === 0 && (
+              <div
+                className="
+                    rounded-xl
+                    border
+                    border-red-200
+                    bg-red-50
+                    px-4
+                    py-6
+                    text-center
+                    dark:border-red-900/50
+                    dark:bg-red-500/10
+                  "
+              >
+                <Trash2
+                  size={22}
+                  className="
+                      mx-auto
+                      text-red-500
+                    "
+                />
+
+                <p
+                  className="
+                      mt-2
+                      text-xs
+                      font-semibold
+                      text-red-600
+                      dark:text-red-400
+                    "
                 >
-                  <Trash2 size={15} />
-                </button>
+                  Media will be removed
+                </p>
+
+                <p
+                  className="
+                      mt-1
+                      text-[10px]
+                      text-red-500/80
+                      dark:text-red-400/80
+                    "
+                >
+                  Save the post to confirm.
+                </p>
               </div>
             )}
 
             {/* =================================
                 EMPTY MEDIA
-                ================================= */}
+            ================================= */}
 
-            {!mediaPreview && (
-              <button
-                type="button"
-                onClick={handleChangeMedia}
-                disabled={saving}
-                className="
-                  flex
-                  w-full
-                  flex-col
-                  items-center
-                  justify-center
-                  rounded-xl
-                  border
-                  border-dashed
-                  border-slate-300
-                  bg-slate-50
-                  py-8
-                  text-slate-500
-                  transition
-                  hover:border-violet-400
-                  hover:bg-violet-50
-                  dark:border-slate-700
-                  dark:bg-slate-950
-                  dark:text-slate-400
-                  dark:hover:bg-violet-500/5
-                  disabled:cursor-not-allowed
-                  disabled:opacity-50
-                "
-              >
-                <ImagePlus size={24} />
-
-                <span
+            {existingMedia.length === 0 &&
+              selectedFiles.length === 0 &&
+              !removeMedia && (
+                <button
+                  type="button"
+                  onClick={handleChangeMedia}
+                  disabled={saving}
                   className="
-                    mt-2
-                    text-xs
-                    font-semibold
-                    text-slate-700
-                    dark:text-slate-200
+                    flex
+                    w-full
+                    flex-col
+                    items-center
+                    justify-center
+                    rounded-xl
+                    border
+                    border-dashed
+                    border-slate-300
+                    bg-slate-50
+                    py-8
+                    text-slate-500
+                    transition
+                    hover:border-violet-400
+                    hover:bg-violet-50
+                    dark:border-slate-700
+                    dark:bg-slate-950
+                    dark:text-slate-400
+                    dark:hover:bg-violet-500/5
+                    disabled:cursor-not-allowed
+                    disabled:opacity-50
                   "
                 >
-                  Add photo or video
-                </span>
+                  <ImagePlus size={24} />
 
-                <span
-                  className="
-                    mt-1
-                    text-[10px]
-                    text-slate-400
-                    dark:text-slate-500
-                  "
-                >
-                  Images or videos up to 100MB
-                </span>
-              </button>
-            )}
+                  <span
+                    className="
+                      mt-2
+                      text-xs
+                      font-semibold
+                      text-slate-700
+                      dark:text-slate-200
+                    "
+                  >
+                    Add photo or video
+                  </span>
+
+                  <span
+                    className="
+                      mt-1
+                      text-[10px]
+                      text-slate-400
+                      dark:text-slate-500
+                    "
+                  >
+                    Up to {MAX_IMAGES} images or one video
+                  </span>
+                </button>
+              )}
 
             {/* =================================
                 CHANGE MEDIA
-                ================================= */}
+            ================================= */}
 
-            {mediaPreview && (
+            {(selectedFiles.length > 0 ||
+              existingMedia.length > 0 ||
+              removeMedia) && (
               <button
                 type="button"
                 onClick={handleChangeMedia}
@@ -762,37 +1437,32 @@ const EditPostModal = ({
                   disabled:opacity-50
                 "
               >
-                {mediaType === "IMAGE" ? (
-                  <ImagePlus size={14} />
-                ) : (
-                  <Video size={14} />
-                )}
-                Change media
+                <ImagePlus size={14} />
+                Replace media
               </button>
             )}
 
             {/* =================================
-                REMOVE MESSAGE
-                ================================= */}
+                INFO
+            ================================= */}
 
-            {removeMedia && (
-              <p
-                className="
-                  mt-2
-                  text-[10px]
-                  font-medium
-                  text-red-500
-                  dark:text-red-400
-                "
-              >
-                Media will be removed when you save the post.
-              </p>
-            )}
+            <p
+              className="
+                mt-2
+                text-[10px]
+                leading-4
+                text-slate-400
+                dark:text-slate-500
+              "
+            >
+              Selecting new media replaces all existing media. You can add up to{" "}
+              {MAX_IMAGES} images or one video up to 100 MB.
+            </p>
           </div>
 
           {/* ===================================
               PROCESSING
-              =================================== */}
+          =================================== */}
 
           {processingMedia && (
             <div
@@ -816,19 +1486,16 @@ const EditPostModal = ({
                 "
               >
                 <RotateCcw size={15} className="animate-spin" />
-
-                {mediaType === "VIDEO"
-                  ? "Compressing video..."
-                  : "Compressing image..."}
+                Compressing media...
               </div>
             </div>
           )}
 
           {/* ===================================
               UPLOAD
-              =================================== */}
+          =================================== */}
 
-          {saving && !processingMedia && selectedFile && (
+          {saving && !processingMedia && selectedFiles.length > 0 && (
             <div
               className="
                   rounded-xl
@@ -882,7 +1549,7 @@ const EditPostModal = ({
 
           {/* ===================================
               ERROR
-              =================================== */}
+          =================================== */}
 
           {error && (
             <div
@@ -906,7 +1573,7 @@ const EditPostModal = ({
 
           {/* ===================================
               ACTIONS
-              =================================== */}
+          =================================== */}
 
           <div
             className="

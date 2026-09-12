@@ -1,9 +1,10 @@
 package com.example.NotesRoom.dto.post;
 
+import java.util.List;
+
 public record CreatePostDto(
         String description,
         PostCategory category,
-        String mediaUrl,
-        String mediaType
+        List<PostMediaDto> media
 ) {
 }

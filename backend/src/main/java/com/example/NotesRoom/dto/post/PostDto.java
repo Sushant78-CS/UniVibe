@@ -3,6 +3,7 @@ package com.example.NotesRoom.dto.post;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record PostDto(
         Long id,
@@ -13,11 +14,9 @@ public record PostDto(
         String profileImage,
         String description,
         PostCategory category,
-        String mediaUrl,
-        MediaType mediaType,
+        List<PostMediaDto> media,
         Instant createdAt,
         Instant updatedAt,
-
         long likeCount,
         boolean likedByMe,
         long commentCount

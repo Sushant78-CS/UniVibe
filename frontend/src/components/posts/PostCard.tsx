@@ -9,6 +9,8 @@ import {
   Pencil,
   Trash2,
   X,
+  ChevronRight,
+  ChevronLeft,
 } from "lucide-react";
 
 import { useEffect, useState } from "react";
@@ -85,6 +87,8 @@ const PostCard = ({
 
   const [imagePreview, setImagePreview] = useState(false);
 
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+
   const [showComments, setShowComments] = useState(false);
 
   const [showShare, setShowShare] = useState(false);
@@ -105,11 +109,11 @@ const PostCard = ({
 
   useEffect(() => {
     setLiked(post.likedByMe);
-
     setLikeCount(post.likeCount);
-
     setCommentCount(post.commentCount);
-  }, [post.likedByMe, post.likeCount, post.commentCount]);
+    setActiveMediaIndex(0);
+    setImagePreview(false);
+  }, [post.id, post.likedByMe, post.likeCount, post.commentCount]);
 
   /* ==========================================
      CATEGORY
@@ -148,6 +152,53 @@ const PostCard = ({
       new Date(post.createdAt).getTime() + 1000;
 
   /* ==========================================
+     MEDIA
+  ========================================== */
+
+  const media = [...(post.media ?? [])].sort(
+    (a, b) => a.displayOrder - b.displayOrder,
+  );
+
+  const imageMedia = media.filter((item) => item.mediaType === "IMAGE");
+
+  const hasImages = imageMedia.length > 0;
+
+  const hasMultipleImages = imageMedia.length > 1;
+
+  const openImagePreview = (index: number) => {
+    if (!hasImages) {
+      return;
+    }
+
+    setActiveMediaIndex(index);
+    setImagePreview(true);
+  };
+
+  const closeImagePreview = () => {
+    setImagePreview(false);
+  };
+
+  const showPreviousImage = () => {
+    if (!hasMultipleImages) {
+      return;
+    }
+
+    setActiveMediaIndex((current) =>
+      current === 0 ? imageMedia.length - 1 : current - 1,
+    );
+  };
+
+  const showNextImage = () => {
+    if (!hasMultipleImages) {
+      return;
+    }
+
+    setActiveMediaIndex((current) =>
+      current === imageMedia.length - 1 ? 0 : current + 1,
+    );
+  };
+
+  /* ==========================================
      LIKE
   ========================================== */
 
@@ -157,7 +208,6 @@ const PostCard = ({
     }
 
     const previousLiked = liked;
-
     const previousCount = likeCount;
 
     const nextLiked = !previousLiked;
@@ -209,7 +259,6 @@ const PostCard = ({
       console.error("Failed to update like:", error);
 
       setLiked(previousLiked);
-
       setLikeCount(previousCount);
     } finally {
       setLiking(false);
@@ -440,6 +489,7 @@ const PostCard = ({
               "
             >
               <CategoryIcon size={12} />
+
               <span>{category.label}</span>
             </div>
 
@@ -484,12 +534,10 @@ const PostCard = ({
                     opacity-0
                     shadow-xl
                     transition-all
-
                     group-hover:visible
                     group-hover:opacity-100
                     group-focus-within:visible
                     group-focus-within:opacity-100
-
                     dark:border-neutral-800
                     dark:bg-black
                   "
@@ -571,11 +619,7 @@ const PostCard = ({
             MEDIA
         ====================================== */}
 
-        <PostMedia
-          mediaUrl={post.mediaUrl}
-          mediaType={post.mediaType}
-          onImageOpen={() => setImagePreview(true)}
-        />
+        <PostMedia media={media} onImageOpen={openImagePreview} />
 
         {/* ======================================
             ACTIONS
@@ -594,10 +638,10 @@ const PostCard = ({
       </article>
 
       {/* ========================================
-          IMAGE PREVIEW
+          FULLSCREEN IMAGE PREVIEW
       ======================================== */}
 
-      {imagePreview && post.mediaUrl && post.mediaType === "IMAGE" && (
+      {imagePreview && imageMedia.length > 0 && (
         <div
           className="
               fixed
@@ -606,20 +650,22 @@ const PostCard = ({
               flex
               items-center
               justify-center
-              bg-black/90
+              bg-black/95
               p-4
             "
-          onClick={() => setImagePreview(false)}
+          onClick={closeImagePreview}
         >
+          {/* CLOSE */}
+
           <button
             type="button"
-            onClick={() => setImagePreview(false)}
+            onClick={closeImagePreview}
             aria-label="Close image preview"
             className="
                 absolute
                 right-4
                 top-4
-                z-10
+                z-20
                 flex
                 h-11
                 w-11
@@ -628,23 +674,166 @@ const PostCard = ({
                 rounded-full
                 bg-white/10
                 text-white
+                backdrop-blur-sm
+                transition
                 hover:bg-white/20
               "
           >
             <X size={22} />
           </button>
 
-          <img
-            src={optimizeCloudinaryImage(post.mediaUrl, 1600) ?? ""}
-            alt="Post attachment preview"
-            onClick={(event) => event.stopPropagation()}
-            className="
-                max-h-[92vh]
-                max-w-[96vw]
-                rounded-xl
-                object-contain
-              "
-          />
+          {/* COUNTER */}
+
+          {hasMultipleImages && (
+            <div
+              className="
+                  absolute
+                  left-1/2
+                  top-5
+                  z-20
+                  -translate-x-1/2
+                  rounded-full
+                  bg-white/10
+                  px-3
+                  py-1.5
+                  text-xs
+                  font-medium
+                  text-white
+                  backdrop-blur-sm
+                "
+            >
+              {activeMediaIndex + 1} / {imageMedia.length}
+            </div>
+          )}
+
+          {/* PREVIOUS */}
+
+          {hasMultipleImages && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                showPreviousImage();
+              }}
+              aria-label="Previous image"
+              className="
+                  absolute
+                  left-3
+                  top-1/2
+                  z-20
+                  flex
+                  h-11
+                  w-11
+                  -translate-y-1/2
+                  items-center
+                  justify-center
+                  rounded-full
+                  bg-white/10
+                  text-white
+                  backdrop-blur-sm
+                  transition
+                  hover:bg-white/20
+                  sm:left-6
+                "
+            >
+              <ChevronLeft size={24} />
+            </button>
+          )}
+
+          {/* IMAGE */}
+
+          {imageMedia[activeMediaIndex] && (
+            <img
+              src={
+                optimizeCloudinaryImage(
+                  imageMedia[activeMediaIndex].mediaUrl,
+                  1800,
+                ) ?? imageMedia[activeMediaIndex].mediaUrl
+              }
+              alt={`Post image ${activeMediaIndex + 1}`}
+              onClick={(event) => event.stopPropagation()}
+              className="
+                  max-h-[92vh]
+                  max-w-[92vw]
+                  rounded-lg
+                  object-contain
+                  select-none
+                "
+            />
+          )}
+
+          {/* NEXT */}
+
+          {hasMultipleImages && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                showNextImage();
+              }}
+              aria-label="Next image"
+              className="
+                  absolute
+                  right-3
+                  top-1/2
+                  z-20
+                  flex
+                  h-11
+                  w-11
+                  -translate-y-1/2
+                  items-center
+                  justify-center
+                  rounded-full
+                  bg-white/10
+                  text-white
+                  backdrop-blur-sm
+                  transition
+                  hover:bg-white/20
+                  sm:right-6
+                "
+            >
+              <ChevronRight size={24} />
+            </button>
+          )}
+
+          {/* BOTTOM DOTS */}
+
+          {hasMultipleImages && (
+            <div
+              className="
+                  absolute
+                  bottom-6
+                  left-1/2
+                  z-20
+                  flex
+                  -translate-x-1/2
+                  items-center
+                  gap-1.5
+                "
+            >
+              {imageMedia.map((_, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setActiveMediaIndex(index);
+                  }}
+                  aria-label={`Go to image ${index + 1}`}
+                  className={`
+                        h-1.5
+                        rounded-full
+                        transition-all
+                        ${
+                          activeMediaIndex === index
+                            ? "w-4 bg-white"
+                            : "w-1.5 bg-white/50"
+                        }
+                      `}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
