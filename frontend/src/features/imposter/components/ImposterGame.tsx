@@ -25,8 +25,6 @@ export default function ImposterGame() {
     castVote,
     finishVoting,
 
-    submitImposterGuess,
-
     startGame,
     restartGame,
     backToSetup,
@@ -110,9 +108,7 @@ export default function ImposterGame() {
         imposterId={game.imposterId}
         eliminatedPlayerId={game.eliminatedPlayerId}
         imposterCaught={game.imposterCaught}
-        imposterGuess={game.imposterGuess}
         imposterWon={game.imposterWon}
-        onSubmitGuess={submitImposterGuess}
         onPlayAgain={restartGame}
         onBackToSetup={backToSetup}
       />
