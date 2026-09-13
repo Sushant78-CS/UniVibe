@@ -2,10 +2,7 @@ import { useEffect, useRef, useState, type TouchEvent } from "react";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import {
-  optimizeCloudinaryImage,
-  optimizeCloudinaryVideo,
-} from "../../utils/cloudinary";
+import { optimizeCloudinaryVideo } from "../../utils/cloudinary";
 
 import type { PostMedia as PostMediaItem } from "../../api/postApi";
 
@@ -222,9 +219,9 @@ const PostMedia = ({ media, onImageOpen }: PostMediaProps) => {
      OPTIMIZED IMAGE
   ========================================================= */
 
-  const optimizedUrl = optimizeCloudinaryImage(currentImage.mediaUrl, 1080);
+  const imageUrl = currentImage.mediaUrl;
 
-  if (!optimizedUrl) {
+  if (!imageUrl) {
     return null;
   }
 
@@ -308,7 +305,7 @@ const PostMedia = ({ media, onImageOpen }: PostMediaProps) => {
         >
           {!imageHasError ? (
             <img
-              src={optimizedUrl}
+              src={imageUrl}
               alt={`Post image ${activeIndex + 1}`}
               loading={activeIndex === 0 ? "eager" : "lazy"}
               decoding="async"

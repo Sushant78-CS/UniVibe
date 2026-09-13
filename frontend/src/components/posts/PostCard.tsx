@@ -26,8 +26,6 @@ import SharePost from "./SharePost";
 import PostMedia from "./PostMedia";
 import PostActions from "./PostActions";
 
-import { optimizeCloudinaryImage } from "../../utils/cloudinary";
-
 interface PostCardProps {
   post: Post;
   isOwner?: boolean;
@@ -744,12 +742,7 @@ const PostCard = ({
 
           {imageMedia[activeMediaIndex] && (
             <img
-              src={
-                optimizeCloudinaryImage(
-                  imageMedia[activeMediaIndex].mediaUrl,
-                  1800,
-                ) ?? imageMedia[activeMediaIndex].mediaUrl
-              }
+              src={imageMedia[activeMediaIndex].mediaUrl}
               alt={`Post image ${activeMediaIndex + 1}`}
               onClick={(event) => event.stopPropagation()}
               className="

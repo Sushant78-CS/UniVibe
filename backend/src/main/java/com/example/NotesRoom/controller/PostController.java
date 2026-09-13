@@ -108,6 +108,33 @@ public class PostController {
         );
     }
 
+    // =========================================================
+// GET POST BY ID
+// =========================================================
+
+    @GetMapping("/{postId}")
+    public ResponseEntity<PostDto> getPostById(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long postId
+    ) {
+
+        if (jwt == null) {
+            throw new RuntimeException(
+                    "Unauthorized"
+            );
+        }
+
+        String clerkId =
+                jwt.getSubject();
+
+        return ResponseEntity.ok(
+                postService.getPostById(
+                        clerkId,
+                        postId
+                )
+        );
+    }
+
 
     // =========================================================
     // UPDATE POST

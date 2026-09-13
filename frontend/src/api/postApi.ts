@@ -126,6 +126,16 @@ export const usePostApi = () => {
   };
 
   // =========================================================
+  // GET POST BY ID
+  // =========================================================
+
+  const getPostById = async (postId: number): Promise<Post> => {
+    const response = await api.get<Post>(`/posts/${postId}`);
+
+    return response.data;
+  };
+
+  // =========================================================
   // UPDATE POST
   // =========================================================
 
@@ -215,6 +225,7 @@ export const usePostApi = () => {
     getPosts,
     getMyPosts,
     createPost,
+    getPostById,
     updatePost,
     deletePost,
     likePost,

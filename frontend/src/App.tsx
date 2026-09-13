@@ -51,6 +51,7 @@ import NotificationRedirect from "./components/common/NotificationRedirect";
 import { setClerkTokenGetter } from "./api/axios";
 import SearchPage from "./pages/discover/search";
 import ImposterPage from "./pages/imposter";
+import EditPostPage from "./pages/posts/editPost";
 
 function App() {
   const { getToken } = useAuth();
@@ -129,6 +130,7 @@ function App() {
             <Route path="/posts/create" element={<CreatePostPage />} />
 
             <Route path="/posts/create/camera" element={<PostCameraPage />} />
+            <Route path="/posts/:postId/edit" element={<EditPostPage />} />
 
             <Route path="/vibe/random" element={<VibePage />} />
             <Route path="/vibe/events" element={<EventsPage />} />

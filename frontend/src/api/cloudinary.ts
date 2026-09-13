@@ -71,7 +71,17 @@ export const useCloudinaryApi = () => {
       throw new Error(`Cloudinary upload failed: ${errorText}`);
     }
 
-    return response.json();
+    const result = await response.json();
+
+    console.log("========== CLOUDINARY UPLOAD ==========");
+    console.log("secure_url:", result.secure_url);
+    console.log("public_id:", result.public_id);
+    console.log("resource_type:", result.resource_type);
+    console.log("format:", result.format);
+    console.log("version:", result.version);
+    console.log("=======================================");
+
+    return result;
   };
 
   const uploadPostImageToCloudinary = async (

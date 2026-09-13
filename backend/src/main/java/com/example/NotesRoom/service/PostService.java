@@ -102,6 +102,38 @@ public class PostService {
                 .map(post -> toDto(post, user));
     }
 
+    // =========================================================
+// GET POST BY ID
+// =========================================================
+
+    @Transactional
+    public PostDto getPostById(
+            String clerkId,
+            Long postId
+    ) {
+
+        // Get authenticated user
+        Users user = userRepository
+                .findByClerkId(clerkId)
+                .orElseThrow(() ->
+                        new RuntimeException("User not found")
+                );
+
+        // Get post
+        Post post = postRepository
+                .findById(postId)
+                .orElseThrow(() ->
+                        new RuntimeException("Post not found")
+                );
+
+        // Convert to DTO
+        //
+        // Using the authenticated user here is important
+        // because PostDto contains user-specific information
+        // such as likedByMe.
+        return toDto(post, user);
+    }
+
 
     // =========================================================
     // UPDATE POST
@@ -145,16 +177,8 @@ public class PostService {
 
         if (dto.media() != null && !dto.media().isEmpty()) {
 
-            // Delete existing Cloudinary media
-            deletePostMediaFromCloudinary(post);
-
-            // orphanRemoval will remove old PostMedia rows
-            post.getMedia().clear();
-
-            // Add new media
-            addMediaToPost(post, dto.media());
+            updatePostMedia(post, dto.media());
         }
-
 
         // =====================================================
         // REMOVE MEDIA
@@ -406,10 +430,7 @@ public class PostService {
             return;
         }
 
-        List<PostMedia> mediaList =
-                new ArrayList<>();
-
-        int order = 0;
+        int order = post.getMedia().size();
 
         for (PostMediaDto mediaDto : mediaDtos) {
 
@@ -419,12 +440,10 @@ public class PostService {
 
             if (mediaDto.mediaUrl() == null ||
                     mediaDto.mediaUrl().isBlank()) {
-
                 continue;
             }
 
             if (mediaDto.mediaType() == null) {
-
                 throw new IllegalArgumentException(
                         "Media type is required"
                 );
@@ -432,21 +451,179 @@ public class PostService {
 
             PostMedia media = PostMedia.builder()
                     .post(post)
-                    .mediaUrl(
-                            mediaDto.mediaUrl().trim()
-                    )
-                    .mediaType(
-                            mediaDto.mediaType()
-                    )
+                    .mediaUrl(mediaDto.mediaUrl().trim())
+                    .mediaType(mediaDto.mediaType())
                     .displayOrder(order++)
                     .build();
 
-            mediaList.add(media);
-        }
+            // Maintain the bidirectional relationship
+            media.setPost(post);
 
-        post.setMedia(mediaList);
+            // IMPORTANT:
+            // Add to Hibernate's existing managed collection.
+            // Do NOT call post.setMedia(...)
+            post.getMedia().add(media);
+        }
     }
 
+    private void updatePostMedia(
+            Post post,
+            List<PostMediaDto> mediaDtos
+    ) throws IOException {
+
+        if (mediaDtos == null || mediaDtos.isEmpty()) {
+            return;
+        }
+
+        /*
+         * Keep a snapshot of the existing managed collection.
+         * We must NOT replace post.media with a new List because
+         * it is a Hibernate orphanRemoval collection.
+         */
+        List<PostMedia> existingMedia =
+                new ArrayList<>(post.getMedia());
+
+        /*
+         * Normalize incoming URLs and determine which existing
+         * Cloudinary assets are still being used.
+         */
+        List<String> incomingUrls = new ArrayList<>();
+
+        for (PostMediaDto mediaDto : mediaDtos) {
+
+            if (mediaDto == null) {
+                continue;
+            }
+
+            if (mediaDto.mediaUrl() == null ||
+                    mediaDto.mediaUrl().isBlank()) {
+                continue;
+            }
+
+            incomingUrls.add(
+                    mediaDto.mediaUrl().trim()
+            );
+        }
+
+        /*
+         * Delete ONLY media that existed before but is no longer
+         * present in the edited post.
+         */
+        for (PostMedia existing : existingMedia) {
+
+            String existingUrl = existing.getMediaUrl();
+
+            if (existingUrl == null ||
+                    existingUrl.isBlank()) {
+                continue;
+            }
+
+            String normalizedExistingUrl =
+                    existingUrl.trim();
+
+            if (!incomingUrls.contains(
+                    normalizedExistingUrl
+            )) {
+
+                cloudinaryService.deletePostMedia(
+                        normalizedExistingUrl,
+                        existing.getMediaType() != null
+                                ? existing.getMediaType().name()
+                                : "IMAGE"
+                );
+            }
+        }
+
+        /*
+         * Remove only the PostMedia database entities that
+         * are no longer present.
+         *
+         * We remove through the existing managed collection
+         * so Hibernate orphanRemoval works correctly.
+         */
+        post.getMedia().removeIf(existing -> {
+
+            String existingUrl =
+                    existing.getMediaUrl();
+
+            return existingUrl == null ||
+                    !incomingUrls.contains(
+                            existingUrl.trim()
+                    );
+        });
+
+        /*
+         * Build a lookup of the media that is still attached
+         * to this post.
+         */
+        java.util.Map<String, PostMedia> existingByUrl =
+                new java.util.HashMap<>();
+
+        for (PostMedia existing : post.getMedia()) {
+
+            if (existing.getMediaUrl() == null) {
+                continue;
+            }
+
+            existingByUrl.put(
+                    existing.getMediaUrl().trim(),
+                    existing
+            );
+        }
+
+        /*
+         * Add new media and update ordering/type of existing media.
+         */
+        int order = 0;
+
+        for (PostMediaDto mediaDto : mediaDtos) {
+
+            if (mediaDto == null ||
+                    mediaDto.mediaUrl() == null ||
+                    mediaDto.mediaUrl().isBlank()) {
+                continue;
+            }
+
+            String mediaUrl =
+                    mediaDto.mediaUrl().trim();
+
+            PostMedia existing =
+                    existingByUrl.get(mediaUrl);
+
+            if (existing != null) {
+
+                // Existing media is being kept.
+                existing.setMediaType(
+                        mediaDto.mediaType()
+                );
+
+                existing.setDisplayOrder(
+                        mediaDto.displayOrder() != null
+                                ? mediaDto.displayOrder()
+                                : order
+                );
+
+            } else {
+
+                // New media uploaded during this edit.
+                PostMedia newMedia =
+                        PostMedia.builder()
+                                .post(post)
+                                .mediaUrl(mediaUrl)
+                                .mediaType(mediaDto.mediaType())
+                                .displayOrder(
+                                        mediaDto.displayOrder() != null
+                                                ? mediaDto.displayOrder()
+                                                : order
+                                )
+                                .build();
+
+                post.getMedia().add(newMedia);
+            }
+
+            order++;
+        }
+    }
 
     // =========================================================
     // DELETE MEDIA FROM CLOUDINARY

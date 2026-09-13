@@ -1,14 +1,16 @@
 import { Plus, RefreshCw, Newspaper, ArrowLeft } from "lucide-react";
+
 import { useEffect, useRef, useState } from "react";
+
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "react-router";
+
+import { useLocation, useNavigate } from "react-router";
 
 import { usePostApi, type Post } from "../../api/postApi";
+
 import PostCard from "../../components/posts/PostCard";
-import EditPostModal from "../../components/posts/EditPostModal";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import { usePublishingStore } from "../../store/publishingStore";
-import { useNavigate } from "react-router";
 
 const Posts = () => {
   const queryClient = useQueryClient();
@@ -58,10 +60,6 @@ const Posts = () => {
   const [deletePostTarget, setDeletePostTarget] = useState<Post | null>(null);
 
   const [deleting, setDeleting] = useState(false);
-
-  // const [showCreatePostModal, setShowCreatePostModal] = useState(false);
-
-  const [editingPost, setEditingPost] = useState<Post | null>(null);
 
   const [error, setError] = useState("");
 
@@ -188,18 +186,16 @@ const Posts = () => {
    * ============================================
    * EDIT
    * ============================================
+   *
+   * Editing is now handled by a dedicated page:
+   *
+   * /posts/:postId/edit
+   *
+   * Posts.tsx only needs to navigate there.
    */
 
   const handleEdit = (post: Post) => {
-    setEditingPost(post);
-  };
-
-  const handlePostUpdated = async (_updatedPost: Post) => {
-    setEditingPost(null);
-
-    await queryClient.invalidateQueries({
-      queryKey: ["posts"],
-    });
+    navigate(`/posts/${post.id}/edit`);
   };
 
   /*
@@ -236,20 +232,6 @@ const Posts = () => {
       setDeleting(false);
     }
   };
-
-  /*
-   * ============================================
-   * CREATE
-   * ============================================
-   */
-
-  // const handlePostCreated = async () => {
-  //   // setShowCreatePostModal(false);
-
-  //   await queryClient.invalidateQueries({
-  //     queryKey: ["posts"],
-  //   });
-  // };
 
   /*
    * ============================================
@@ -303,89 +285,84 @@ const Posts = () => {
             PAGE HEADER
             ====================================== */}
 
-        {/* ======================================
-    PAGE HEADER
-    ====================================== */}
-
         <header
           className="
-    sticky
-    top-0
-    z-40
-    border-b
-    border-slate-200
-    bg-white/95
-    backdrop-blur-xl
-    dark:border-neutral-800
-    dark:bg-black/95
-  "
+            sticky
+            top-0
+            z-40
+            border-b
+            border-slate-200
+            bg-white/95
+            backdrop-blur-xl
+            dark:border-neutral-800
+            dark:bg-black/95
+          "
         >
           <div
             className="
-      mx-auto
-      flex
-      w-full
-      max-w-[680px]
-      items-center
-      justify-between
-      px-4
-      py-3.5
-      sm:px-5
-    "
+              mx-auto
+              flex
+              w-full
+              max-w-[680px]
+              items-center
+              justify-between
+              px-4
+              py-3.5
+              sm:px-5
+            "
           >
             {/* Back + Title */}
+
             <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
                 onClick={() => navigate(-1)}
                 aria-label="Go back"
                 className="
-          flex
-          h-9
-          w-9
-          shrink-0
-          items-center
-          justify-center
-          rounded-full
-          border
-          border-slate-200
-          bg-white
-          text-slate-600
-          transition-all
-          hover:bg-slate-100
-          active:scale-95
-          dark:border-neutral-800
-          dark:bg-[#171717]
-          dark:text-neutral-300
-          dark:hover:bg-neutral-800
-        "
+                  flex
+                  h-9
+                  w-9
+                  shrink-0
+                  items-center
+                  justify-center
+                  rounded-full
+                  border
+                  border-slate-200
+                  bg-white
+                  text-slate-600
+                  transition-all
+                  hover:bg-slate-100
+                  active:scale-95
+                  dark:border-neutral-800
+                  dark:bg-[#171717]
+                  dark:text-neutral-300
+                  dark:hover:bg-neutral-800
+                "
               >
-                <span className="text-lg leading-none">
-                  <ArrowLeft />
-                </span>
+                <ArrowLeft size={18} />
               </button>
 
               <div className="min-w-0">
                 <h1
                   className="
-            truncate
-            text-lg
-            font-bold
-            tracking-tight
-            text-slate-950
-            dark:text-white
-          "
+                    truncate
+                    text-lg
+                    font-bold
+                    tracking-tight
+                    text-slate-950
+                    dark:text-white
+                  "
                 >
                   {isMyPostsPage ? "My Posts" : "Campus Posts"}
                 </h1>
 
                 <p
                   className="
-            truncate
-            text-xs
-            text-slate-500
-            dark:text-neutral-500
-          "
+                    truncate
+                    text-xs
+                    text-slate-500
+                    dark:text-neutral-500
+                  "
                 >
                   {isMyPostsPage
                     ? "Posts you've shared"
@@ -395,35 +372,36 @@ const Posts = () => {
             </div>
 
             {/* Refresh */}
+
             <button
               type="button"
               onClick={handleRefresh}
               disabled={isFetching}
               aria-label="Refresh posts"
               className="
-        flex
-        h-9
-        w-9
-        shrink-0
-        items-center
-        justify-center
-        rounded-full
-        border
-        border-slate-200
-        bg-white
-        text-slate-500
-        transition-all
-        hover:bg-slate-50
-        hover:text-slate-800
-        active:scale-95
-        disabled:cursor-not-allowed
-        disabled:opacity-50
-        dark:border-neutral-800
-        dark:bg-[#171717]
-        dark:text-neutral-400
-        dark:hover:bg-neutral-800
-        dark:hover:text-neutral-200
-      "
+                flex
+                h-9
+                w-9
+                shrink-0
+                items-center
+                justify-center
+                rounded-full
+                border
+                border-slate-200
+                bg-white
+                text-slate-500
+                transition-all
+                hover:bg-slate-50
+                hover:text-slate-800
+                active:scale-95
+                disabled:cursor-not-allowed
+                disabled:opacity-50
+                dark:border-neutral-800
+                dark:bg-[#171717]
+                dark:text-neutral-400
+                dark:hover:bg-neutral-800
+                dark:hover:text-neutral-200
+              "
             >
               <RefreshCw
                 size={16}
@@ -470,53 +448,53 @@ const Posts = () => {
               <div
                 key={item}
                 className="
-                  overflow-hidden
-                  border-y
-                  border-slate-200
-                  bg-white
-                  sm:rounded-2xl
-                  sm:border
-                  dark:border-neutral-800
-                  dark:bg-[#171717]
-                "
+                    overflow-hidden
+                    border-y
+                    border-slate-200
+                    bg-white
+                    sm:rounded-2xl
+                    sm:border
+                    dark:border-neutral-800
+                    dark:bg-[#171717]
+                  "
               >
                 {/* Skeleton header */}
 
                 <div className="flex items-center gap-3 px-4 py-4">
                   <div
                     className="
-                      h-11
-                      w-11
-                      shrink-0
-                      animate-pulse
-                      rounded-full
-                      bg-slate-200
-                      dark:bg-neutral-800
-                    "
+                        h-11
+                        w-11
+                        shrink-0
+                        animate-pulse
+                        rounded-full
+                        bg-slate-200
+                        dark:bg-neutral-800
+                      "
                   />
 
                   <div className="flex-1">
                     <div
                       className="
-                        h-3.5
-                        w-28
-                        animate-pulse
-                        rounded
-                        bg-slate-200
-                        dark:bg-neutral-800
-                      "
+                          h-3.5
+                          w-28
+                          animate-pulse
+                          rounded
+                          bg-slate-200
+                          dark:bg-neutral-800
+                        "
                     />
 
                     <div
                       className="
-                        mt-2
-                        h-2.5
-                        w-40
-                        animate-pulse
-                        rounded
-                        bg-slate-100
-                        dark:bg-neutral-900
-                      "
+                          mt-2
+                          h-2.5
+                          w-40
+                          animate-pulse
+                          rounded
+                          bg-slate-100
+                          dark:bg-neutral-900
+                        "
                     />
                   </div>
                 </div>
@@ -526,24 +504,24 @@ const Posts = () => {
                 <div className="space-y-2 px-4 pb-4">
                   <div
                     className="
-                      h-3
-                      w-[85%]
-                      animate-pulse
-                      rounded
-                      bg-slate-200
-                      dark:bg-neutral-800
-                    "
+                        h-3
+                        w-[85%]
+                        animate-pulse
+                        rounded
+                        bg-slate-200
+                        dark:bg-neutral-800
+                      "
                   />
 
                   <div
                     className="
-                      h-3
-                      w-[65%]
-                      animate-pulse
-                      rounded
-                      bg-slate-200
-                      dark:bg-neutral-800
-                    "
+                        h-3
+                        w-[65%]
+                        animate-pulse
+                        rounded
+                        bg-slate-200
+                        dark:bg-neutral-800
+                      "
                   />
                 </div>
 
@@ -551,11 +529,11 @@ const Posts = () => {
 
                 <div
                   className="
-                    h-64
-                    animate-pulse
-                    bg-slate-100
-                    dark:bg-neutral-900
-                  "
+                      h-64
+                      animate-pulse
+                      bg-slate-100
+                      dark:bg-neutral-900
+                    "
                 />
 
                 {/* Skeleton actions */}
@@ -563,24 +541,24 @@ const Posts = () => {
                 <div className="flex gap-3 px-4 py-3">
                   <div
                     className="
-                      h-9
-                      w-16
-                      animate-pulse
-                      rounded-xl
-                      bg-slate-100
-                      dark:bg-neutral-900
-                    "
+                        h-9
+                        w-16
+                        animate-pulse
+                        rounded-xl
+                        bg-slate-100
+                        dark:bg-neutral-900
+                      "
                   />
 
                   <div
                     className="
-                      h-9
-                      w-16
-                      animate-pulse
-                      rounded-xl
-                      bg-slate-100
-                      dark:bg-neutral-900
-                    "
+                        h-9
+                        w-16
+                        animate-pulse
+                        rounded-xl
+                        bg-slate-100
+                        dark:bg-neutral-900
+                      "
                   />
                 </div>
               </div>
@@ -595,48 +573,48 @@ const Posts = () => {
         {!isLoading && posts.length === 0 && (
           <div
             className="
-              mx-3
-              mt-5
-              rounded-2xl
-              border
-              border-slate-200
-              bg-white
-              px-6
-              py-14
-              text-center
-              shadow-sm
-              dark:border-neutral-800
-              dark:bg-[#171717]
-              dark:shadow-none
-              sm:mx-0
-            "
+                mx-3
+                mt-5
+                rounded-2xl
+                border
+                border-slate-200
+                bg-white
+                px-6
+                py-14
+                text-center
+                shadow-sm
+                dark:border-neutral-800
+                dark:bg-[#171717]
+                dark:shadow-none
+                sm:mx-0
+              "
           >
             <div
               className="
-                mx-auto
-                flex
-                h-14
-                w-14
-                items-center
-                justify-center
-                rounded-2xl
-                bg-slate-100
-                text-slate-500
-                dark:bg-neutral-900
-                dark:text-neutral-400
-              "
+                  mx-auto
+                  flex
+                  h-14
+                  w-14
+                  items-center
+                  justify-center
+                  rounded-2xl
+                  bg-slate-100
+                  text-slate-500
+                  dark:bg-neutral-900
+                  dark:text-neutral-400
+                "
             >
               <Newspaper size={25} />
             </div>
 
             <h2
               className="
-                mt-5
-                text-base
-                font-semibold
-                text-slate-900
-                dark:text-white
-              "
+                  mt-5
+                  text-base
+                  font-semibold
+                  text-slate-900
+                  dark:text-white
+                "
             >
               {isMyPostsPage
                 ? "You haven't created any posts yet"
@@ -645,14 +623,14 @@ const Posts = () => {
 
             <p
               className="
-                mx-auto
-                mt-2
-                max-w-sm
-                text-sm
-                leading-6
-                text-slate-500
-                dark:text-neutral-500
-              "
+                  mx-auto
+                  mt-2
+                  max-w-sm
+                  text-sm
+                  leading-6
+                  text-slate-500
+                  dark:text-neutral-500
+                "
             >
               {isMyPostsPage
                 ? "Share something with your campus community and it will appear here."
@@ -663,24 +641,24 @@ const Posts = () => {
               type="button"
               onClick={() => navigate("/posts/create")}
               className="
-                mt-5
-                inline-flex
-                items-center
-                gap-2
-                rounded-xl
-                bg-violet-600
-                px-4
-                py-2.5
-                text-xs
-                font-semibold
-                text-white
-                shadow-sm
-                transition-all
-                hover:bg-violet-700
-                active:scale-95
-                dark:bg-violet-600
-                dark:hover:bg-violet-500
-              "
+                  mt-5
+                  inline-flex
+                  items-center
+                  gap-2
+                  rounded-xl
+                  bg-violet-600
+                  px-4
+                  py-2.5
+                  text-xs
+                  font-semibold
+                  text-white
+                  shadow-sm
+                  transition-all
+                  hover:bg-violet-700
+                  active:scale-95
+                  dark:bg-violet-600
+                  dark:hover:bg-violet-500
+                "
             >
               <Plus size={14} />
               Create a post
@@ -696,10 +674,10 @@ const Posts = () => {
           <>
             <div
               className="
-                mt-4
-                space-y-3
-                sm:space-y-4
-              "
+                  mt-4
+                  space-y-3
+                  sm:space-y-4
+                "
             >
               {posts.map((post) => (
                 <PostCard
@@ -713,37 +691,37 @@ const Posts = () => {
             </div>
 
             {/* ==================================
-                INFINITE SCROLL
-                ================================== */}
+                  INFINITE SCROLL
+                  ================================== */}
 
             <div
               ref={loadMoreRef}
               className="
-                flex
-                min-h-20
-                items-center
-                justify-center
-              "
+                  flex
+                  min-h-20
+                  items-center
+                  justify-center
+                "
             >
               {isFetchingNextPage && (
                 <div
                   className="
-                    flex
-                    items-center
-                    gap-2
-                    rounded-full
-                    border
-                    border-slate-200
-                    bg-white
-                    px-4
-                    py-2
-                    text-xs
-                    font-medium
-                    text-slate-500
-                    dark:border-neutral-800
-                    dark:bg-[#171717]
-                    dark:text-neutral-400
-                  "
+                      flex
+                      items-center
+                      gap-2
+                      rounded-full
+                      border
+                      border-slate-200
+                      bg-white
+                      px-4
+                      py-2
+                      text-xs
+                      font-medium
+                      text-slate-500
+                      dark:border-neutral-800
+                      dark:bg-[#171717]
+                      dark:text-neutral-400
+                    "
                 >
                   <RefreshCw size={13} className="animate-spin" />
                   Loading more
@@ -753,31 +731,31 @@ const Posts = () => {
               {!hasNextPage && !isFetchingNextPage && posts.length > 0 && (
                 <div
                   className="
-                      flex
-                      items-center
-                      gap-2
-                      py-5
-                      text-[11px]
-                      text-slate-400
-                      dark:text-neutral-600
-                    "
+                        flex
+                        items-center
+                        gap-2
+                        py-5
+                        text-[11px]
+                        text-slate-400
+                        dark:text-neutral-600
+                      "
                 >
                   <span
                     className="
-                        h-px
-                        w-8
-                        bg-slate-200
-                        dark:bg-neutral-800
-                      "
+                          h-px
+                          w-8
+                          bg-slate-200
+                          dark:bg-neutral-800
+                        "
                   />
                   You're all caught up
                   <span
                     className="
-                        h-px
-                        w-8
-                        bg-slate-200
-                        dark:bg-neutral-800
-                      "
+                          h-px
+                          w-8
+                          bg-slate-200
+                          dark:bg-neutral-800
+                        "
                   />
                 </div>
               )}
@@ -796,22 +774,15 @@ const Posts = () => {
           CREATE POST MODAL
           ======================================== */}
 
-      {/* <CreatePostModal
+      {/* 
+      <CreatePostModal
         open={showCreatePostModal}
-        onClose={() => setShowCreatePostModal(false)}
+        onClose={() =>
+          setShowCreatePostModal(false)
+        }
         onCreated={handlePostCreated}
-      /> */}
-
-      {/* ========================================
-          EDIT POST MODAL
-          ======================================== */}
-
-      <EditPostModal
-        open={editingPost !== null}
-        post={editingPost!}
-        onClose={() => setEditingPost(null)}
-        onUpdated={handlePostUpdated}
       />
+      */}
 
       {/* ========================================
           DELETE CONFIRMATION
