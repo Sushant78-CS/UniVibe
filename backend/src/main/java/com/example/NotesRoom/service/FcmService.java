@@ -1,7 +1,6 @@
+
 package com.example.NotesRoom.service;
 
-import com.example.NotesRoom.config.FirebaseConfig;
-import com.example.NotesRoom.entity.FcmInstallation;
 import com.example.NotesRoom.entity.Users;
 import com.example.NotesRoom.repository.FcmInstallationRepository;
 import com.google.firebase.messaging.FirebaseMessaging;
@@ -12,7 +11,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -22,14 +20,13 @@ import java.util.List;
 public class FcmService {
 
     private final FcmInstallationRepository fcmInstallationRepository;
-//    private final FirebaseConfig firebaseConfig;
+    private final FcmInstallationLookupService installationLookupService;
     private final FirebaseMessaging firebaseMessaging;
 
     // =========================================================
     // SEND TO SINGLE USER
     // =========================================================
 
-    @Transactional
     public void sendToUser(
             Users user,
             String title,
@@ -37,21 +34,15 @@ public class FcmService {
             String url
     ) {
 
-        List<FcmInstallation> installations =
-                fcmInstallationRepository.findAllByUser(user);
+        List<FcmInstallationLookupService.InstallationData>
+                installations =
+                installationLookupService.findForUser(user);
 
         if (installations.isEmpty()) {
-
-            log.info(
-                    "No FCM installations found for userId={}",
-                    user.getId()
-            );
-
             return;
         }
 
-        for (FcmInstallation installation : installations) {
-
+        for (var installation : installations) {
             sendToInstallation(
                     installation,
                     title,
@@ -66,7 +57,6 @@ public class FcmService {
     // =========================================================
 
     @Async
-    @Transactional
     public void sendToUsers(
             List<Users> users,
             String title,
@@ -80,28 +70,20 @@ public class FcmService {
 
         try {
 
-            List<FcmInstallation> installations =
-                    fcmInstallationRepository
-                            .findAllByUserIn(users);
+            List<FcmInstallationLookupService.InstallationData>
+                    installations =
+                    installationLookupService.findForUsers(users);
 
             if (installations.isEmpty()) {
-
-                log.info(
-                        "No FCM installations found for {} users",
-                        users.size()
-                );
-
                 return;
             }
 
             log.info(
-                    "Sending FCM notification to {} installations",
+                    "Sending FCM notifications to {} installations",
                     installations.size()
             );
 
-            for (FcmInstallation installation :
-                    installations) {
-
+            for (var installation : installations) {
                 sendToInstallation(
                         installation,
                         title,
@@ -111,11 +93,7 @@ public class FcmService {
             }
 
         } catch (Exception e) {
-
-            log.error(
-                    "Failed to send batch FCM notifications",
-                    e
-            );
+            log.error("Failed to send FCM notifications", e);
         }
     }
 
@@ -124,50 +102,28 @@ public class FcmService {
     // =========================================================
 
     private void sendToInstallation(
-            FcmInstallation installation,
+            FcmInstallationLookupService.InstallationData installation,
             String title,
             String body,
             String url
     ) {
 
-        String token = installation.getToken();
+        String token = installation.token();
 
         if (token == null || token.isBlank()) {
-
-            log.warn(
-                    "Skipping FCM installation with empty token. installationId={}",
-                    installation.getId()
-            );
-
             return;
         }
+
         try {
 
-            Message message =
-                    Message.builder()
-                            .setToken(token)
-                            .putData(
-                                    "title",
-                                    title
-                            )
-                            .putData(
-                                    "body",
-                                    body
-                            )
-                            .putData(
-                                    "url",
-                                    url
-                            )
-                            .build();
+            Message message = Message.builder()
+                    .setToken(token)
+                    .putData("title", title)
+                    .putData("body", body)
+                    .putData("url", url)
+                    .build();
 
-            String response =
-                    firebaseMessaging.send(message);
-
-            log.info(
-                    "FCM push sent successfully. userId={}, response={}",
-                    installation.getUser().getId(),
-                    response
-            );
+            firebaseMessaging.send(message);
 
         } catch (FirebaseMessagingException e) {
 
@@ -175,10 +131,9 @@ public class FcmService {
                     e.getMessagingErrorCode();
 
             log.error(
-                    "FCM send failed. userId={}, errorCode={}",
-                    installation.getUser().getId(),
-                    errorCode,
-                    e
+                    "FCM failed. userId={}, errorCode={}",
+                    installation.userId(),
+                    errorCode
             );
 
             if (
@@ -187,19 +142,10 @@ public class FcmService {
             ) {
 
                 try {
-
-                    fcmInstallationRepository
-                            .deleteByToken(token);
-
-                    log.info(
-                            "Removed invalid FCM token from database. userId={}",
-                            installation.getUser().getId()
-                    );
-
+                    fcmInstallationRepository.deleteByToken(token);
                 } catch (Exception deleteError) {
-
                     log.error(
-                            "Failed to remove invalid FCM token from database.",
+                            "Failed to delete invalid FCM token",
                             deleteError
                     );
                 }
@@ -208,11 +154,10 @@ public class FcmService {
         } catch (Exception e) {
 
             log.error(
-                    "Unexpected error while sending FCM notification. userId={}",
-                    installation.getUser().getId(),
+                    "Unexpected FCM error. userId={}",
+                    installation.userId(),
                     e
             );
-        }}
-
-
+        }
+    }
 }

@@ -250,31 +250,21 @@ public class NotificationService {
     /**
      * Mark all notifications as read.
      */
+
     @Transactional
-    public void markAllAsRead(
-            String clerkId
-    ) {
+    public void markAllAsRead(String clerkId) {
 
         Users user = userRepository.findByClerkId(clerkId)
                 .orElseThrow(() ->
                         new RuntimeException("User not found")
                 );
 
-        List<Notification> notifications =
-                notificationRepository
-                        .findByUserOrderByCreatedAtDesc(user);
-
-        Instant now = Instant.now();
-
-        notifications.forEach(notification -> {
-            if (!notification.isRead()) {
-                notification.setRead(true);
-                notification.setReadAt(now);
-            }
-        });
-
-        notificationRepository.saveAll(notifications);
+        notificationRepository.markAllAsRead(
+                user.getId(),
+                Instant.now()
+        );
     }
+
 
     @Scheduled(fixedRate = 60 * 60 * 1000)
     @Transactional

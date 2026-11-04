@@ -1,3 +1,4 @@
+
 package com.example.NotesRoom.repository;
 
 import com.example.NotesRoom.entity.VibeMessage;
@@ -19,10 +20,19 @@ public interface VibeMessageRepository
 
     @Modifying
     @Query("""
-                delete from VibeMessage m
-                where m.createdAt < :expiryTime
-            """)
+        DELETE FROM VibeMessage m
+        WHERE m.createdAt < :expiryTime
+    """)
     int deleteMessagesOlderThan(
             @Param("expiryTime") Instant expiryTime
+    );
+
+    @Modifying
+    @Query("""
+        DELETE FROM VibeMessage m
+        WHERE m.id IN :messageIds
+    """)
+    int deleteMessagesByIds(
+            @Param("messageIds") List<Long> messageIds
     );
 }

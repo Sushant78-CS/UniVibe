@@ -2,6 +2,7 @@ package com.example.NotesRoom.repository;
 
 import com.example.NotesRoom.entity.Users;
 import com.example.NotesRoom.entity.VibeMember;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -14,5 +15,6 @@ public interface VibeMemberRepository
 
     Optional<VibeMember> findByUser(Users user);
 
+    @EntityGraph(attributePaths = {"user"})
     List<VibeMember> findAllBy();
 }

@@ -81,7 +81,7 @@ public class VibeMessageService {
         VibeMessage saved =
                 vibeMessageRepository.save(message);
 
-        removeMessagesOverLimit();
+//        removeMessagesOverLimit();
 
         /*
          * IMPORTANT:
@@ -313,7 +313,7 @@ public class VibeMessageService {
     ) {
 
         List<VibeMember> members =
-                vibeMemberRepository.findAll();
+                vibeMemberRepository.findAllBy();
 
         List<Users> recipients =
                 members.stream()
@@ -450,53 +450,36 @@ public class VibeMessageService {
         );
     }
 
-    private void removeMessagesOverLimit() {
 
+    @Scheduled(fixedRate = 10 * 60 * 1000)
+    @Transactional
+    public void removeMessagesOverLimit() {
         List<VibeMessage> messages =
-                vibeMessageRepository
-                        .findAllByOrderByCreatedAtDesc(
-                                PageRequest.of(
-                                        0,
-                                        MAX_VIBE_MESSAGES + 1
-                                )
-                        );
+                vibeMessageRepository.findAllByOrderByCreatedAtDesc(
+                        PageRequest.of(0, MAX_VIBE_MESSAGES + 1)
+                );
 
         if (messages.size() <= MAX_VIBE_MESSAGES) {
             return;
         }
-
-        List<VibeMessage> messagesToDelete =
+        List<Long> idsToDelete =
                 messages.subList(
-                        MAX_VIBE_MESSAGES,
-                        messages.size()
-                );
-
-        List<Long> deletedIds =
-                messagesToDelete.stream()
+                                MAX_VIBE_MESSAGES,
+                                messages.size()
+                        )
+                        .stream()
                         .map(VibeMessage::getId)
                         .toList();
 
-        vibeMessageRepository.deleteAll(
-                messagesToDelete
-        );
+        int deleted =
+                vibeMessageRepository.deleteMessagesByIds(idsToDelete);
+        log.info("Deleted {} excess Vibe messages", deleted);
 
-        /*
-         * Tell connected clients to remove
-         * automatically deleted messages.
-         */
-        for (Long deletedId : deletedIds) {
-
-            messagingTemplate.convertAndSend(
-                    "/topic/vibe-delete",
-                    deletedId
-            );
+        for (Long deletedId : idsToDelete) {
+            messagingTemplate.convertAndSend("/topic/vibe-delete", deletedId);
         }
-
-        log.info(
-                "Deleted {} Vibe messages because the 100 message limit was exceeded",
-                deletedIds.size()
-        );
     }
+
 
     @Scheduled(fixedRate = 60 * 60 * 1000)
     @Transactional
